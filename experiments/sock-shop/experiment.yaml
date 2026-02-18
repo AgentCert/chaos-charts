@@ -45,8 +45,8 @@ spec:
 
     - name: install-application
       container:
-        image: litmuschaos/litmus-app-deployer:latest
-        args: ["-namespace=sock-shop","-typeName=resilient","-operation=apply","-timeout=400", "-app=sock-shop","-scope=cluster"] #for weak provide type flagName as resilient(-typeName=weak)
+        image: agentcert/agentcert-install-app:latest
+        args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=5m"]
 
     - name: install-chaos-faults
       inputs:
