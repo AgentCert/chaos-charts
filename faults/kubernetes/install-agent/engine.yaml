@@ -1,0 +1,26 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: install-agent-chaos
+  namespace: default
+spec:
+  # It can be active/stop
+  engineState: 'active'
+  chaosServiceAccount: install-agent-sa
+  experiments:
+    - name: install-agent
+      spec:
+        components:
+          env:
+            # folder name containing the Helm chart
+            - name: FOLDER
+              value: 'flash-agent'
+
+            # target namespace for agent deployment
+            - name: NAMESPACE
+              value: 'sock-shop'
+
+            # timeout for the operation
+            - name: TIMEOUT
+              value: '10m'
