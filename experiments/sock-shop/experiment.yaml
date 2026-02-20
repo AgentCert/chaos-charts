@@ -22,6 +22,8 @@ spec:
       steps:
         - - name: install-application
             template: install-application
+        - - name: install-agent
+            template: install-agent
         - - name: install-chaos-faults
             template: install-chaos-faults
           - name: load-test
@@ -47,6 +49,11 @@ spec:
       container:
         image: agentcert/agentcert-install-app:latest
         args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=5m"]
+
+    - name: install-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        args: ["-folder=flash-agent", "-namespace=sock-shop", "-create-namespace", "-timeout=10m"]
 
     - name: install-chaos-faults
       inputs:
