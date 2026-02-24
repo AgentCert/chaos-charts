@@ -268,7 +268,7 @@ spec:
                 spec:
                   appinfo:
                     appns: 'sock-shop'
-                    applabel: 'app.kubernetes.io/name=flash-agent'
+                    applabel: 'app=my-agent'
                     appkind: 'deployment'
                   engineState: 'active'
                   chaosServiceAccount: litmus-admin
@@ -288,7 +288,7 @@ spec:
                             resource: "pods"
                             namespace: "sock-shop"
                             fieldSelector: "status.phase=Running"
-                            labelSelector: "app.kubernetes.io/name=flash-agent"
+                            labelSelector: "app=my-agent"
                             operation: "present"
                           mode: "Continuous"
                           runProperties:
@@ -325,7 +325,7 @@ spec:
                 spec:
                   appinfo:
                     appns: 'sock-shop'
-                    applabel: 'app.kubernetes.io/name=flash-agent'
+                    applabel: 'app=my-agent'
                     appkind: 'deployment'
                   engineState: 'active'
                   chaosServiceAccount: litmus-admin
@@ -345,7 +345,7 @@ spec:
                             resource: "pods"
                             namespace: "sock-shop"
                             fieldSelector: "status.phase=Running"
-                            labelSelector: "app.kubernetes.io/name=flash-agent"
+                            labelSelector: "app=my-agent"
                             operation: "present"
                           mode: "Continuous"
                           runProperties:
