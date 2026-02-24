@@ -799,20 +799,21 @@ spec:
                             interval: 100ms
                             attempt: 2
                             probePollingInterval: 1s
-                        - name: "check-benchmark"
-                          type: "cmdProbe"
-                          cmdProbe/inputs:
-                            command: "curl http://qps-test.sock-shop.svc.cluster.local"
-                            comparator:
-                              type: "int" # supports: string, int, float
-                              criteria: ">=" #supports >=,<=,>,<,==,!= for int and contains,equal,notEqual,matches,notMatches for string values
-                              value: "100"
-                          mode: "Edge"
-                          runProperties:
-                            probeTimeout: 1s
-                            interval: 100ms
-                            attempt: 2
-                            initialDelay: 10s
+                        # COMMENTED OUT: qps-test service not deployed
+                        # - name: "check-benchmark"
+                        #   type: "cmdProbe"
+                        #   cmdProbe/inputs:
+                        #     command: "curl http://qps-test.sock-shop.svc.cluster.local"
+                        #     comparator:
+                        #       type: "int"
+                        #       criteria: ">="
+                        #       value: "100"
+                        #   mode: "Edge"
+                        #   runProperties:
+                        #     probeTimeout: 1s
+                        #     interval: 100ms
+                        #     attempt: 2
+                        #     initialDelay: 10s
                         components:
                           env:
                             #number of cpu cores to be consumed
@@ -871,20 +872,21 @@ spec:
                             interval: 100ms
                             attempt: 2
                             probePollingInterval: 1s
-                        - name: "check-benchmark"
-                          type: "cmdProbe"
-                          cmdProbe/inputs:
-                            command: "curl http://qps-test.sock-shop.svc.cluster.local"
-                            comparator:
-                              type: "int" # supports: string, int, float
-                              criteria: ">=" #supports >=,<=,>,<,==,!= for int and contains,equal,notEqual,matches,notMatches for string values
-                              value: "100"
-                          mode: "Edge"
-                          runProperties:
-                            probeTimeout: 1s
-                            interval: 100ms
-                            attempt: 2
-                            initialDelay: 10s
+                        # COMMENTED OUT: qps-test service not deployed
+                        # - name: "check-benchmark"
+                        #   type: "cmdProbe"
+                        #   cmdProbe/inputs:
+                        #     command: "curl http://qps-test.sock-shop.svc.cluster.local"
+                        #     comparator:
+                        #       type: "int"
+                        #       criteria: ">="
+                        #       value: "100"
+                        #   mode: "Edge"
+                        #   runProperties:
+                        #     probeTimeout: 1s
+                        #     interval: 100ms
+                        #     attempt: 2
+                        #     initialDelay: 10s
                         components:
                           env:
                             - name: MEMORY_CONSUMPTION
@@ -944,20 +946,21 @@ spec:
                             interval: 100ms
                             attempt: 3
                             probePollingInterval: 1s
-                        - name: "check-benchmark"
-                          type: "cmdProbe"
-                          cmdProbe/inputs:
-                            command: "curl http://qps-test.sock-shop.svc.cluster.local"
-                            comparator:
-                              type: "int" # supports: string, int, float
-                              criteria: ">=" #supports >=,<=,>,<,==,!= for int and contains,equal,notEqual,matches,notMatches for string values
-                              value: "100"
-                          mode: "Edge"
-                          runProperties:
-                            probeTimeout: 1s
-                            interval: 100ms
-                            attempt: 2
-                            initialDelay: 2s
+                        # COMMENTED OUT: qps-test service not deployed
+                        # - name: "check-benchmark"
+                        #   type: "cmdProbe"
+                        #   cmdProbe/inputs:
+                        #     command: "curl http://qps-test.sock-shop.svc.cluster.local"
+                        #     comparator:
+                        #       type: "int"
+                        #       criteria: ">="
+                        #       value: "100"
+                        #   mode: "Edge"
+                        #   runProperties:
+                        #     probeTimeout: 1s
+                        #     interval: 100ms
+                        #     attempt: 2
+                        #     initialDelay: 2s
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -1018,20 +1021,21 @@ spec:
                             interval: 100ms
                             attempt: 3
                             probePollingInterval: 1s
-                        - name: "check-benchmark"
-                          type: "cmdProbe"
-                          cmdProbe/inputs:
-                            command: "curl http://qps-test.sock-shop.svc.cluster.local"
-                            comparator:
-                              type: "int" # supports: string, int, float
-                              criteria: ">=" #supports >=,<=,>,<,==,!= for int and contains,equal,notEqual,matches,notMatches for string values
-                              value: "100"
-                          mode: "Edge"
-                          runProperties:
-                            probeTimeout: 1s
-                            interval: 100ms
-                            attempt: 2
-                            initialDelay: 2s
+                        # COMMENTED OUT: qps-test service not deployed
+                        # - name: "check-benchmark"
+                        #   type: "cmdProbe"
+                        #   cmdProbe/inputs:
+                        #     command: "curl http://qps-test.sock-shop.svc.cluster.local"
+                        #     comparator:
+                        #       type: "int"
+                        #       criteria: ">="
+                        #       value: "100"
+                        #   mode: "Edge"
+                        #   runProperties:
+                        #     probeTimeout: 1s
+                        #     interval: 100ms
+                        #     attempt: 2
+                        #     initialDelay: 2s
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -1094,20 +1098,21 @@ spec:
                             interval: 100ms
                             attempt: 1
                             probePollingInterval: 1s
-                        - name: "check-benchmark"
-                          type: "cmdProbe"
-                          cmdProbe/inputs:
-                            command: "curl http://qps-test.sock-shop.svc.cluster.local:80"
-                            comparator:
-                              type: "int" # supports: string, int, float
-                              criteria: ">=" #supports >=,<=,>,<,==,!= for int and contains,equal,notEqual,matches,notMatches for string values
-                              value: "100"
-                          mode: "Edge"
-                          runProperties:
-                            probeTimeout: 1s
-                            interval: 100ms
-                            attempt: 2
-                            initialDelay: 1s
+                        # COMMENTED OUT: qps-test service not deployed
+                        # - name: "check-benchmark"
+                        #   type: "cmdProbe"
+                        #   cmdProbe/inputs:
+                        #     command: "curl http://qps-test.sock-shop.svc.cluster.local:80"
+                        #     comparator:
+                        #       type: "int"
+                        #       criteria: ">="
+                        #       value: "100"
+                        #   mode: "Edge"
+                        #   runProperties:
+                        #     probeTimeout: 1s
+                        #     interval: 100ms
+                        #     attempt: 2
+                        #     initialDelay: 1s
                         components:
                           env:
                             - name: FILL_PERCENTAGE
