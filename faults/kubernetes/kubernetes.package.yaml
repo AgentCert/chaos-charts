@@ -100,3 +100,9 @@ faults:
   - name: pod-network-rate-limit
     CSV: pod-network-rate-limit.chartserviceversion.yaml
     desc: "pod-network-rate-limit"
+  - name: install-application
+    CSV: install-application.chartserviceversion.yaml
+    desc: "install-application"
+  - name: install-agent
+    CSV: install-agent.chartserviceversion.yaml
+    desc: "install-agent"
