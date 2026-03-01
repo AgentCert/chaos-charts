@@ -17,6 +17,32 @@ spec:
         value: "litmus"
       - name: appNamespace
         value: "sock-shop"
+      # Flash Agent configuration
+      - name: openaiApiKey
+        value: ""
+      - name: openaiModel
+        value: "gpt-4o-mini"
+      - name: openaiBaseUrl
+        value: "https://api.openai.com/v1"
+      - name: otelEndpoint
+        value: ""
+      - name: scanInterval
+        value: "60"
+      - name: logLines
+        value: "100"
+      # Chaos experiment configuration
+      - name: appLabel
+        value: "app=flash-agent"
+      - name: podDeleteDuration
+        value: "15"
+      - name: podDeleteInterval
+        value: "5"
+      - name: cpuHogDuration
+        value: "60"
+      - name: cpuHogCores
+        value: "1"
+      - name: cpuHogLoad
+        value: "100"
   templates:
     - name: argowf-chaos
       steps:
@@ -34,7 +60,17 @@ spec:
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
-        args: ["-folder=flash-agent", "-namespace=sock-shop", "-create-namespace", "-timeout=10m"]
+        args:
+          - "-folder=flash-agent"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-create-namespace"
+          - "-timeout=10m"
+          - "--set=config.openaiApiKey={{workflow.parameters.openaiApiKey}}"
+          - "--set=config.openaiModel={{workflow.parameters.openaiModel}}"
+          - "--set=config.openaiBaseUrl={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=config.otelEndpoint={{workflow.parameters.otelEndpoint}}"
+          - "--set=config.scanInterval={{workflow.parameters.scanInterval}}"
+          - "--set=config.logLines={{workflow.parameters.logLines}}"
 
     - name: install-chaos-faults
       inputs:
@@ -267,8 +303,8 @@ spec:
                     context: "flash-agent"
                 spec:
                   appinfo:
-                    appns: 'sock-shop'
-                    applabel: 'app=my-agent'
+                    appns: '{{workflow.parameters.appNamespace}}'
+                    applabel: '{{workflow.parameters.appLabel}}'
                     appkind: 'deployment'
                   engineState: 'active'
                   chaosServiceAccount: litmus-admin
@@ -286,9 +322,9 @@ spec:
                             group: ""
                             version: "v1"
                             resource: "pods"
-                            namespace: "sock-shop"
+                            namespace: "{{workflow.parameters.appNamespace}}"
                             fieldSelector: "status.phase=Running"
-                            labelSelector: "app=my-agent"
+                            labelSelector: "{{workflow.parameters.appLabel}}"
                             operation: "present"
                           mode: "Continuous"
                           runProperties:
@@ -299,9 +335,9 @@ spec:
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
-                              value: '15'
+                              value: '{{workflow.parameters.podDeleteDuration}}'
                             - name: CHAOS_INTERVAL
-                              value: '5'
+                              value: '{{workflow.parameters.podDeleteInterval}}'
                             - name: FORCE
                               value: 'true'
       container:
@@ -324,8 +360,8 @@ spec:
                     context: "flash-agent"
                 spec:
                   appinfo:
-                    appns: 'sock-shop'
-                    applabel: 'app=my-agent'
+                    appns: '{{workflow.parameters.appNamespace}}'
+                    applabel: '{{workflow.parameters.appLabel}}'
                     appkind: 'deployment'
                   engineState: 'active'
                   chaosServiceAccount: litmus-admin
@@ -343,9 +379,9 @@ spec:
                             group: ""
                             version: "v1"
                             resource: "pods"
-                            namespace: "sock-shop"
+                            namespace: "{{workflow.parameters.appNamespace}}"
                             fieldSelector: "status.phase=Running"
-                            labelSelector: "app=my-agent"
+                            labelSelector: "{{workflow.parameters.appLabel}}"
                             operation: "present"
                           mode: "Continuous"
                           runProperties:
@@ -356,11 +392,11 @@ spec:
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
-                              value: '60'
+                              value: '{{workflow.parameters.cpuHogDuration}}'
                             - name: CPU_CORES
-                              value: '1'
+                              value: '{{workflow.parameters.cpuHogCores}}'
                             - name: CPU_LOAD
-                              value: '100'
+                              value: '{{workflow.parameters.cpuHogLoad}}'
       container:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]

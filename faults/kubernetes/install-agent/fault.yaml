@@ -83,19 +83,43 @@ spec:
     command:
       - /usr/local/bin/install-agent
     args:
-      - -folder=flash-agent
-      - -namespace=sock-shop
+      - -folder=$(FOLDER)
+      - -namespace=$(NAMESPACE)
       - -create-namespace
-      - -timeout=10m
+      - -timeout=$(TIMEOUT)
+      - --set=config.openaiApiKey=$(OPENAI_API_KEY)
+      - --set=config.openaiModel=$(OPENAI_MODEL)
+      - --set=config.openaiBaseUrl=$(OPENAI_BASE_URL)
+      - --set=config.otelEndpoint=$(OTEL_ENDPOINT)
+      - --set=config.scanInterval=$(SCAN_INTERVAL)
+      - --set=config.logLines=$(LOG_LINES)
     env:
       - name: FOLDER
-        value: "flash-agent"
+        value: ""
 
       - name: NAMESPACE
-        value: "sock-shop"
+        value: ""
 
       - name: TIMEOUT
         value: "10m"
+
+      - name: OPENAI_API_KEY
+        value: ""
+
+      - name: OPENAI_MODEL
+        value: "gpt-4o-mini"
+
+      - name: OPENAI_BASE_URL
+        value: "https://api.openai.com/v1"
+
+      - name: OTEL_ENDPOINT
+        value: ""
+
+      - name: SCAN_INTERVAL
+        value: "60"
+
+      - name: LOG_LINES
+        value: "100"
 
     labels:
       name: install-agent
