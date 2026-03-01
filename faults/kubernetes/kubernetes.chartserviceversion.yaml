@@ -112,6 +112,9 @@ spec:
     - name: install-agent
       description: Installs/deploys an AI agent into the Kubernetes cluster for chaos testing.
       displayName: "Install Agent"
+    - name: uninstall-application
+      description: Uninstalls/removes an application from the Kubernetes cluster after chaos testing.
+      displayName: "Uninstall Application"
   keywords:
     - Kubernetes
   maintainers:
