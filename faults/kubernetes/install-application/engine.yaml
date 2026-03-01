@@ -4,6 +4,8 @@ kind: ChaosEngine
 metadata:
   name: install-application-chaos
   namespace: default
+  annotations:
+    probeRef: '[]'
 spec:
   # It can be active/stop
   engineState: 'active'
