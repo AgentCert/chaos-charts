@@ -4173,21 +4173,54 @@ spec:
     image: "docker.io/agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
     command:
-      - install-agent
+      - /usr/local/bin/install-agent
     args:
-      - -folder=flash-agent
-      - -namespace=sock-shop
+      - -folder=$(FOLDER)
+      - -namespace=$(NAMESPACE)
       - -create-namespace
-      - -timeout=10m
+      - -timeout=$(TIMEOUT)
+      - --set=config.openaiApiKey=$(OPENAI_API_KEY)
+      - --set=config.openaiModel=$(OPENAI_MODEL)
+      - --set=config.openaiBaseUrl=$(OPENAI_BASE_URL)
+      - --set=config.otelEndpoint=$(OTEL_ENDPOINT)
+      - --set=config.scanInterval=$(SCAN_INTERVAL)
+      - --set=config.logLines=$(LOG_LINES)
     env:
+      # folder name containing the Helm chart
       - name: FOLDER
-        value: "flash-agent"
+        value: ""
 
+      # target namespace for agent deployment
       - name: NAMESPACE
-        value: "sock-shop"
+        value: ""
 
+      # timeout for the operation
       - name: TIMEOUT
         value: "10m"
+
+      # OpenAI API key for the agent
+      - name: OPENAI_API_KEY
+        value: ""
+
+      # OpenAI model to use
+      - name: OPENAI_MODEL
+        value: "gpt-4o-mini"
+
+      # OpenAI API base URL
+      - name: OPENAI_BASE_URL
+        value: "https://api.openai.com/v1"
+
+      # OpenTelemetry endpoint for tracing
+      - name: OTEL_ENDPOINT
+        value: ""
+
+      # Scan interval in seconds
+      - name: SCAN_INTERVAL
+        value: "60"
+
+      # Number of log lines to collect
+      - name: LOG_LINES
+        value: "100"
 
     labels:
       name: install-agent
