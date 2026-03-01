@@ -84,8 +84,6 @@ spec:
         verbs: ["get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-uninstall-agent:latest"
     imagePullPolicy: Always
-    command:
-      - uninstall-agent
     args:
       - -folder=flash-agent
       - -namespace=sock-shop

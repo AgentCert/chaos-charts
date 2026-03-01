@@ -80,8 +80,6 @@ spec:
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-app:latest"
     imagePullPolicy: Always
-    command:
-      - install-app
     args:
       - -folder=sock-shop
       - -namespace=sock-shop
