@@ -32,7 +32,10 @@ rules:
   verbs: ["get","list","patch","update"]
 # For install/uninstall application and agent faults
 - apiGroups: [""]
-  resources: ["namespaces","services","serviceaccounts","secrets"]
+  resources: ["namespaces"]
+  verbs: ["create","get","list","delete","patch","update"]
+- apiGroups: [""]
+  resources: ["services","serviceaccounts","secrets"]
   verbs: ["create","get","list","delete"]
 - apiGroups: ["apps"]
   resources: ["deployments","statefulsets","replicasets","daemonsets"]

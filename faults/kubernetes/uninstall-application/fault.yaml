@@ -84,6 +84,8 @@ spec:
         verbs: ["get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-uninstall-app:latest"
     imagePullPolicy: Always
+    command:
+      - /usr/local/bin/uninstall-app
     args:
       - -folder=sock-shop
       - -namespace=sock-shop
