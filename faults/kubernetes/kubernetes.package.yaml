@@ -91,12 +91,6 @@ faults:
   - name: pod-http-reset-peer
     CSV: pod-http-reset-peer.chartserviceversion.yaml
     desc: "pod-http-reset-peer"
-  - name: node-network-latency
-    CSV: node-network-latency.chartserviceversion.yaml
-    desc: "node-network-latency"
-  - name: node-network-loss
-    CSV: node-network-loss.chartserviceversion.yaml
-    desc: "node-network-loss"
   - name: pod-network-rate-limit
     CSV: pod-network-rate-limit.chartserviceversion.yaml
     desc: "pod-network-rate-limit"
