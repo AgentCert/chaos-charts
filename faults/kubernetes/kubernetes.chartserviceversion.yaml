@@ -115,6 +115,9 @@ spec:
     - name: uninstall-application
       description: Uninstalls/removes an application from the Kubernetes cluster after chaos testing.
       displayName: "Uninstall Application"
+    - name: uninstall-agent
+      description: Uninstalls/removes an AI agent from the Kubernetes cluster after chaos testing.
+      displayName: "Uninstall Agent"
   keywords:
     - Kubernetes
   maintainers:

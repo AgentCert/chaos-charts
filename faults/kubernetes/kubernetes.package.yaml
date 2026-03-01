@@ -103,3 +103,6 @@ faults:
   - name: uninstall-application
     CSV: uninstall-application.chartserviceversion.yaml
     desc: "uninstall-application"
+  - name: uninstall-agent
+    CSV: uninstall-agent.chartserviceversion.yaml
+    desc: "uninstall-agent"
