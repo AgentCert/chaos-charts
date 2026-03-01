@@ -4065,6 +4065,8 @@ spec:
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-app:latest"
     imagePullPolicy: Always
+    command:
+      - install-app
     args:
       - -folder=sock-shop
       - -namespace=sock-shop
@@ -4170,6 +4172,8 @@ spec:
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
+    command:
+      - install-agent
     args:
       - -folder=flash-agent
       - -namespace=sock-shop
@@ -4278,6 +4282,8 @@ spec:
         verbs: ["get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-uninstall-app:latest"
     imagePullPolicy: Always
+    command:
+      - uninstall-app
     args:
       - -folder=sock-shop
       - -namespace=sock-shop
@@ -4389,6 +4395,8 @@ spec:
         verbs: ["get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-uninstall-agent:latest"
     imagePullPolicy: Always
+    command:
+      - uninstall-agent
     args:
       - -folder=flash-agent
       - -namespace=sock-shop
