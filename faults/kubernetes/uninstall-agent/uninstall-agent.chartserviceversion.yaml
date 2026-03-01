@@ -40,5 +40,5 @@ spec:
     - name: Documentation
       url: https://litmuschaos.github.io/litmus/experiments/categories/contents
   icon:
-    - url: https://raw.githubusercontent.com/AgentCert/chaos-charts/master/faults/kubernetes/icons/kubernetes.png
-      mediatype: image/png
+    - base64data: ""
+      mediatype: ""
