@@ -106,6 +106,12 @@ spec:
     - name: pod-network-rate-limit
       description: It injects pod-network-rate-limit chaos in a Kubernetes pod.
       displayName: "Pod Network Rate Limit"
+    - name: install-application
+      description: Installs/deploys an application into the Kubernetes cluster for chaos testing.
+      displayName: "Install Application"
+    - name: install-agent
+      description: Installs/deploys an AI agent into the Kubernetes cluster for chaos testing.
+      displayName: "Install Agent"
   keywords:
     - Kubernetes
   maintainers:
