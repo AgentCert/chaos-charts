@@ -6,6 +6,8 @@ description:
 kind: ChaosExperiment
 metadata:
   name: install-application
+  annotations:
+    probeRef: '[]'
   labels:
     name: install-application
     app.kubernetes.io/part-of: litmus

@@ -6,6 +6,8 @@ description:
 kind: ChaosExperiment
 metadata:
   name: install-agent
+  annotations:
+    probeRef: '[]'
   labels:
     name: install-agent
     app.kubernetes.io/part-of: litmus
