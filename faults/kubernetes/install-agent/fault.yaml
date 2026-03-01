@@ -78,7 +78,7 @@ spec:
       - apiGroups: ["rbac.authorization.k8s.io"]
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
-    image: "agentcert/agentcert-install-agent:latest"
+    image: "docker.io/agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
     command:
       - ./install-agent

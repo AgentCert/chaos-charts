@@ -4063,7 +4063,7 @@ spec:
       - apiGroups: ["rbac.authorization.k8s.io"]
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
-    image: "agentcert/agentcert-install-app:latest"
+    image: "docker.io/agentcert/agentcert-install-app:latest"
     imagePullPolicy: Always
     command:
       - ./install-app
@@ -4170,7 +4170,7 @@ spec:
       - apiGroups: ["rbac.authorization.k8s.io"]
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
-    image: "agentcert/agentcert-install-agent:latest"
+    image: "docker.io/agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
     command:
       - ./install-agent
@@ -4280,7 +4280,7 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "agentcert/agentcert-uninstall-app:latest"
+    image: "docker.io/agentcert/agentcert-uninstall-app:latest"
     imagePullPolicy: Always
     command:
       - ./uninstall-app
@@ -4393,7 +4393,7 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "agentcert/agentcert-uninstall-agent:latest"
+    image: "docker.io/agentcert/agentcert-uninstall-agent:latest"
     imagePullPolicy: Always
     command:
       - ./uninstall-agent

@@ -82,7 +82,7 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "agentcert/agentcert-uninstall-agent:latest"
+    image: "docker.io/agentcert/agentcert-uninstall-agent:latest"
     imagePullPolicy: Always
     command:
       - ./uninstall-agent
