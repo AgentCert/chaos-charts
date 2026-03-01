@@ -4065,6 +4065,8 @@ spec:
         verbs: ["create", "get", "list", "delete"]
     image: "agentcert/agentcert-install-app:latest"
     imagePullPolicy: Always
+    command:
+      - ./install-app
     args:
       - -folder=sock-shop
       - -namespace=sock-shop
@@ -4170,6 +4172,8 @@ spec:
         verbs: ["create", "get", "list", "delete"]
     image: "agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
+    command:
+      - ./install-agent
     args:
       - -folder=flash-agent
       - -namespace=sock-shop
