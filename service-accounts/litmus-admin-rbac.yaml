@@ -16,7 +16,7 @@ metadata:
 rules:
 # Core chaos experiment resources
 - apiGroups: ["","apps","batch","extensions","litmuschaos.io"]
-  resources: ["pods","pods/exec","pods/eviction","jobs","events","chaosresults","chaosengines"]
+  resources: ["pods","pods/exec","pods/eviction","jobs","cronjobs","events","chaosresults","chaosengines"]
   verbs: ["create","delete","get","list","patch","update","deletecollection"]
 - apiGroups: ["litmuschaos.io"]
   resources: ["chaosexperiments"]
