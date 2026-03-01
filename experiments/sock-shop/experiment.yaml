@@ -17,6 +17,24 @@ spec:
         value: "litmus"
       - name: appNamespace
         value: "sock-shop"
+      # Agent installation configuration
+      - name: agentFolder
+        value: "flash-agent"
+      - name: installTimeout
+        value: "10m"
+      # Flash Agent configuration
+      - name: openaiApiKey
+        value: ""
+      - name: openaiModel
+        value: "gpt-4o-mini"
+      - name: openaiBaseUrl
+        value: "https://api.openai.com/v1"
+      - name: otelEndpoint
+        value: ""
+      - name: scanInterval
+        value: "60"
+      - name: logLines
+        value: "100"
   templates:
     - name: argowf-chaos
       steps:
@@ -53,7 +71,17 @@ spec:
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
-        args: ["-folder=flash-agent", "-namespace=sock-shop", "-create-namespace", "-timeout=10m"]
+        args:
+          - "-folder={{workflow.parameters.agentFolder}}"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-create-namespace"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+          - "--set=config.openaiApiKey={{workflow.parameters.openaiApiKey}}"
+          - "--set=config.openaiModel={{workflow.parameters.openaiModel}}"
+          - "--set=config.openaiBaseUrl={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=config.otelEndpoint={{workflow.parameters.otelEndpoint}}"
+          - "--set=config.scanInterval={{workflow.parameters.scanInterval}}"
+          - "--set=config.logLines={{workflow.parameters.logLines}}"
 
     - name: install-chaos-faults
       inputs:

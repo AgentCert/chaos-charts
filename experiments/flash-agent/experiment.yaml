@@ -17,6 +17,11 @@ spec:
         value: "litmus"
       - name: appNamespace
         value: "sock-shop"
+      # Agent installation configuration
+      - name: agentFolder
+        value: "flash-agent"
+      - name: installTimeout
+        value: "10m"
       # Flash Agent configuration
       - name: openaiApiKey
         value: ""
@@ -61,10 +66,10 @@ spec:
       container:
         image: agentcert/agentcert-install-agent:latest
         args:
-          - "-folder=flash-agent"
+          - "-folder={{workflow.parameters.agentFolder}}"
           - "-namespace={{workflow.parameters.appNamespace}}"
           - "-create-namespace"
-          - "-timeout=10m"
+          - "-timeout={{workflow.parameters.installTimeout}}"
           - "--set=config.openaiApiKey={{workflow.parameters.openaiApiKey}}"
           - "--set=config.openaiModel={{workflow.parameters.openaiModel}}"
           - "--set=config.openaiBaseUrl={{workflow.parameters.openaiBaseUrl}}"

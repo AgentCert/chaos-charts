@@ -87,16 +87,19 @@ spec:
     command:
       - /usr/local/bin/uninstall-agent
     args:
-      - -folder=flash-agent
-      - -namespace=sock-shop
-      - -timeout=5m
+      - -folder=$(FOLDER)
+      - -namespace=$(NAMESPACE)
+      - -timeout=$(TIMEOUT)
     env:
+      # folder name of the Helm chart to uninstall
       - name: FOLDER
-        value: "flash-agent"
+        value: ""
 
+      # target namespace
       - name: NAMESPACE
-        value: "sock-shop"
+        value: ""
 
+      # timeout for the operation
       - name: TIMEOUT
         value: "5m"
 
