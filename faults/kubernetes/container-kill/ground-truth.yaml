@@ -1,0 +1,260 @@
+---
+# Ground Truth for container-kill fault
+# Used by the metrics extraction pipeline to evaluate agent behaviour.
+# This file is never exposed to the agent under test.
+
+ground_truth:
+
+  fault_description_goal_remediation:
+    symptoms:
+      - "Container terminated unexpectedly via SIGKILL"
+      - "Pod in CrashLoopBackOff or Waiting state"
+      - "Increased container restart count"
+      - "HTTP 5xx errors or application unavailability"
+      - "Killing and BackOff events on the target pod"
+      - "Liveness/readiness probe failures during chaos window"
+
+    goal: >
+      Injects SIGKILL into target application containers to validate deployment
+      resilience, automatic container restart, and sustained replica availability.
+
+    remediation: >
+      1. List pods and identify those in CrashLoopBackOff or with abnormal restart counts.
+      2. Check events for Killing/BackOff/Started confirmations.
+      3. Retrieve pod logs for error analysis.
+      4. Confirm container auto-restart and pod returns to Running.
+      5. Verify deployment maintains desired replica count.
+      6. If stuck, delete the pod to trigger reschedule; check resource limits and probes.
+      7. Optionally query Prometheus to confirm application recovery.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List pods to identify affected workloads"
+      detail: >
+        List all pods in the target namespace to identify which pods are in an unhealthy
+        state (CrashLoopBackOff, Waiting, or showing increased restart counts) as a
+        result of the container-kill fault injection.
+
+    - step: 2
+      action: "Get detailed pod status"
+      detail: >
+        Retrieve the full specification and status of the affected pod to inspect
+        container statuses, restart counts, last termination reason (OOMKilled or
+        Error), and current state of each container.
+
+    - step: 3
+      action: "Check Kubernetes events for diagnosis"
+      detail: >
+        List cluster events filtered to the target namespace to find Killing, BackOff,
+        Pulled, Created, and Started events that confirm the container was killed and
+        whether Kubernetes initiated a restart.
+
+    - step: 4
+      action: "Retrieve pod logs for error analysis"
+      detail: >
+        Fetch the logs of the affected pod (and previous terminated container logs if
+        available) to understand application-level errors, crash stack traces, or
+        ungraceful shutdown indicators.
+
+    - step: 5
+      action: "Verify parent deployment health"
+      detail: >
+        Get the parent Deployment or ReplicaSet resource to confirm that the desired
+        replica count matches the available/ready replica count, ensuring the
+        self-healing mechanism is functioning.
+
+    - step: 6
+      action: "Monitor pod resource consumption"
+      detail: >
+        Check resource usage (CPU and memory) of the pods in the target namespace to
+        rule out resource exhaustion as a contributing factor and confirm the restarted
+        container is operating within normal bounds.
+
+    - step: 7
+      action: "Validate application recovery via Prometheus"
+      detail: >
+        Query Prometheus metrics (e.g., container restart counts, HTTP request success
+        rates) to confirm that the application has fully recovered and is serving
+        traffic normally after the chaos window.
+
+    - step: 8
+      action: "Confirm steady state restored"
+      detail: >
+        Perform a final pod listing in the target namespace to verify all pods are
+        back in Running state with ready containers and no ongoing restart loops,
+        confirming the system has returned to steady state.
+
+    # Remediation steps (when self-healing does not resolve the issue)
+    - step: 9
+      action: "Delete stuck pod to trigger reschedule"
+      detail: >
+        If the affected pod remains in CrashLoopBackOff or a stuck state and does
+        not self-heal, manually delete the pod so the parent controller (Deployment
+        or ReplicaSet) reschedules a fresh replacement.
+
+    - step: 10
+      action: "Scale deployment to restore desired replicas"
+      detail: >
+        Verify and adjust the deployment's replica count to ensure the desired number
+        of healthy pods are running. Scale down and back up if necessary to force
+        fresh pod creation.
+
+    - step: 11
+      action: "Rollout restart the deployment"
+      detail: >
+        Perform a rolling restart of the deployment to cycle all pods with fresh
+        containers, useful when multiple pods are affected or the container image
+        needs to be re-pulled.
+
+    - step: 12
+      action: "Patch resource limits or health probes"
+      detail: >
+        If the container repeatedly crashes due to resource constraints or
+        misconfigured health probes, update the pod spec to adjust CPU/memory
+        limits or probe configuration to prevent recurring failures.
+
+    - step: 13
+      action: "Exec into pod to inspect container runtime state"
+      detail: >
+        Execute a command inside the running pod to inspect the container runtime
+        environment, verify process state, check filesystem integrity, or confirm
+        the application has started correctly after restart.
+
+    - step: 14
+      action: "Validate application endpoints are healthy"
+      detail: >
+        Perform an HTTP health check or readiness probe against the application
+        endpoints to confirm traffic is being served correctly after remediation.
+
+  ideal_tool_usage_trajectory:
+    # Diagnosis steps
+    - step: 1
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Discover all pods in the target namespace to identify which pods have been
+        affected by the container-kill fault (e.g., pods in CrashLoopBackOff or with
+        elevated restart counts).
+
+    - step: 2
+      tool: "Pods: Get"
+      command: "Pods: Get name=<affected-pod-name> namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Retrieve the full pod spec and status to inspect container states, restart
+        counts, termination reasons (e.g., Error, signal 137/SIGKILL), and readiness
+        conditions for the affected pod.
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List"
+      tool_available: true
+      purpose: >
+        List Kubernetes events across the cluster to find Killing, BackOff, Pulled,
+        Created, and Started events associated with the target pod, confirming the
+        fault injection and container restart sequence.
+
+    - step: 4
+      tool: "Pods: Log"
+      command: "Pods: Log name=<affected-pod-name> namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Retrieve logs from the affected pod to analyze application-level errors, crash
+        traces, or shutdown messages that occurred due to the SIGKILL signal.
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment name=<deployment-name> namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Fetch the parent Deployment resource to verify that the desired replica count
+        matches the ready/available replica count, confirming Kubernetes self-healing
+        is maintaining the workload.
+
+    - step: 6
+      tool: "Pods: Top"
+      command: "Pods: Top namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Check CPU and memory consumption of pods in the target namespace to ensure
+        the restarted container is running within normal resource bounds and rule out
+        resource exhaustion.
+
+    - step: 7
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query=kube_pod_container_status_restarts_total{namespace='<target-namespace>', pod='<affected-pod-name>'}"
+      tool_available: true
+      purpose: >
+        Query Prometheus for the container restart count metric to quantitatively
+        confirm the restart event and correlate it with the chaos injection window.
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Perform a final listing of all pods in the target namespace to confirm that
+        all pods have returned to Running/Ready state and the system has fully
+        recovered from the container-kill fault.
+
+    # Remediation steps
+    - step: 9
+      tool: "Pods: Delete"
+      command: "Pods: Delete name=<affected-pod-name> namespace=<target-namespace>"
+      tool_available: true
+      purpose: >
+        Delete the stuck or CrashLoopBackOff pod to allow the parent controller
+        (Deployment/ReplicaSet) to schedule a fresh replacement pod.
+
+    - step: 10
+      tool: "Resources: Scale"
+      command: "Resources: Scale apiVersion=apps/v1 kind=Deployment name=<deployment-name> namespace=<target-namespace> scale=<desired-replicas>"
+      tool_available: true
+      purpose: >
+        Verify or adjust the deployment's replica count to ensure the desired number
+        of healthy pods are running. Can scale down and back up to force fresh pod
+        creation if needed.
+
+    - step: 11
+      tool: "Deployment: Rollout Restart"
+      command: "Deployment: Rollout Restart apiVersion=apps/v1 kind=Deployment name=<deployment-name> namespace=<target-namespace>"
+      tool_available: false
+      purpose: >
+        Perform a rolling restart of the deployment to cycle all pods with fresh
+        containers. Useful when multiple pods are affected or a clean restart of
+        the entire workload is required.
+
+    - step: 12
+      tool: "Resources: Create or Update"
+      command: "Resources: Create or Update resource=<updated-deployment-yaml-with-adjusted-limits-or-probes>"
+      tool_available: true
+      purpose: >
+        Patch the Deployment or Pod spec to adjust CPU/memory resource limits or
+        fix misconfigured liveness/readiness probes that may be causing repeated
+        container crashes after restart.
+
+    - step: 13
+      tool: "Pods: Exec"
+      command: "Pods: Exec name=<affected-pod-name> namespace=<target-namespace> command=<diagnostic-command>"
+      tool_available: true
+      purpose: >
+        Execute a command inside the running pod to inspect the container runtime
+        environment, verify process state, check filesystem integrity, or confirm
+        the application has started correctly after restart.
+
+    - step: 14
+      tool: "HTTP: Request"
+      command: "HTTP: Request method=GET url=http://<service-name>.<target-namespace>.svc.cluster.local:<port>/health"
+      tool_available: false
+      purpose: >
+        Perform an HTTP health check against the application's service endpoint
+        to confirm the application is serving traffic correctly after remediation.
+
+    - step: 15
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query=rate(http_requests_total{namespace='<target-namespace>', code=~'5..'}[5m])"
+      tool_available: true
+      purpose: >
+        Query Prometheus for HTTP 5xx error rate to confirm the application has
+        fully recovered and is no longer returning errors after remediation.
