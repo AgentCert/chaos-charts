@@ -219,3 +219,19 @@ ground_truth:
       command: "ChaosEngine: Delete name=<chaosengine-name> namespace=<target-namespace>"
       purpose: "Delete the ChaosEngine resource to stop the fault injection and trigger automatic cleanup"
       tool_available: false
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 180
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 360
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 26
+      unit: "count"
