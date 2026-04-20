@@ -28,7 +28,7 @@ spec:
       - name: openaiModel
         value: "gpt-4o-mini"
       - name: openaiBaseUrl
-        value: "https://api.openai.com/v1"
+        value: "http://litellm.litellm.svc.cluster.local:4000/v1"
       - name: otelEndpoint
         value: ""
       - name: scanInterval
@@ -73,7 +73,7 @@ spec:
           - "--set=config.openaiApiKey={{workflow.parameters.openaiApiKey}}"
           - "--set=config.openaiModel={{workflow.parameters.openaiModel}}"
           - "--set=config.openaiBaseUrl={{workflow.parameters.openaiBaseUrl}}"
-          - "--set=config.otelEndpoint={{workflow.parameters.otelEndpoint}}"
+          - "--set=config.OTEL_EXPORTER_OTLP_ENDPOINT={{workflow.parameters.otelEndpoint}}"
           - "--set=config.scanInterval={{workflow.parameters.scanInterval}}"
           - "--set=config.logLines={{workflow.parameters.logLines}}"
 
