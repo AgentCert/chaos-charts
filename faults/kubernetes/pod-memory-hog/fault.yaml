@@ -129,6 +129,13 @@ spec:
       - name: NODE_LABEL
         value: ""
 
+      ## Pre-/post-chaos status checks: how long Litmus tolerates pods not
+      ## being Ready before declaring STATUS_CHECKS_ERROR. Default ~3min is
+      ## too tight for slow apps; bump to 10min so startupProbe-driven
+      ## recovery has room.
+      - name: STATUS_CHECK_TIMEOUTS
+        value: '{delay: 2, timeout: 600}'
+
     labels:
       name: pod-memory-hog
       app.kubernetes.io/part-of: litmus

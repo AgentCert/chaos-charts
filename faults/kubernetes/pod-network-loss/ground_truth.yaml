@@ -198,3 +198,23 @@ ground_truth:
       command: "Execute PromQL Query query=sum(rate(http_requests_total{namespace='<target-namespace>', code=~'5..'}[5m]))"
       purpose: "Confirm application recovery by verifying HTTP 5xx error rate has returned to zero"
       tool_available: true
+
+  # ---------------------------------------------------------------------------
+  # SLA thresholds consumed by the certifier (metrics_extractor / aggregator).
+  # Per documents/SLA_PLAN.md.  Sibling of fault_description_goal_remediation,
+  # ideal_course_of_action and ideal_tool_usage_trajectory.
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 180
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 360
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 21
+      unit: "count"

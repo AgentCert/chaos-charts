@@ -133,3 +133,23 @@ ground_truth:
       command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
       purpose: "Roll back the deployment to a previous stable revision if pods fail to recover."
       tool_available: false
+
+  # ---------------------------------------------------------------------------
+  # SLA thresholds consumed by the certifier (metrics_extractor / aggregator).
+  # Per documents/SLA_PLAN.md.  Sibling of fault_description_goal_remediation,
+  # ideal_course_of_action and ideal_tool_usage_trajectory.
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 18
+      unit: "count"
