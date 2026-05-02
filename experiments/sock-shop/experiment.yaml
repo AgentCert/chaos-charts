@@ -29,6 +29,8 @@ spec:
         value: "gpt-4o"
       - name: openaiBaseUrl
         value: "http://litellm.litellm.svc.cluster.local:4000/v1"
+      - name: litellmUpstream
+        value: "http://172.26.0.1:14000"
       - name: otelEndpoint
         value: ""
       - name: scanInterval
@@ -83,6 +85,7 @@ spec:
           - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
           - "--set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}"
           - "--set=agent.notifyId={{workflow.uid}}"
+          - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
 
     - name: install-chaos-faults
       inputs:
