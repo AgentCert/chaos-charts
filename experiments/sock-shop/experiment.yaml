@@ -66,6 +66,7 @@ spec:
     - name: install-application
       container:
         image: agentcert/agentcert-install-app:latest
+        imagePullPolicy: IfNotPresent
         args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=20m"]
 
     - name: install-agent
