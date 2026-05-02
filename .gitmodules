@@ -1,0 +1,3 @@
+[submodule "faults/agent-sidecar"]
+	path = faults/agent-sidecar
+	url = https://github.com/AgentCert/agent-sidecar.git
