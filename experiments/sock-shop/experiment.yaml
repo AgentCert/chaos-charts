@@ -84,7 +84,8 @@ spec:
           - "--set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}"
           - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
           - "--set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}"
-          - "--set=agent.notifyId={{workflow.uid}}"
+          - "--set=agent.notifyId={{workflow.name}}"
+          - "--set=agent.workflowUid={{workflow.uid}}"
           - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
 
     - name: install-chaos-faults
