@@ -72,17 +72,16 @@ spec:
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
           - "-namespace={{workflow.parameters.appNamespace}}"
           - "-create-namespace"
           - "-timeout={{workflow.parameters.installTimeout}}"
-          - "--set=config.openaiApiKey={{workflow.parameters.openaiApiKey}}"
-          - "--set=config.openaiModel={{workflow.parameters.openaiModel}}"
-          - "--set=config.openaiBaseUrl={{workflow.parameters.openaiBaseUrl}}"
-          - "--set=config.otelEndpoint={{workflow.parameters.otelEndpoint}}"
-          - "--set=config.scanInterval={{workflow.parameters.scanInterval}}"
-          - "--set=config.logLines={{workflow.parameters.logLines}}"
+          - "--set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}"
+          - "--set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}"
+          - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}"
 
     - name: install-chaos-faults
       inputs:
