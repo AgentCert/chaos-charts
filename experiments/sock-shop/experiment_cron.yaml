@@ -50,7 +50,7 @@ spec:
     - name: install-application
       container:
         image: agentcert/agentcert-install-app:latest
-        args: ["-namespace=sock-shop","-typeName=resilient","-operation=apply","-timeout=400", "-app=sock-shop","-scope=cluster"] #for weak provide type flagName as resilient(-typeName=weak)
+        args: ["-namespace=sock-shop","-typeName=resilient","-operation=apply","-timeout=6m", "-app=sock-shop","-scope=cluster"] #for weak provide type flagName as resilient(-typeName=weak)
 
     - name: install-chaos-faults
       inputs:
