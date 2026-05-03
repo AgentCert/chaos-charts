@@ -21,7 +21,7 @@ spec:
       - name: agentFolder
         value: "flash-agent"
       - name: installTimeout
-        value: "10m"
+        value: "15m"
       # Flash Agent configuration
       - name: openaiApiKey
         value: ""
