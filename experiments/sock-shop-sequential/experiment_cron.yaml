@@ -1,0 +1,171 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: argowf-chaos-sock-shop-sequential-cron-wf
+  namespace: litmus
+  labels:
+    subject: sock-shop-sequential
+spec:
+  schedule: 0 * * * *
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 0
+  workflowSpec:
+    entrypoint: argowf-chaos
+    serviceAccountName: argo-chaos
+    securityContext:
+      runAsUser: 1000
+      runAsNonRoot: true
+    arguments:
+      parameters:
+      - name: adminModeNamespace
+        value: litmus
+      - name: appNamespace
+        value: sock-shop
+      - name: agentFolder
+        value: flash-agent
+      - name: installTimeout
+        value: 15m
+      - name: openaiApiKey
+        value: ''
+      - name: openaiModel
+        value: gpt-4o
+      - name: openaiBaseUrl
+        value: http://litellm.litellm.svc.cluster.local:4000/v1
+      - name: litellmUpstream
+        value: http://172.26.0.1:14000
+      - name: otelEndpoint
+        value: ''
+      - name: scanInterval
+        value: '20'
+      - name: logLines
+        value: '100'
+    templates:
+    - name: argowf-chaos
+      steps:
+      - - name: install-application
+          template: install-application
+      - - name: install-agent
+          template: install-agent
+      - - name: install-chaos-faults
+          template: install-chaos-faults
+        - name: load-test
+          template: load-test
+      - - name: pod-cpu-hog
+          template: pod-cpu-hog
+      - - name: pod-network-latency
+          template: pod-network-latency
+      - - name: pod-memory-hog
+          template: pod-memory-hog
+      - - name: cleanup-chaos-resources
+          template: cleanup-chaos-resources
+        - name: delete-loadtest
+          template: delete-loadtest
+    - name: install-application
+      container:
+        image: agentcert/agentcert-install-app:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        - -folder=sock-shop
+        - -namespace=sock-shop
+        - -create-namespace
+        - -wait
+        - -timeout=20m
+    - name: install-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: Always
+        args:
+        - -folder={{workflow.parameters.agentFolder}}
+        - -namespace={{workflow.parameters.appNamespace}}
+        - -create-namespace
+        - -timeout={{workflow.parameters.installTimeout}}
+        - --set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}
+        - --set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}
+        - --set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}
+        - --set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}
+        - --set=agent.notifyId={{workflow.name}}
+        - --set=agent.workflowUid={{workflow.uid}}
+        - --set=sidecar.upstream={{workflow.parameters.litellmUpstream}}
+    - name: install-chaos-faults
+      inputs:
+        artifacts:
+        - name: pod-cpu-hog-2sf
+          path: /tmp/pod-cpu-hog-2sf.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    Injects CPU consumption on pods belonging to an app deployment\nkind: ChaosExperiment\nmetadata:\n  name: pod-cpu-hog\n  labels:\n    name: pod-cpu-hog\n    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component: chaosexperiment\n    app.kubernetes.io/version: latest\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n      - apiGroups: [\"\"]\n        resources: [\"pods\"]\n        verbs: [\"create\",\"delete\",\"get\",\"list\",\"patch\",\"update\",\"deletecollection\"]\n      - apiGroups: [\"\"]\n        resources: [\"events\"]\n        verbs: [\"create\",\"get\",\"list\",\"patch\",\"update\"]\n      - apiGroups: [\"\"]\n        resources: [\"configmaps\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/log\"]\n        verbs: [\"get\",\"list\",\"watch\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/exec\"]\n        verbs: [\"get\",\"list\",\"create\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\",\"statefulsets\",\"replicasets\",\"daemonsets\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"apps.openshift.io\"]\n        resources: [\"deploymentconfigs\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"\"]\n        resources: [\"replicationcontrollers\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"argoproj.io\"]\n        resources: [\"rollouts\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"batch\"]\n        resources: [\"jobs\"]\n        verbs: [\"create\",\"list\",\"get\",\"delete\",\"deletecollection\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources: [\"chaosengines\",\"chaosexperiments\",\"chaosresults\"]\n        verbs: [\"create\",\"list\",\"get\",\"patch\",\"update\",\"delete\"]\n    image: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n    imagePullPolicy: Always\n    args:\n      - -c\n      - ./experiments -name pod-cpu-hog\n    command:\n      - /bin/bash\n    env:\n      - name: TOTAL_CHAOS_DURATION\n        value: \"60\"\n      - name: CPU_CORES\n        value: \"1\"\n      - name: CPU_LOAD\n        value: \"100\"\n      - name: PODS_AFFECTED_PERC\n        value: \"\"\n      - name: RAMP_TIME\n        value: \"\"\n      - name: LIB_IMAGE\n        value: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n      - name: STRESS_IMAGE\n        value: \"alexeiled/stress-ng:latest-ubuntu\"\n      - name: CONTAINER_RUNTIME\n        value: \"containerd\"\n      - name: SOCKET_PATH\n        value: \"/run/containerd/containerd.sock\"\n      - name: TARGET_CONTAINER\n        value: \"\"\n      - name: TARGET_PODS\n        value: \"\"\n      - name: DEFAULT_HEALTH_CHECK\n        value: \"false\"\n      - name: NODE_LABEL\n        value: \"\"\n      - name: SEQUENCE\n        value: \"parallel\"\n    labels:\n      name: pod-cpu-hog\n      app.kubernetes.io/part-of: litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/runtime-api-usage: \"true\"\n      app.kubernetes.io/version: latest\n"
+        - name: pod-network-latency-nl1
+          path: /tmp/pod-network-latency-nl1.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    Injects network latency on pods belonging to an app deployment\nkind: ChaosExperiment\nmetadata:\n  name: pod-network-latency\n  labels:\n    name: pod-network-latency\n    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component: chaosexperiment\n    app.kubernetes.io/version: latest\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n      - apiGroups: [\"\"]\n        resources: [\"pods\"]\n        verbs: [\"create\",\"delete\",\"get\",\"list\",\"patch\",\"update\",\"deletecollection\"]\n      - apiGroups: [\"\"]\n        resources: [\"events\"]\n        verbs: [\"create\",\"get\",\"list\",\"patch\",\"update\"]\n      - apiGroups: [\"\"]\n        resources: [\"configmaps\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/log\"]\n        verbs: [\"get\",\"list\",\"watch\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/exec\"]\n        verbs: [\"get\",\"list\",\"create\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\",\"statefulsets\",\"replicasets\",\"daemonsets\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"apps.openshift.io\"]\n        resources: [\"deploymentconfigs\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"\"]\n        resources: [\"replicationcontrollers\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"argoproj.io\"]\n        resources: [\"rollouts\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"batch\"]\n        resources: [\"jobs\"]\n        verbs: [\"create\",\"list\",\"get\",\"delete\",\"deletecollection\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources: [\"chaosengines\",\"chaosexperiments\",\"chaosresults\"]\n        verbs: [\"create\",\"list\",\"get\",\"patch\",\"update\",\"delete\"]\n    image: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n    imagePullPolicy: Always\n    args:\n      - -c\n      - ./experiments -name pod-network-latency\n    command:\n      - /bin/bash\n    env:\n      - name: TARGET_CONTAINER\n        value: \"\"\n      - name: LIB_IMAGE\n        value: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n      - name: NETWORK_INTERFACE\n        value: \"eth0\"\n      - name: TC_IMAGE\n        value: \"gaiadocker/iproute2\"\n      - name: NETWORK_LATENCY\n        value: \"2000\"\n      - name: JITTER\n        value: \"0\"\n      - name: TOTAL_CHAOS_DURATION\n        value: \"60\"\n      - name: RAMP_TIME\n        value: \"\"\n      - name: PODS_AFFECTED_PERC\n        value: \"\"\n      - name: DEFAULT_HEALTH_CHECK\n        value: \"false\"\n      - name: TARGET_PODS\n        value: \"\"\n      - name: NODE_LABEL\n        value: \"\"\n      - name: CONTAINER_RUNTIME\n        value: \"containerd\"\n      - name: DESTINATION_IPS\n        value: \"\"\n      - name: DESTINATION_HOSTS\n        value: \"\"\n      - name: SOCKET_PATH\n        value: \"/run/containerd/containerd.sock\"\n      - name: SEQUENCE\n        value: \"parallel\"\n    labels:\n      name: pod-network-latency\n      app.kubernetes.io/part-of: litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/runtime-api-usage: \"true\"\n      app.kubernetes.io/version: latest\n"
+        - name: pod-memory-hog-49a
+          path: /tmp/pod-memory-hog-49a.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    Injects memory consumption on pods belonging to an app deployment\nkind: ChaosExperiment\nmetadata:\n  name: pod-memory-hog\n  labels:\n    name: pod-memory-hog\n    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component: chaosexperiment\n    app.kubernetes.io/version: latest\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n      - apiGroups: [\"\"]\n        resources: [\"pods\"]\n        verbs: [\"create\",\"delete\",\"get\",\"list\",\"patch\",\"update\",\"deletecollection\"]\n      - apiGroups: [\"\"]\n        resources: [\"events\"]\n        verbs: [\"create\",\"get\",\"list\",\"patch\",\"update\"]\n      - apiGroups: [\"\"]\n        resources: [\"configmaps\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/log\"]\n        verbs: [\"get\",\"list\",\"watch\"]\n      - apiGroups: [\"\"]\n        resources: [\"pods/exec\"]\n        verbs: [\"get\",\"list\",\"create\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\",\"statefulsets\",\"replicasets\",\"daemonsets\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"apps.openshift.io\"]\n        resources: [\"deploymentconfigs\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"\"]\n        resources: [\"replicationcontrollers\"]\n        verbs: [\"get\",\"list\"]\n      - apiGroups: [\"argoproj.io\"]\n        resources: [\"rollouts\"]\n        verbs: [\"list\",\"get\"]\n      - apiGroups: [\"batch\"]\n        resources: [\"jobs\"]\n        verbs: [\"create\",\"list\",\"get\",\"delete\",\"deletecollection\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources: [\"chaosengines\",\"chaosexperiments\",\"chaosresults\"]\n        verbs: [\"create\",\"list\",\"get\",\"patch\",\"update\",\"delete\"]\n    image: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n    imagePullPolicy: Always\n    args:\n      - -c\n      - ./experiments -name pod-memory-hog\n    command:\n      - /bin/bash\n    env:\n      - name: TOTAL_CHAOS_DURATION\n        value: \"60\"\n      - name: MEMORY_CONSUMPTION\n        value: \"500\"\n      - name: NUMBER_OF_WORKERS\n        value: \"1\"\n      - name: PODS_AFFECTED_PERC\n        value: \"\"\n      - name: RAMP_TIME\n        value: \"\"\n      - name: LIB_IMAGE\n        value: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest\"\n      - name: STRESS_IMAGE\n        value: \"alexeiled/stress-ng:latest-ubuntu\"\n      - name: CONTAINER_RUNTIME\n        value: \"containerd\"\n      - name: SOCKET_PATH\n        value: \"/run/containerd/containerd.sock\"\n      - name: SEQUENCE\n        value: \"parallel\"\n      - name: DEFAULT_HEALTH_CHECK\n        value: \"false\"\n      - name: TARGET_CONTAINER\n        value: \"\"\n      - name: TARGET_PODS\n        value: \"\"\n      - name: NODE_LABEL\n        value: \"\"\n    labels:\n      name: pod-memory-hog\n      app.kubernetes.io/part-of: litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/runtime-api-usage: \"true\"\n      app.kubernetes.io/version: latest\n"
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: litmuschaos/k8s:latest
+        command:
+        - sh
+        - -c
+        args:
+        - kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 30
+        resources: {}
+    - name: pod-cpu-hog
+      inputs:
+        artifacts:
+        - name: pod-cpu-hog
+          path: /tmp/chaosengine.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-cpu-hog-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_carts\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=carts'\n    appkind: 'deployment'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  experiments:\n    - name: pod-cpu-hog\n      spec:\n        probe:\n        - name: \"check-frontend-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: CPU_CORES\n              value: '1'\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: CHAOS_KILL_COMMAND\n              value: \"kill -9 $(ps afx | grep \\\"[md5sum] /dev/zero\\\" | awk '{print$1}' | tr '\\n' ' ')\"\n"
+      container:
+        image: litmuschaos/litmus-checker:latest
+        args:
+        - -file=/tmp/chaosengine.yaml
+        - -saveName=/tmp/engine-name
+    - name: pod-network-latency
+      inputs:
+        artifacts:
+        - name: pod-network-latency
+          path: /tmp/chaosengine.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-network-latency-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_user-db\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=user-db'\n    appkind: 'statefulset'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  components:\n    runner:\n      imagePullPolicy: Always\n  experiments:\n    - name: pod-network-latency\n      spec:\n        probe:\n        - name: \"check-cards-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80/cards\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: NETWORK_INTERFACE\n              value: 'eth0'\n            - name: NETWORK_LATENCY\n              value: '2000'\n            - name: JITTER\n              value: '0'\n            - name: CONTAINER_RUNTIME\n              value: 'containerd'\n            - name: SOCKET_PATH\n              value: '/run/containerd/containerd.sock'\n"
+      container:
+        image: litmuschaos/litmus-checker:latest
+        args:
+        - -file=/tmp/chaosengine.yaml
+        - -saveName=/tmp/engine-name
+    - name: pod-memory-hog
+      inputs:
+        artifacts:
+        - name: pod-memory-hog
+          path: /tmp/chaosengine.yaml
+          raw:
+            data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-memory-hog-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_orders\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=orders'\n    appkind: 'deployment'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  experiments:\n    - name: pod-memory-hog\n      spec:\n        probe:\n        - name: \"check-frontend-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: MEMORY_CONSUMPTION\n              value: '500'\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: CHAOS_KILL_COMMAND\n              value: \"kill -9 $(ps afx | grep \\\"[dd] if /dev/zero\\\" | awk '{print $1}' | tr '\\n' ' ')\"\n"
+      container:
+        image: litmuschaos/litmus-checker:latest
+        args:
+        - -file=/tmp/chaosengine.yaml
+        - -saveName=/tmp/engine-name
+    - name: load-test
+      container:
+        image: litmuschaos/litmus-app-deployer:latest
+        args:
+        - -namespace=loadtest
+        - -app=loadtest
+    - name: delete-loadtest
+      container:
+        image: litmuschaos/litmus-app-deployer:latest
+        args:
+        - -namespace=loadtest
+        - -operation=delete
+        - -app=loadtest
+    - name: cleanup-chaos-resources
+      container:
+        image: litmuschaos/k8s:latest
+        command:
+        - sh
+        - -c
+        args:
+        - kubectl delete chaosengine pod-cpu-hog-chaos pod-network-latency-chaos pod-memory-hog-chaos -n {{workflow.parameters.adminModeNamespace}}
