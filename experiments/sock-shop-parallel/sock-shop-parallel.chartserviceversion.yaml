@@ -1,0 +1,28 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: sock-shop-parallel
+  version: 0.1.0
+  annotations:
+    categories: sock-shop-parallel
+    chartDescription: Injects pod-cpu-hog, pod-network-latency, and pod-memory-hog in parallel on Sock Shop application.
+spec:
+  displayName: Sock Shop Parallel
+  categoryDescription: >
+    It installs Sock Shop application, installs flash-agent, runs load test, then injects pod-cpu-hog (carts), pod-network-latency (user-db), and pod-memory-hog (orders) concurrently in a single Argo step, and cleans up.
+  faults:
+    - name: sock-shop-parallel
+      description: Concurrent CPU hog, network latency, and memory hog chaos on Sock Shop.
+  keywords:
+    - Kubernetes
+  platforms:
+    - GKE
+    - Packet(Kubeadm)
+    - Minikube
+    - EKS
+    - AKS
+    - OpenShift(OKD)
+  icon:
+    - url:
+      mediatype: ""

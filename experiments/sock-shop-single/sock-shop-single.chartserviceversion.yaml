@@ -1,0 +1,28 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: sock-shop-single
+  version: 0.1.0
+  annotations:
+    categories: sock-shop-single
+    chartDescription: Injects pod-delete chaos on Sock Shop application.
+spec:
+  displayName: Sock Shop Single
+  categoryDescription: >
+    It installs Sock Shop application, installs agent, runs load test, injects pod-delete chaos (900s duration), and cleans up.
+  faults:
+    - name: sock-shop-single
+      description: Injects pod-delete chaos on Sock Shop application.
+  keywords:
+    - Kubernetes
+  platforms:
+    - GKE
+    - Packet(Kubeadm)
+    - Minikube
+    - EKS
+    - AKS
+    - OpenShift(OKD)
+  icon:
+    - url:
+      mediatype: ""

@@ -1,0 +1,28 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: sock-shop-sequential
+  version: 0.1.0
+  annotations:
+    categories: sock-shop-sequential
+    chartDescription: Injects pod-cpu-hog, pod-network-latency, and pod-memory-hog sequentially on Sock Shop application.
+spec:
+  displayName: Sock Shop Sequential
+  categoryDescription: >
+    It installs Sock Shop application, installs flash-agent, runs load test, then injects pod-cpu-hog (carts), pod-network-latency (user-db), and pod-memory-hog (orders) one after another, and cleans up.
+  faults:
+    - name: sock-shop-sequential
+      description: Sequential CPU hog, network latency, and memory hog chaos on Sock Shop.
+  keywords:
+    - Kubernetes
+  platforms:
+    - GKE
+    - Packet(Kubeadm)
+    - Minikube
+    - EKS
+    - AKS
+    - OpenShift(OKD)
+  icon:
+    - url:
+      mediatype: ""
