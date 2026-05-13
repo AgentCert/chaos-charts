@@ -1,220 +1,274 @@
-# Chaos-Charts
-[![Slack Channel](https://img.shields.io/badge/Slack-Join-purple)](https://slack.litmuschaos.io)
-![GitHub Workflow](https://github.com/litmuschaos/chaos-charts/actions/workflows/push.yml/badge.svg?branch=master)
-[![Docker Pulls](https://img.shields.io/docker/pulls/litmuschaos/go-runner.svg)](https://hub.docker.com/r/litmuschaos/go-runner)
-[![GitHub issues](https://img.shields.io/github/issues/litmuschaos/chaos-charts)](https://github.com/litmuschaos/chaos-charts/issues)
-[![Twitter Follow](https://img.shields.io/twitter/follow/litmuschaos?style=social)](https://twitter.com/LitmusChaos)
-[![YouTube Channel](https://img.shields.io/badge/YouTube-Subscribe-red)](https://www.youtube.com/channel/UCa57PMqmz_j0wnteRa9nCaw)
-<br><br>
+<div align="center">
 
-This repository hosts the Litmus Chaos Charts. A set of related chaos faults are bundled into a Chaos Chart. Chaos Charts are classified into the following categories.
+# chaos-charts (AgentCert fork)
 
-- [Kubernetes Chaos](#kubernetes-chaos)
-- [Application Chaos](#application-chaos)
-- [Platform Chaos](#platform-chaos)
+**The fault catalogue and scenario workflows that AgentCert ChaosCenter pulls from.**
 
-### Kubernetes Chaos
+A fork of [`litmuschaos/chaos-charts`](https://github.com/litmuschaos/chaos-charts) that
+preserves the upstream Kubernetes chaos primitives (pod-delete, node-restart, network
+corruption, disk-fill, etc.) and extends them with **AgentCert-specific scenarios** —
+agent install/uninstall faults, OpenAI/LiteLLM/Langfuse parameters baked into every
+experiment, and Argo workflows for the Sock Shop benchmark.
 
-Chaos faults that apply to Kubernetes resources are classified in this category. Following chaos faults are supported for Kubernetes:
+![Litmus](https://img.shields.io/badge/LitmusChaos-3.0.0-7E47C5?style=flat-square)
+![Argo](https://img.shields.io/badge/Argo-Workflows-EF7B4D?style=flat-square)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-CRD-326CE5?style=flat-square&logo=kubernetes)
+![License](https://img.shields.io/badge/License-Apache--2.0-lightgrey?style=flat-square)
 
-<table>
-    <tr>
-        <th> Fault Name </th>
-        <th> Description </th>
-        <th> Link </th>
-    </tr>
-    <tr>
-        <td> Container Kill </td>
-        <td> Kill one container in the application pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/container-kill"> container-kill </a></td>
-    <tr>
-    <tr>
-        <td> Disk Fill </td>
-        <td> Fill the Ephemeral Storage of the Pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/disk-fill"> disk-fill </a></td>
-    <tr>
-    <tr>
-        <td> Docker Service Kill </td>
-        <td> Kill docker service of the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/docker-service-kill"> docker-service-kill </a></td>
-    <tr>
-    <tr>
-        <td> Kubelet Service Kill </td>
-        <td> Kill kubelet service of the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/kubelet-service-kill"> kubelet-service-kill </a></td>
-    <tr>
-    <tr>
-        <td> Node CPU Hog </td>
-        <td> Stress the cpu of the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-cpu-hog"> node-cpu-hog </a></td>
-    <tr>
-    <tr>
-        <td> Node Drain </td>
-        <td> Drain the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-drain"> node-drain </a></td>
-    <tr>
-    <tr>
-        <td> Node IO Stress </td>
-        <td> Stress the IO of the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-io-stress"> node-io-stress </a></td>
-    <tr>
-    <tr>
-        <td> Node Memory Hog </td>
-        <td> Stress the memory of the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-memory-hog"> node-memory-hog </a></td>
-    <tr>
-    <tr>
-        <td> Node Restart </td>
-        <td> Restart the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-restart"> node-restart </a></td>
-    <tr>
-    <tr>
-        <td> Node Taint </td>
-        <td> Taint the target node </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/node-taint"> node-taint </a></td>
-    <tr>
-    <tr>
-        <td> Pod Autoscaler </td>
-        <td> Scale the replicas of the target application </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-autoscaler"> pod-autoscaler </a></td>
-    <tr>
-    <tr>
-        <td> Pod CPU Hog </td>
-        <td> Stress the CPU of the target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-cpu-hog"> pod-cpu-hog </a></td>
-    <tr>
-    <tr>
-        <td> Pod Delete </td>
-        <td> Delete the target pods </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-delete"> pod-delete </a></td>
-    <tr>
-    <tr>
-        <td> Pod DNS Spoof </td>
-        <td> Spoof dns requests to desired target hostnames </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-dns-spoof"> pod-dns-spoof </a></td>
-    <tr>
-    <tr>
-        <td> Pod DNS Error </td>
-        <td> Error the dns requests of the target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-dns-error"> pod-dns-error </a></td>
-    <tr>
-    <tr>
-        <td> Pod IO Stress </td>
-        <td> Stress the IO of the target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-io-stress"> pod-io-stress </a></td>
-    <tr>
-    <tr>
-        <td> Pod Memory Hog </td>
-        <td> Stress the memory of the target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-memory-hog"> pod-memory-hog </a></td>
-    <tr>
-    <tr>
-        <td> Pod Network Latency </td>
-        <td> Induce the network latency in target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-network-latency"> pod-network-latency </a></td>
-    <tr>
-    <tr>
-        <td> Pod Network Corruption </td>
-        <td> Induce the network packet corruption in target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-network-corruption"> pod-network-corruption </a></td>
-    <tr>
-    <tr>
-        <td> Pod Network Duplication </td>
-        <td> Induce the network packet duplication in target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-network-duplication"> pod-network-duplication </a></td>
-    <tr>
-    <tr>
-        <td> Pod Network Loss </td>
-        <td> Induce the network loss in target pod </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-network-loss"> pod-network-loss </a></td>
-    <tr>
-    <tr>
-        <td> Pod Network Partition </td>
-        <td> Disrupt network connectivity to kubernetes pods </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/kubernetes/pod-network-partition"> pod-network-partition </a></td>
-    <tr>
-</table>
+</div>
 
-### Application Chaos
+> **Upstream credit** — this repository is derived from
+> [LitmusChaos](https://litmuschaos.io/)'s `chaos-charts`. The individual fault
+> implementations and CRD shapes are the work of the LitmusChaos community. AgentCert
+> additions are described below.
 
-While chaos faults under the Kubernetes category offer the ability to induce chaos into Kubernetes resources, it is difficult to analyze and conclude if the induced chaos found a weakness in a given application. The application specific chaos faults are built with some checks on *pre-conditions* and some expected outcomes after the chaos injection. The result of the chaos faults is determined by matching the outcome with the expected outcome.
+---
 
+## Table of Contents
 
-<table>
-    <tr>
-        <th> Fault Category </th>
-        <th> Description </th>
-        <th> Link </th>
-    </tr>
-    <tr>
-        <td> Spring Boot Faults </td>
-        <td> Injects faults in Spring Boot applications </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/spring-boot"> Spring Boot Faults</a></td>
-    <tr>
-</table>
+- [What's a Chaos Chart?](#whats-a-chaos-chart)
+- [What's AgentCert-specific in this fork](#whats-agentcert-specific-in-this-fork)
+- [Repository layout](#repository-layout)
+- [Kubernetes chaos fault inventory](#kubernetes-chaos-fault-inventory)
+- [Scenario workflows](#scenario-workflows)
+- [Building the aggregated `experiments.yaml`](#building-the-aggregated-experimentsyaml)
+- [How AgentCert consumes this](#how-agentcert-consumes-this)
+- [Installing faults directly (without ChaosCenter)](#installing-faults-directly-without-chaoscenter)
+- [Security artifacts](#security-artifacts)
+- [Licensing](#licensing)
 
-### Platform Chaos
+---
 
-Chaos faults that inject chaos into the platform and infrastructure resources are classified into this category. Management of platform resources vary significantly from each other, Chaos Charts may be maintained separately for each platform (For example: AWS, GCP, Azure, VMWare etc.)
+## What's a Chaos Chart?
 
-Following chaos faults are classified in this category:
+A *Chaos Chart* is a directory tree that ships, for each chaos fault, the YAML you need
+to run it on a Kubernetes cluster:
 
-<table>
-    <tr>
-        <th> Fault Category </th>
-        <th> Description </th>
-        <th> Link </th>
-    </tr>
-    <tr>
-        <td> AWS Faults </td>
-        <td> AWS Platform specific chaos </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/aws"> AWS Faults </a></td>
-    <tr>
-    <tr>
-        <td> Azure Faults </td>
-        <td> Azure Platform specific chaos </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/azure"> Azure Faults </a></td>
-    <tr>
-    <tr>
-        <td> GCP Faults </td>
-        <td> GCP Platform specific chaos </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/gcp"> GCP Faults </a></td>
-    <tr>
-    <tr>
-        <td> VMWare Faults </td>
-        <td> VMWare Platform specific chaos </td>
-        <td> <a href="https://github.com/litmuschaos/chaos-charts/tree/master/faults/vmware"> VMWare Faults </a></td>
-    <tr>
-</table>
-
-
-## Installation Steps for Chart Releases
-
-*Note: Supported from release 3.0.0*
-
-- To install the chaos faults from a specific chart for a given release, execute the following commands
-with the desired `<release_version>`, `<chart_name>` & `<namespace>`
-
-```bash
-## downloads and unzips the released source
-tar -zxvf <(curl -sL https://github.com/litmuschaos/chaos-charts/archive/<release_version>.tar.gz)
-
-## installs the chaosexperiment resources
-find chaos-charts-<release_version> -name experiments.yaml | grep <chart-name> | xargs kubectl apply -n <namespace> -f
 ```
-- For example, to install the *Kubernetes* fault chart bundle for release *3.0.0*, in the *sock-shop* namespace, run:
-
-```bash
-tar -zxvf <(curl -sL https://github.com/litmuschaos/chaos-charts/archive/3.0.0.tar.gz)
-find chaos-charts-3.0.0 -name experiments.yaml | grep kubernetes | xargs kubectl apply -n sock-shop -f
+faults/kubernetes/<fault-name>/
+├── fault.yaml                  # ChaosExperiment CRD (litmuschaos.io/v1alpha1)
+├── engine.yaml                 # ChaosEngine binding the experiment to a target
+├── chartserviceversion.yaml    # Metadata (description, category, image, version)
+└── ground_truth.yaml           # (optional) baseline / expected post-conditions
 ```
 
-- If you would like to install a specific fault, replace the `experiments.yaml` in the above command with the relative path of the fault manifest within the parent chart. For example, to install only the *pod-delete* fault, run:
+The catalogue is consumed by **ChaosCenter** as a Git-backed *ChaosHub* — the UI
+browses the directory tree, the operator picks a fault, and the platform installs the
+ChaosExperiment CRD into the cluster.
 
-```bash
-find chaos-charts-3.0.0 -name fault.yaml | grep 'kubernetes/pod-delete' | xargs kubectl apply -n sock-shop -f
+---
+
+## What's AgentCert-specific in this fork
+
+The upstream chart catalogue is preserved verbatim where possible; the differences are:
+
+1. **Agent lifecycle faults** under `faults/kubernetes/`:
+   - `install-agent` — runs the [`agent-charts/install-agent`](../agent-charts/install-agent)
+     installer image as part of an Argo workflow step.
+   - `install-application` — runs [`app-charts/install-app`](../app-charts/install-app).
+   - `uninstall-agent`, `uninstall-application` — teardown counterparts.
+
+2. **OpenAI / LiteLLM / Langfuse parameters** plumbed through every experiment that
+   touches an agent. Defaults:
+   - `openaiBaseUrl: http://litellm.litellm.svc.cluster.local:4000/v1`
+   - `openaiModel`, `openaiApiKey`, `litellmUpstream`, `otelEndpoint` are surfaced as
+     experiment env vars so agents installed by the workflow inherit them.
+
+3. **Sock Shop scenarios** under `experiments/`:
+   - `sock-shop/` — full resiliency test: `install-app → install-agent → load-test →
+     pod-delete + cpu-hog + memory-hog + network-loss + disk-fill` in parallel.
+   - `sock-shop-single/` — minimal: `pod-delete` only, 900 s duration.
+   - `sock-shop-parallel/`, `sock-shop-sequential/` — same fault set, different
+     scheduling strategy.
+
+4. **OTEL tracing** — workflow steps emit Langfuse-compatible spans for the certifier.
+
+Everything else (CRDs, RBAC, Kyverno policies) tracks upstream.
+
+---
+
+## Repository layout
+
+```
+chaos-charts/
+├── faults/kubernetes/                # 36 fault definitions (one directory each)
+│   ├── pod-delete/, pod-cpu-hog/, pod-memory-hog/, pod-io-stress/
+│   ├── pod-network-latency/, pod-network-loss/, pod-network-corruption/
+│   ├── pod-network-duplication/, pod-network-partition/, pod-network-rate-limit/
+│   ├── pod-dns-error/, pod-dns-spoof/
+│   ├── pod-http-latency/, pod-http-modify-body/, pod-http-modify-header/,
+│   │   pod-http-reset-peer/, pod-http-status-code/
+│   ├── pod-autoscaler/, container-kill/, disk-fill/
+│   ├── node-cpu-hog/, node-drain/, node-io-stress/, node-memory-hog/,
+│   │   node-poweroff/, node-restart/, node-taint/
+│   ├── kubelet-service-kill/, docker-service-kill/
+│   └── install-agent/, install-application/,
+│       uninstall-agent/, uninstall-application/    ← AgentCert-specific
+│
+├── experiments/                      # Argo workflow templates (AgentCert-specific)
+│   ├── sock-shop/                    # full resiliency test
+│   ├── sock-shop-single/             # pod-delete only
+│   ├── sock-shop-parallel/           # parallel fault injection
+│   └── sock-shop-sequential/         # sequential fault injection
+│
+├── crds/                             # ChaosExperiment CRD definition
+│   └── chaosexperiment_crd.yaml
+│
+├── scripts/
+│   ├── combine-all-crs.go            # aggregates fault.yaml → experiments.yaml
+│   └── version/
+│       ├── version_maker.sh
+│       ├── version_validator.py
+│       └── push.sh                   # CI auto-bump + push
+│
+├── monitoring/
+│   └── dashboards/litmus-portal/     # Grafana dashboards for the chaos runner
+│
+├── security/
+│   ├── kyverno-policies/             # 6 ClusterPolicy YAMLs (privesc, host-ns, caps, …)
+│   └── pod-security-policy/
+│       └── psp-litmus.yaml
+│
+├── service-accounts/
+│   ├── argo-access.yaml              # ServiceAccount + Role for Argo
+│   ├── argowf-chaos-admin.yaml       # Elevated RBAC for Argo chaos workflows
+│   └── litmus-admin-rbac.yaml        # ServiceAccount + ClusterRole for Litmus operator
+│
+├── CONTRIBUTING.md
+├── Makefile
+├── LICENSE                           # Apache-2.0 (upstream)
+└── README.md
 ```
 
+---
 
-## License
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Flitmuschaos%2Fchaos-charts.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Flitmuschaos%2Fchaos-charts?ref=badge_large)
+## Kubernetes chaos fault inventory
+
+| Category | Faults |
+|---|---|
+| **Pod resource** | `pod-cpu-hog`, `pod-cpu-hog-exec`, `pod-memory-hog`, `pod-memory-hog-exec`, `pod-io-stress`, `disk-fill`, `container-kill` |
+| **Pod network** | `pod-network-latency`, `pod-network-loss`, `pod-network-corruption`, `pod-network-duplication`, `pod-network-partition`, `pod-network-rate-limit` |
+| **Pod HTTP/DNS** | `pod-http-latency`, `pod-http-modify-body`, `pod-http-modify-header`, `pod-http-reset-peer`, `pod-http-status-code`, `pod-dns-error`, `pod-dns-spoof` |
+| **Pod lifecycle** | `pod-delete`, `pod-autoscaler` |
+| **Node** | `node-cpu-hog`, `node-drain`, `node-io-stress`, `node-memory-hog`, `node-poweroff`, `node-restart`, `node-taint` |
+| **K8s management** | `kubelet-service-kill`, `docker-service-kill` |
+| **AgentCert lifecycle** | `install-agent`, `install-application`, `uninstall-agent`, `uninstall-application` |
+
+The fault list maps directly to the categories the [`certifier`](../certifier) reports
+on — `application_fault`, `network_fault`, `resource_fault` — defined in
+[`certifier/configs/fault_categories.json`](../certifier/configs/fault_categories.json).
+
+---
+
+## Scenario workflows
+
+Each scenario in `experiments/` is an **Argo Workflow** (`apiVersion: argoproj.io/v1alpha1`)
+that strings together the install/load/inject/observe steps a benchmark needs:
+
+```
+install-app (sock-shop)
+    │
+    ▼
+install-agent (flash-agent + sidecar)
+    │
+    ▼
+load-test  (warm the SUT)
+    │
+    ▼
+┌──── pod-delete ────┐
+├──── pod-cpu-hog ──┤    ← parallel (sock-shop) or sequential (sock-shop-sequential)
+├──── pod-memory-hog┤
+├── pod-network-loss┤
+└──── disk-fill ────┘
+    │
+    ▼
+uninstall-agent + uninstall-app
+```
+
+The workflows reference the installer images directly:
+
+```yaml
+- name: install-agent
+  image: agentcert/agentcert-install-agent:latest
+  args: ["--folder=flash-agent", "--namespace=flash-agent", "--create-namespace"]
+```
+
+---
+
+## Building the aggregated `experiments.yaml`
+
+The Makefile aggregates the per-fault `fault.yaml` files into one
+`faults/kubernetes/experiments.yaml` multi-document file — the shape ChaosCenter installs
+in a single `kubectl apply`.
+
+```bash
+make deps              # pip install packaging (used by version_validator.py)
+make versionmaker      # extracts version metadata from each chartserviceversion.yaml
+make combineExpCR      # runs scripts/combine-all-crs.go
+                       # → faults/kubernetes/experiments.yaml (deduplicated by CRD name)
+make push              # auto-increment versions + git push (CI)
+```
+
+There is no chart packaging step: the Git repository **is** the distribution. Releases
+are consumed as source tarballs.
+
+---
+
+## How AgentCert consumes this
+
+ChaosCenter is configured with this repo as the default ChaosHub via
+`DEFAULT_HUB_GIT_URL=https://github.com/agentcert/chaos-charts`. When a user clicks
+*Browse Hub* in the UI, the GraphQL server clones the repo, walks
+`faults/kubernetes/`, and renders each fault as a card. Selecting a fault stages its
+`fault.yaml` for inclusion in the next scenario.
+
+The chaoscenter side of this contract is documented in
+[`AgentCert/docs/EXPERIMENT_E2E_FLOW.md`](../AgentCert/docs/EXPERIMENT_E2E_FLOW.md) and
+in the integration tests under
+`AgentCert/chaoscenter/graphql/server/pkg/chaos_hub/`.
+
+---
+
+## Installing faults directly (without ChaosCenter)
+
+The upstream `chaos-charts` install recipe still works (no release tags are cut on this
+fork yet — use `master`):
+
+```bash
+# Clone and apply the aggregated kubernetes chart in the sock-shop namespace
+git clone https://github.com/AgentCert/chaos-charts.git
+find chaos-charts/faults/kubernetes -name experiments.yaml \
+  | xargs kubectl apply -n sock-shop -f -
+```
+
+Install a single fault (e.g. `pod-delete`):
+
+```bash
+kubectl apply -n sock-shop -f chaos-charts/faults/kubernetes/pod-delete/fault.yaml
+kubectl apply -n sock-shop -f chaos-charts/faults/kubernetes/pod-delete/engine.yaml
+```
+
+Service accounts and RBAC come from `service-accounts/` — apply
+`argo-access.yaml`, `argowf-chaos-admin.yaml`, and `litmus-admin-rbac.yaml` once per
+cluster.
+
+---
+
+## Security artifacts
+
+| Path | Contents |
+|---|---|
+| [`security/kyverno-policies/`](security/kyverno-policies/) | 6 Kyverno `ClusterPolicy` resources covering privilege escalation, host-namespace access, capabilities, etc. |
+| [`security/pod-security-policy/psp-litmus.yaml`](security/pod-security-policy/psp-litmus.yaml) | Pod Security Policy for the Litmus operator (legacy, pre-PSA) |
+
+Apply these alongside the chaos faults if your cluster enforces admission control.
+
+---
+
+## Licensing
+
+Apache 2.0 — see [LICENSE](LICENSE).
+
+Upstream attribution: this fork preserves the original LitmusChaos copyright headers in
+every `fault.yaml` and `chartserviceversion.yaml`. AgentCert-added files are likewise
+Apache 2.0.
