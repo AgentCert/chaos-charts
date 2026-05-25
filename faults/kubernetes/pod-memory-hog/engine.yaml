@@ -4,6 +4,8 @@ kind: ChaosEngine
 metadata:
   name: nginx-chaos
   namespace: default
+  annotations:
+    litmuschaos.io/injectionType: "ON_DEMAND"
 spec:
   # It can be active/stop
   engineState: 'active'
