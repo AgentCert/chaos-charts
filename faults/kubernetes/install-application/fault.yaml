@@ -87,7 +87,7 @@ spec:
       - -namespace=sock-shop
       - -create-namespace
       - -wait
-      - -timeout=5m
+      - -timeout=15m
     env:
       - name: FOLDER
         value: "sock-shop"
@@ -96,7 +96,7 @@ spec:
         value: "sock-shop"
 
       - name: TIMEOUT
-        value: "5m"
+        value: "15m"
 
     labels:
       name: install-application

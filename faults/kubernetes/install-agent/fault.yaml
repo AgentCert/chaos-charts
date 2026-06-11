@@ -101,7 +101,7 @@ spec:
         value: ""
 
       - name: TIMEOUT
-        value: "10m"
+        value: "15m"
 
       - name: LITELLM_URL
         value: ""

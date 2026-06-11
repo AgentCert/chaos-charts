@@ -4072,7 +4072,7 @@ spec:
       - -namespace=sock-shop
       - -create-namespace
       - -wait
-      - -timeout=5m
+      - -timeout=15m
     env:
       - name: FOLDER
         value: "sock-shop"
@@ -4081,7 +4081,7 @@ spec:
         value: "sock-shop"
 
       - name: TIMEOUT
-        value: "5m"
+        value: "15m"
 
     labels:
       name: install-application
@@ -4196,7 +4196,7 @@ spec:
 
       # timeout for the operation
       - name: TIMEOUT
-        value: "10m"
+        value: "15m"
 
       # OpenAI API key for the agent
       - name: OPENAI_API_KEY
@@ -4321,7 +4321,7 @@ spec:
       - -folder=sock-shop
       - -namespace=sock-shop
       - -delete-namespace
-      - -timeout=5m
+      - -timeout=15m
     env:
       - name: FOLDER
         value: "sock-shop"
@@ -4333,7 +4333,7 @@ spec:
         value: "true"
 
       - name: TIMEOUT
-        value: "5m"
+        value: "15m"
 
     labels:
       name: uninstall-application
@@ -4445,7 +4445,7 @@ spec:
 
       # timeout for the operation
       - name: TIMEOUT
-        value: "5m"
+        value: "15m"
 
     labels:
       name: uninstall-agent

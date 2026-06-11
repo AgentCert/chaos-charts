@@ -25,7 +25,7 @@ spec:
 
             # timeout for the operation
             - name: TIMEOUT
-              value: '10m'
+              value: '15m'
 
             # LiteLLM URL - URL where LiteLLM is hosted
             - name: LITELLM_URL

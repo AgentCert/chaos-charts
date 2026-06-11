@@ -25,4 +25,4 @@ spec:
 
             # timeout for the operation
             - name: TIMEOUT
-              value: '5m'
+              value: '15m'
