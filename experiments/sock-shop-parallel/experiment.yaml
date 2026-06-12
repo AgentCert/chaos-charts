@@ -21,7 +21,7 @@ spec:
       - name: agentFolder
         value: "flash-agent"
       - name: installTimeout
-        value: "15m"
+        value: "20m"
       # Flash Agent configuration
       - name: openaiApiKey
         value: ""
@@ -63,7 +63,7 @@ spec:
       container:
         image: agentcert/agentcert-install-app:latest
         imagePullPolicy: IfNotPresent
-        args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=20m"]
+        args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=30m"]
 
     - name: install-agent
       container:

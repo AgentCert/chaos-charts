@@ -24,7 +24,7 @@ spec:
       - name: agentFolder
         value: flash-agent
       - name: installTimeout
-        value: 15m
+        value: 20m
       - name: openaiApiKey
         value: ''
       - name: openaiModel
@@ -69,7 +69,7 @@ spec:
         - -namespace=sock-shop
         - -create-namespace
         - -wait
-        - -timeout=20m
+        - -timeout=30m
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
