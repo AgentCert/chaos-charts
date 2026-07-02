@@ -105,7 +105,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: litmuschaos/k8s:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/k8s:latest
         command:
         - sh
         - -c
@@ -120,7 +120,7 @@ spec:
           raw:
             data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-cpu-hog-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_carts\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=carts'\n    appkind: 'deployment'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  experiments:\n    - name: pod-cpu-hog\n      spec:\n        probe:\n        - name: \"check-frontend-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: CPU_CORES\n              value: '1'\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: CHAOS_KILL_COMMAND\n              value: \"kill -9 $(ps afx | grep \\\"[md5sum] /dev/zero\\\" | awk '{print$1}' | tr '\\n' ' ')\"\n"
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args:
         - -file=/tmp/chaosengine.yaml
         - -saveName=/tmp/engine-name
@@ -132,7 +132,7 @@ spec:
           raw:
             data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-network-latency-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_user-db\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=user-db'\n    appkind: 'statefulset'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  components:\n    runner:\n      imagePullPolicy: Always\n  experiments:\n    - name: pod-network-latency\n      spec:\n        probe:\n        - name: \"check-cards-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80/cards\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: NETWORK_INTERFACE\n              value: 'eth0'\n            - name: NETWORK_LATENCY\n              value: '2000'\n            - name: JITTER\n              value: '0'\n            - name: CONTAINER_RUNTIME\n              value: 'containerd'\n            - name: SOCKET_PATH\n              value: '/run/containerd/containerd.sock'\n"
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args:
         - -file=/tmp/chaosengine.yaml
         - -saveName=/tmp/engine-name
@@ -144,26 +144,26 @@ spec:
           raw:
             data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  name: pod-memory-hog-chaos\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\n  labels:\n    context: \"{{workflow.parameters.appNamespace}}_orders\"\n  annotations: {}\nspec:\n  appinfo:\n    appns: 'sock-shop'\n    applabel: 'name=orders'\n    appkind: 'deployment'\n  jobCleanUpPolicy: retain\n  engineState: 'active'\n  chaosServiceAccount: litmus-admin\n  experiments:\n    - name: pod-memory-hog\n      spec:\n        probe:\n        - name: \"check-frontend-access-url\"\n          type: \"httpProbe\"\n          httpProbe/inputs:\n            url: \"http://front-end.sock-shop.svc.cluster.local:80\"\n            insecureSkipVerify: false\n            responseTimeout: 100\n            method:\n              get:\n                criteria: \"==\"\n                responseCode: \"200\"\n          mode: \"Continuous\"\n          runProperties:\n            probeTimeout: 5s\n            interval: 2s\n            attempt: 30\n            probePollingInterval: 5s\n        components:\n          env:\n            - name: MEMORY_CONSUMPTION\n              value: '500'\n            - name: TOTAL_CHAOS_DURATION\n              value: '600'\n            - name: RAMP_TIME\n              value: '30'\n            - name: CHAOS_KILL_COMMAND\n              value: \"kill -9 $(ps afx | grep \\\"[dd] if /dev/zero\\\" | awk '{print $1}' | tr '\\n' ' ')\"\n"
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args:
         - -file=/tmp/chaosengine.yaml
         - -saveName=/tmp/engine-name
     - name: load-test
       container:
-        image: litmuschaos/litmus-app-deployer:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-app-deployer:latest
         args:
         - -namespace=loadtest
         - -app=loadtest
     - name: delete-loadtest
       container:
-        image: litmuschaos/litmus-app-deployer:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-app-deployer:latest
         args:
         - -namespace=loadtest
         - -operation=delete
         - -app=loadtest
     - name: cleanup-chaos-resources
       container:
-        image: litmuschaos/k8s:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/k8s:latest
         command:
         - sh
         - -c

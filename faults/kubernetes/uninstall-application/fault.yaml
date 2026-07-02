@@ -82,7 +82,7 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "infyartifactory.jfrog.io/docker-remote/agentcert/agentcert-uninstall-app:latest"
+    image: "infyartifactory.jfrog.io/docker-local/agentcert/agentcert-uninstall-app:latest"
     imagePullPolicy: Always
     command:
       - /usr/local/bin/uninstall-app
