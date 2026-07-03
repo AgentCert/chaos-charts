@@ -49,7 +49,7 @@ spec:
 
     - name: install-application
       container:
-        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v2-jfrog
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v3-secret-fix
         args: ["-namespace=sock-shop","-typeName=resilient","-operation=apply","-timeout=6m", "-app=sock-shop","-scope=cluster"] #for weak provide type flagName as resilient(-typeName=weak)
 
     - name: install-chaos-faults
@@ -1119,17 +1119,17 @@ spec:
 
     - name: delete-application
       container:
-        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v2-jfrog
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v3-secret-fix
         args: ["-namespace=sock-shop","-typeName=resilient","-operation=delete", "-app=sock-shop"]
 
     - name: load-test
       container:
-        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v2-jfrog
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v3-secret-fix
         args: ["-namespace=loadtest", "-app=loadtest"]
 
     - name: delete-loadtest
       container:
-        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v2-jfrog
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v3-secret-fix
         args: ["-namespace=loadtest","-operation=delete", "-app=loadtest"]
 
     - name: cleanup-chaos-resources
