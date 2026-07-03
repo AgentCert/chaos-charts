@@ -57,13 +57,13 @@ spec:
 
     - name: install-application
       container:
-        image: agentcert/agentcert-install-app:latest
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:latest
         imagePullPolicy: IfNotPresent
         args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=30m"]
 
     - name: install-agent
       container:
-        image: agentcert/agentcert-install-agent:latest
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-agent:latest
         imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
