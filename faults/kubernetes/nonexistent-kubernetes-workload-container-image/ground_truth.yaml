@@ -1,0 +1,110 @@
+fault: nonexistent-kubernetes-workload-container-image
+version: 0.1.0
+description: >-
+  Sets a container's image to a nonexistent tag, then restores it. Mirrors
+  ITBench SRE scenario 20 (nonexistent-kubernetes-workload-container-image).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Pod status shows ImagePullBackOff or ErrImagePull"
+      - "KubePodNotReady alert for the affected workload"
+      - "Kubernetes warning events: Failed to pull image"
+      - "Deployment's available replica count drops below desired"
+
+    goal: >
+      Point a workload's container at a nonexistent image tag to validate
+      whether an agent detects the pull failure and restores a valid image.
+
+    remediation: >
+      Revert the container image to a known-good tag (`kubectl rollout undo`
+      or `kubectl set image` with the correct tag), then verify the pod
+      transitions to Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "Identify the pod(s) stuck in ImagePullBackOff/ErrImagePull."
+
+    - step: 3
+      action: "Get pod details"
+      detail: "Inspect the pod's container status to confirm the failing image reference."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events to confirm the 'Failed to pull image' warning and see the exact bad image string."
+
+    - step: 5
+      action: "Get parent deployment details"
+      detail: "Retrieve the Deployment spec to see the current (invalid) image field."
+
+    - step: 6
+      action: "Roll back or correct the image"
+      detail: "Revert to the previous revision via rollout undo, or patch the image field with a known-good tag."
+
+    - step: 7
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm the new pod pulls successfully and reaches Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Find the pod stuck in ImagePullBackOff/ErrImagePull."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: Get"
+      command: "Pods: Get namespace=<target-namespace> name=<pod-name>"
+      purpose: "Inspect container status and confirm the bad image reference."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Confirm the image pull failure warning event."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Retrieve the deployment's current container image field."
+      tool_available: true
+
+    - step: 6
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Revert to the last known-good revision."
+      tool_available: false
+
+    - step: 7
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify the replacement pod reaches Running/Ready."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 12
+      unit: "count"

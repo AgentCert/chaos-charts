@@ -1,0 +1,27 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: nonexistent-image-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: nonexistent-kubernetes-workload-container-image-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: nonexistent-kubernetes-workload-container-image
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: ''
+
+            - name: INVALID_IMAGE
+              value: 'quay.io/it-bench/hello-bench-invalid:1.0.0'
+
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

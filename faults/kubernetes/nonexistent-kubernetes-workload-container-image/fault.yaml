@@ -1,0 +1,83 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Sets a container's image to a nonexistent tag, causing ImagePullBackOff /
+    ErrImagePull, then restores the original image. Mirrors ITBench SRE
+    scenario "nonexistent-kubernetes-workload-container-image" (fault
+    library index 15).
+kind: ChaosExperiment
+metadata:
+  name: nonexistent-kubernetes-workload-container-image
+  labels:
+    name: nonexistent-kubernetes-workload-container-image
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        ORIG_IMAGE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].image}")
+        if [ -z "$ORIG_IMAGE" ]; then
+          echo "container ${CONTAINER} not found on ${TARGET}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET} container=${CONTAINER} originalImage=${ORIG_IMAGE}"
+
+        echo "Injecting: setting image to ${INVALID_IMAGE}"
+        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${INVALID_IMAGE}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring image to ${ORIG_IMAGE}"
+        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${ORIG_IMAGE}"
+    env:
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container name to mutate; defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # matches ITBench's own invalid-image fixture
+      - name: INVALID_IMAGE
+        value: "quay.io/it-bench/hello-bench-invalid:1.0.0"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: nonexistent-kubernetes-workload-container-image
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

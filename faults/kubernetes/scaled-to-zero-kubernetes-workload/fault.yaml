@@ -1,0 +1,71 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Scales a Deployment/StatefulSet identified by label to zero replicas, then
+    restores its original replica count. Mirrors ITBench SRE scenario
+    "scaled-to-zero-kubernetes-workload" (fault library index 20).
+kind: ChaosExperiment
+metadata:
+  name: scaled-to-zero-kubernetes-workload
+  labels:
+    name: scaled-to-zero-kubernetes-workload
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets", "deployments/scale", "statefulsets/scale"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        ORIG_REPLICAS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.replicas}')
+        ORIG_REPLICAS=${ORIG_REPLICAS:-1}
+        echo "Target=${TARGET} originalReplicas=${ORIG_REPLICAS}"
+
+        echo "Injecting: scaling ${TARGET} to 0 replicas"
+        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas=0
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: scaling ${TARGET} back to ${ORIG_REPLICAS} replicas"
+        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas="${ORIG_REPLICAS}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: scaled-to-zero-kubernetes-workload
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

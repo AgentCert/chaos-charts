@@ -1,0 +1,42 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: scaled-to-zero-kubernetes-workload
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Scales a workload to zero replicas, then restores it. Mirrors ITBench
+      SRE scenario "scaled-to-zero-kubernetes-workload".
+spec:
+  displayName: Scaled To Zero Kubernetes Workload
+  categoryDescription: |
+    Scaled to zero fault disrupts the state of a Kubernetes workload by
+    setting its replica count to zero.
+    - Simulates an operator/CI mistake that removes all serving capacity.
+    - Tests whether an agent detects HighRequestErrorRate/NoRequestsReceived
+      and restores the deployment's replica count.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

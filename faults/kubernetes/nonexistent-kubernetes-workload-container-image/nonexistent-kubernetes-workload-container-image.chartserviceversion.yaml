@@ -1,0 +1,42 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: nonexistent-kubernetes-workload-container-image
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Sets a container's image to a nonexistent tag, then restores it.
+      Mirrors ITBench SRE scenario
+      "nonexistent-kubernetes-workload-container-image".
+spec:
+  displayName: Nonexistent Kubernetes Workload Container Image
+  categoryDescription: |
+    Points a workload's container at an image tag that does not exist.
+    - Simulates a bad deploy/typo in the image reference.
+    - Pods enter ImagePullBackOff / ErrImagePull, triggering KubePodNotReady.
+    - Tests whether an agent detects the pull failure and restores a valid image.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""
