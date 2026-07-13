@@ -1,0 +1,240 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: argowf-itbench-otel-demo
+  namespace: litmus
+  labels:
+    subject: "otel-demo-itbench"
+spec:
+  entrypoint: argowf-chaos
+  serviceAccountName: argo-chaos
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+  arguments:
+    parameters:
+      - name: adminModeNamespace
+        value: "litmus"
+      - name: appNamespace
+        value: "otel-demo"
+      # Agent installation
+      - name: agentFolder
+        value: "flash-agent"
+      - name: installTimeout
+        value: "30m"
+      # Flash Agent / LLM configuration
+      - name: openaiApiKey
+        value: ""
+      - name: openaiModel
+        value: "gpt-4o"
+      - name: openaiBaseUrl
+        value: "http://litellm.litellm.svc.cluster.local:4000/v1"
+      - name: litellmUpstream
+        value: "http://172.26.0.1:14000"
+      - name: otelEndpoint
+        value: ""
+      - name: scanInterval
+        value: "60"
+      - name: logLines
+        value: "100"
+      # ITBench: seconds to hold each fault before reverting
+      # (gives the agent time to diagnose and remediate)
+      - name: faultDuration
+        value: "300"
+
+  templates:
+    - name: argowf-chaos
+      steps:
+        # ── Setup ──────────────────────────────────────────────────────────
+        - - name: install-application
+            template: install-application
+        - - name: install-agent
+            template: install-agent
+
+        # ── Scenario #58 ── accounting scaled to zero ──────────────────────
+        # ITBench: scaled-to-zero-kubernetes-workload
+        # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting
+        - - name: inject-scenario-58
+            template: inject-scenario-58
+        - - name: wait-scenario-58
+            template: wait-fault
+        - - name: revert-scenario-58
+            template: revert-scenario-58
+
+        # ── Scenario #20 ── product-catalog nonexistent container image ────
+        # ITBench: nonexistent-kubernetes-workload-container-image
+        # Symptom: KubePodNotReady on product-catalog
+        - - name: inject-scenario-20
+            template: inject-scenario-20
+        - - name: wait-scenario-20
+            template: wait-fault
+        - - name: revert-scenario-20
+            template: revert-scenario-20
+
+        # ── Scenario #49 ── frontend misconfigured readiness probe ─────────
+        # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
+        # Symptom: KubePodNotReady on frontend
+        - - name: inject-scenario-49
+            template: inject-scenario-49
+        - - name: wait-scenario-49
+            template: wait-fault
+        - - name: revert-scenario-49
+            template: revert-scenario-49
+
+        # ── Scenario #30 ── ad service wrong target port ───────────────────
+        # ITBench: modified-target-port-kubernetes-service
+        # Symptom: HighRequestErrorRate on ad service
+        - - name: inject-scenario-30
+            template: inject-scenario-30
+        - - name: wait-scenario-30
+            template: wait-fault
+        - - name: revert-scenario-30
+            template: revert-scenario-30
+
+        # ── Optional cleanup ───────────────────────────────────────────────
+        # Uncomment to tear down after evaluation:
+        #- - name: delete-application
+        #    template: delete-application
+
+    # ── Setup templates ─────────────────────────────────────────────────────
+
+    - name: install-application
+      container:
+        image: agentcert/agentcert-install-app:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - "-folder=otel-demo"
+          - "-namespace=otel-demo"
+          - "-create-namespace"
+          - "-wait"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+
+    - name: install-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: Always
+        args:
+          - "-folder={{workflow.parameters.agentFolder}}"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-create-namespace"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+          - "--set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}"
+          - "--set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}"
+          - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}"
+          - "--set=agent.notifyId={{workflow.name}}"
+          - "--set=agent.workflowUid={{workflow.uid}}"
+          - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
+
+    # ── Scenario #58: accounting scaled to zero ─────────────────────────────
+    # Mirrors ITBench scenario index 58 (scaled-to-zero-kubernetes-workload).
+    # Scales the accounting Deployment to 0 replicas, causing
+    # HighRequestErrorRate and NoRequestsReceived alerts.
+    # Remediation: scale back to ≥1 replica or rollout undo.
+
+    - name: inject-scenario-58
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "kubectl scale -n otel-demo deployment/accounting --replicas=0"
+
+    - name: revert-scenario-58
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "kubectl scale -n otel-demo deployment/accounting --replicas=1 || true"
+
+    # ── Scenario #20: product-catalog nonexistent container image ────────────
+    # Mirrors ITBench scenario index 20 (nonexistent-kubernetes-workload-
+    # container-image). Sets the product-catalog container image to a
+    # deliberately invalid tag so the pod enters ImagePullBackOff /
+    # ErrImagePull, triggering KubePodNotReady.
+    # Remediation: rollout undo or set image back to valid tag.
+
+    - name: inject-scenario-20
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl set image
+            -n otel-demo
+            deployment/product-catalog
+            product-catalog=quay.io/it-bench/hello-bench-invalid:1.0.0
+
+    - name: revert-scenario-20
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "kubectl rollout undo -n otel-demo deployment/product-catalog || true"
+
+    # ── Scenario #49: frontend misconfigured readiness probe ────────────────
+    # Mirrors ITBench scenario index 49 (misconfigured-kubernetes-workload-
+    # container-readiness-probe). Patches the frontend Deployment to probe
+    # /ready on port 40, which is never open, so the pod stays NotReady.
+    # Remediation: rollout undo or edit the probe back to the correct path/port.
+
+    - name: inject-scenario-49
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl patch -n otel-demo deployment/frontend
+            --type=strategic
+            -p '{"spec":{"template":{"spec":{"containers":[{"name":"frontend","readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/ready","port":40,"scheme":"HTTP"},"periodSeconds":5,"successThreshold":1,"timeoutSeconds":3}}]}}}}'
+
+    - name: revert-scenario-49
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "kubectl rollout undo -n otel-demo deployment/frontend || true"
+
+    # ── Scenario #30: ad service wrong target port ───────────────────────────
+    # Mirrors ITBench scenario index 30 (modified-target-port-kubernetes-
+    # service). Changes the ad Service's targetPort from 8080 to 9999 so
+    # that traffic is routed to a closed port, triggering HighRequestErrorRate.
+    # Remediation: patch the targetPort back to 8080.
+
+    - name: inject-scenario-30
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl patch -n otel-demo service/ad
+            --type=json
+            -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":9999}]'
+
+    - name: revert-scenario-30
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl patch -n otel-demo service/ad
+            --type=json
+            -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":8080}]'
+            || true
+
+    # ── Shared wait template ─────────────────────────────────────────────────
+    # Holds the fault for `faultDuration` seconds. The flash-agent runs
+    # concurrently and must detect and remediate the fault within this window.
+
+    - name: wait-fault
+      container:
+        image: alpine:3.20
+        command: [sh, -c]
+        args: ["sleep {{workflow.parameters.faultDuration}}"]
+
+    # ── Optional teardown ────────────────────────────────────────────────────
+    - name: delete-application
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "helm uninstall otel-demo -n otel-demo || true"

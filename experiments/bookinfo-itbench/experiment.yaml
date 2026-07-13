@@ -1,0 +1,190 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: argowf-itbench-bookinfo
+  namespace: litmus
+  labels:
+    subject: "bookinfo-itbench"
+spec:
+  entrypoint: argowf-chaos
+  serviceAccountName: argo-chaos
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+  arguments:
+    parameters:
+      - name: adminModeNamespace
+        value: "litmus"
+      - name: appNamespace
+        value: "book-info"
+      # Agent installation
+      - name: agentFolder
+        value: "flash-agent"
+      - name: installTimeout
+        value: "20m"
+      # Flash Agent / LLM configuration
+      - name: openaiApiKey
+        value: ""
+      - name: openaiModel
+        value: "gpt-4o"
+      - name: openaiBaseUrl
+        value: "http://litellm.litellm.svc.cluster.local:4000/v1"
+      - name: litellmUpstream
+        value: "http://172.26.0.1:14000"
+      - name: otelEndpoint
+        value: ""
+      - name: scanInterval
+        value: "60"
+      - name: logLines
+        value: "100"
+      # ITBench: seconds to hold each fault before reverting
+      - name: faultDuration
+        value: "300"
+
+  templates:
+    - name: argowf-chaos
+      steps:
+        # ── Setup ──────────────────────────────────────────────────────────
+        - - name: install-application
+            template: install-application
+        - - name: install-agent
+            template: install-agent
+
+        # ── Scenario #36 ── details service invalid selector ───────────────
+        # ITBench: invalid-kubernetes-service-selector
+        # Symptom: HighRequestErrorRate — details Service routes to no pods.
+        - - name: inject-scenario-36
+            template: inject-scenario-36
+        - - name: wait-scenario-36
+            template: wait-fault
+        - - name: revert-scenario-36
+            template: revert-scenario-36
+
+        # ── Scenario #53 ── reviews-v3 nonexistent PVC ─────────────────────
+        # ITBench: nonexistent-kubernetes-workload-persistent-volume-claim
+        # Symptom: KubePodNotReady — reviews-v3 pod stuck in Pending/Init
+        # because its PVC references a StorageClass that does not exist.
+        - - name: inject-scenario-53
+            template: inject-scenario-53
+        - - name: wait-scenario-53
+            template: wait-fault
+        - - name: revert-scenario-53
+            template: revert-scenario-53
+
+        # ── Optional cleanup ───────────────────────────────────────────────
+        # Uncomment to tear down after evaluation:
+        #- - name: delete-application
+        #    template: delete-application
+
+    # ── Setup templates ─────────────────────────────────────────────────────
+
+    - name: install-application
+      container:
+        image: agentcert/agentcert-install-app:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - "-folder=bookinfo"
+          - "-namespace=book-info"
+          - "-create-namespace"
+          - "-wait"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+
+    - name: install-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: Always
+        args:
+          - "-folder={{workflow.parameters.agentFolder}}"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-create-namespace"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+          - "--set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}"
+          - "--set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}"
+          - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}"
+          - "--set=agent.notifyId={{workflow.name}}"
+          - "--set=agent.workflowUid={{workflow.uid}}"
+          - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
+
+    # ── Scenario #36: details service invalid selector ───────────────────────
+    # Mirrors ITBench scenario index 36 (invalid-kubernetes-service-selector).
+    # Replaces the details Service selector with an invalid label value so that
+    # the Service has no matching Endpoints, causing HighRequestErrorRate on
+    # the productpage → details call path.
+    # Remediation: patch the selector back to {"app": "details"}.
+
+    - name: inject-scenario-36
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl patch -n book-info service/details
+            --type=json
+            -p '[{"op":"replace","path":"/spec/selector","value":{"app.kubernetes.io/name":"invalid-workload"}}]'
+
+    - name: revert-scenario-36
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - >-
+            kubectl patch -n book-info service/details
+            --type=json
+            -p '[{"op":"replace","path":"/spec/selector","value":{"app":"details"}}]'
+            || true
+
+    # ── Scenario #53: reviews-v3 nonexistent PVC ─────────────────────────────
+    # Mirrors ITBench scenario index 53 (nonexistent-kubernetes-workload-
+    # persistent-volume-claim). Creates a PVC that references an invalid
+    # StorageClass ("invalid-class-name") so it stays Pending, then patches
+    # reviews-v3 to mount it. The pod enters Pending/Init:0/1 with a
+    # FailedMount event, triggering KubePodNotReady.
+    # Remediation: rollout undo or remove the volume + delete the broken PVC.
+
+    - name: inject-scenario-53
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - |
+            kubectl apply -f - <<'JSON'
+            {
+              "apiVersion": "v1",
+              "kind": "PersistentVolumeClaim",
+              "metadata": {"name": "reviews-v3", "namespace": "book-info"},
+              "spec": {
+                "accessModes": ["ReadWriteOnce"],
+                "resources": {"requests": {"storage": "25Mi"}},
+                "storageClassName": "invalid-class-name"
+              }
+            }
+            JSON
+            kubectl patch -n book-info deployment/reviews-v3 \
+              --type=strategic \
+              -p '{"spec":{"template":{"spec":{"containers":[{"name":"reviews","volumeMounts":[{"name":"database","mountPath":"/data/database"}]}],"securityContext":{"fsGroup":1000},"volumes":[{"name":"database","persistentVolumeClaim":{"claimName":"reviews-v3"}}]}}}}'
+
+    - name: revert-scenario-53
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - |
+            kubectl rollout undo -n book-info deployment/reviews-v3 || true
+            kubectl delete pvc -n book-info reviews-v3 --ignore-not-found || true
+
+    # ── Shared wait template ─────────────────────────────────────────────────
+
+    - name: wait-fault
+      container:
+        image: alpine:3.20
+        command: [sh, -c]
+        args: ["sleep {{workflow.parameters.faultDuration}}"]
+
+    # ── Optional teardown ────────────────────────────────────────────────────
+    - name: delete-application
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - "helm uninstall bookinfo -n book-info || true"

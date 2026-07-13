@@ -1,0 +1,49 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: otel-demo-itbench
+  version: 0.1.0
+  annotations:
+    categories: otel-demo
+    chartDescription: >-
+      Runs four ITBench SRE scenarios sequentially against the OpenTelemetry
+      Demo (Astronomy Shop) application: scaled-to-zero, nonexistent container
+      image, misconfigured readiness probe, and modified service target port.
+spec:
+  displayName: OpenTelemetry Demo — ITBench SRE Scenarios
+  categoryDescription: >
+    Sequential evaluation workflow targeting the OpenTelemetry Demo
+    (opentelemetry-demo) application. Each step injects one ITBench SRE fault
+    and holds it for a configurable window (default 300 s) while the flash-agent
+    observes, diagnoses, and remediates. The fault is reverted automatically
+    after the window expires.
+
+    Scenarios covered:
+      #58  scaled-to-zero-kubernetes-workload         (accounting)
+      #20  nonexistent-kubernetes-workload-container-image  (product-catalog)
+      #49  misconfigured-kubernetes-workload-container-readiness-probe (frontend)
+      #30  modified-target-port-kubernetes-service    (ad)
+
+    ITBench reference: https://github.com/itbench-hub/ITBench
+    Applications required: otel-demo (app-charts/charts/otel-demo)
+  faults:
+    - name: otel-demo-itbench
+      description: >-
+        Four sequential ITBench SRE fault scenarios against the OpenTelemetry
+        Demo application.
+  keywords:
+    - Kubernetes
+    - ITBench
+    - SRE
+    - otel-demo
+    - misconfiguration
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  icon:
+    - url: ""
+      mediatype: ""
