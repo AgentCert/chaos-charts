@@ -1,0 +1,45 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: invalid-kubernetes-workload-container-command
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Overwrites a container's command with a nonexistent executable,
+      causing CrashLoopBackOff, then restores the original command/args.
+      Mirrors ITBench SRE scenario "invalid-kubernetes-workload-container-command".
+spec:
+  displayName: Invalid Kubernetes Workload Container Command
+  categoryDescription: |
+    Invalid command fault disrupts a Kubernetes workload by overwriting a
+    container's command (and args) with a nonexistent executable.
+    - Simulates an operator/CI mistake that ships a malformed container
+      command, causing the container to fail to start.
+    - Tests whether an agent detects the resulting CrashLoopBackOff /
+      KubePodCrashLooping alert and restores the workload via rollback or
+      manifest correction.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

@@ -1,0 +1,45 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: crashing-kubernetes-workload-init-container
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Injects an initContainer that crashes due to a bad script, forcing a
+      Deployment's pod into Init:CrashLoopBackOff, then removes it. Mirrors
+      ITBench SRE scenario "crashing-kubernetes-workload-init-container".
+spec:
+  displayName: Crashing Kubernetes Workload Init Container
+  categoryDescription: |
+    Crashing init container fault disrupts a Kubernetes workload by adding an
+    extra initContainer to its pod template that runs a deliberately bad
+    script and exits non-zero.
+    - Simulates a bad code/config change that blocks the main container from
+      ever starting (pod stuck in Init:CrashLoopBackOff).
+    - Tests whether an agent detects the resulting KubeContainerWaiting
+      condition and rolls back or removes the faulty initContainer.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

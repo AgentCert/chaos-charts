@@ -1,0 +1,146 @@
+fault: priority-kubernetes-workload-priority-preemption
+version: 0.1.0
+description: >-
+  Creates a temporary, higher-priority PriorityClass and a decoy/pressure
+  Deployment sized to consume most of the target pod's node, forcing the
+  Kubernetes scheduler to preempt (evict) the lower-priority target pod. This
+  is a resource-pressure-induced preemption fault, not a direct pod-delete:
+  the fault never touches the target's own manifest. Mirrors ITBench SRE
+  scenario 42, which applies fault library index 19
+  (priority-kubernetes-workload-priority-preemption) against the OpenTelemetry
+  Demo's `kafka` Deployment in the `otel-demo` namespace.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "The kafka Deployment's pod is Terminating/evicted and its replacement is stuck in `Pending`"
+      - "A `FailedScheduling` and/or `Preempted` event on the kafka pod references insufficient node resources / a higher-priority pod"
+      - "A previously-unseen PriorityClass with an unusually high `value` exists in the cluster"
+      - "An unfamiliar Deployment/pod using that PriorityClass and large resource requests is running on the same node kafka was scheduled to"
+      - "KubePodNotReady alert fires for the kafka workload"
+      - "Kafka-dependent otel-demo services (e.g. checkout, order processing consumers) show elevated errors/latency due to broker unavailability"
+
+    goal: >
+      Create a higher-priority PriorityClass and a resource-heavy decoy
+      workload to force the scheduler to preempt the target's lower-priority
+      (default-priority) pod via resource pressure, rather than deleting it
+      directly, to validate whether an agent can distinguish
+      preemption-induced unavailability from a simple pod-delete or crash,
+      identify the offending PriorityClass/decoy workload, and restore the
+      target to a Running/Ready state.
+
+    remediation: >
+      Identify and remove the decoy high-priority Deployment (and its
+      PriorityClass) that is starving the node of resources so the scheduler
+      can reschedule the target's pod — or, as a longer-term fix, assign the
+      target workload its own priorityClassName with a value equal to or
+      higher than any legitimate competing workload — then confirm the
+      target pod reaches Running/Ready again.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify the otel-demo namespace hosting the affected kafka workload."
+
+    - step: 2
+      action: "List pods in the target namespace"
+      detail: "List pods in otel-demo; find kafka's pod is not Running (Pending or Terminating) instead of Ready."
+
+    - step: 3
+      action: "Get pod/deployment details"
+      detail: "Retrieve the kafka pod and Deployment spec/status; note the pod has no priorityClassName (default priority 0) and is unschedulable."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in otel-demo; look for 'FailedScheduling' and/or 'Preempted' messages on the kafka pod referencing a competing higher-priority pod."
+
+    - step: 5
+      action: "Inspect PriorityClasses"
+      detail: "List the cluster-scoped PriorityClasses; identify a newly-created class with an unusually high value compared to the target's default priority."
+
+    - step: 6
+      action: "Identify the competing workload"
+      detail: "Find and inspect the Deployment/pod using that PriorityClass; confirm its large CPU/memory resource requests are what is starving the node and triggering preemption."
+
+    - step: 7
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for KubePodNotReady and node resource-pressure signals correlated with the otel-demo namespace and the affected node."
+
+    - step: 8
+      action: "Remove the decoy workload (or reprioritize the target)"
+      detail: "Delete the decoy Deployment and its PriorityClass to free node resources, or alternatively raise the target's own priorityClassName so it is no longer the lowest-priority pod on the node."
+
+    - step: 9
+      action: "Verify pod recovery"
+      detail: "Re-list pods in otel-demo to confirm the kafka pod is rescheduled and reaches Running/Ready, and that dependent services recover."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the otel-demo namespace hosting the affected kafka workload."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Find the kafka pod in a non-Running (Pending/Terminating) state."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=kafka"
+      purpose: "Confirm the kafka Deployment's desired-vs-available replicas and that its pod template has no priorityClassName."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Find 'FailedScheduling'/'Preempted' events on the kafka pod referencing a higher-priority competing pod."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=scheduling.k8s.io/v1 kind=PriorityClass"
+      purpose: "Identify an unexpected PriorityClass with an unusually high value versus the target's default priority."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=<decoy-deployment-name>"
+      purpose: "Inspect the decoy workload's priorityClassName and resource requests causing the resource pressure."
+      tool_available: true
+
+    - step: 7
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_status_phase{namespace=\"otel-demo\",phase=\"Pending\"}'"
+      purpose: "Confirm KubePodNotReady / Pending status for the kafka pod via Prometheus."
+      tool_available: true
+
+    - step: 8
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=<decoy-deployment-name>"
+      purpose: "Remove the decoy Deployment (and its PriorityClass) to free node resources for kafka to reschedule."
+      tool_available: true
+
+    - step: 9
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify the kafka pod is rescheduled and reaches Running/Ready."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 90
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 200
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 16
+      unit: "count"

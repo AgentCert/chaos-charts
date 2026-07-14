@@ -1,0 +1,55 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: chaos-mesh-pod-failure-replacement
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      LitmusChaos-native replacement for Chaos Mesh's PodChaos "pod-failure"
+      action: freezes a target container's main process via SIGSTOP, holds,
+      then resumes it via SIGCONT, without deleting the pod or
+      killing/restarting the container. Mirrors ITBench SRE scenario 18
+      (otel-demo `checkout` service failure).
+spec:
+  displayName: Chaos Mesh Pod Failure Replacement
+  categoryDescription: |
+    Chaos Mesh pod-failure replacement fault disrupts a Kubernetes workload by
+    freezing its main container process in place (SIGSTOP/SIGCONT) instead of
+    deleting the pod or killing the container.
+    - Approximates Chaos Mesh's PodChaos "pod-failure" action (this ACE
+      deployment runs LitmusChaos only, not Chaos Mesh) against the otel-demo
+      `checkout` service referenced by ITBench SRE scenario 18.
+    - Because checkout's image is distroless (no shell/kill binary), the
+      freeze is delivered via an ephemeral debug container that shares the
+      target container's PID namespace (kubectl debug --target), rather than
+      a plain `kubectl exec -- kill -STOP 1`. Requires Kubernetes >=1.25
+      (Ephemeral Containers GA).
+    - Tests whether an agent detects a Pod that still looks Running/Ready but
+      is functionally unresponsive, and restores service (e.g. by deleting
+      the pod to force replacement) rather than being misled by pod status
+      alone.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.25.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

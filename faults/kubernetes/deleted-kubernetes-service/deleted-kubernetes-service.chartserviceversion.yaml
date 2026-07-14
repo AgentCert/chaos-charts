@@ -1,0 +1,46 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: deleted-kubernetes-service
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Deletes the Service fronting a workload, then recreates it from a
+      captured manifest. Mirrors ITBench SRE scenario
+      "deleted-kubernetes-service".
+spec:
+  displayName: Deleted Kubernetes Service
+  categoryDescription: |
+    Deleted Kubernetes Service fault disrupts a Kubernetes workload's
+    reachability by deleting its Service object.
+    - Simulates an operator/CI mistake or manifest drift that removes a
+      Service, breaking in-cluster DNS resolution and routing to the
+      workload's pods (which keep running unaffected).
+    - Tests whether an agent detects the resulting HighRequestErrorRate /
+      connection failures and recreates the missing Service with the correct
+      selector and ports.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

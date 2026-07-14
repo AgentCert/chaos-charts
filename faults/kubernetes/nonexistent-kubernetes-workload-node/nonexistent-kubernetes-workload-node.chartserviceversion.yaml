@@ -1,0 +1,46 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: nonexistent-kubernetes-workload-node
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Adds a nodeSelector referencing a node name that does not exist in the
+      cluster, leaving the workload's pod(s) permanently Pending, then
+      restores the original nodeSelector. Mirrors ITBench SRE fault
+      "nonexistent-kubernetes-workload-node".
+spec:
+  displayName: Nonexistent Kubernetes Workload Node
+  categoryDescription: |
+    Nonexistent node fault disrupts scheduling of a Kubernetes workload by
+    patching its pod template with a nodeSelector referencing a node name
+    that does not exist in the cluster.
+    - Simulates an operator mistake that pins a workload to a node that was
+      never provisioned (or has since been removed).
+    - Tests whether an agent detects the resulting FailedScheduling/Pending
+      pod condition and removes or corrects the nodeSelector.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

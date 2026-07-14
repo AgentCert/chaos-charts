@@ -1,0 +1,47 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: modified-kubernetes-workload-container-environment-variable
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Overwrites one named environment variable on a container with a bad
+      value, then restores the original value. Mirrors ITBench SRE scenario
+      "modified-kubernetes-workload-container-environment-variable".
+spec:
+  displayName: Modified Kubernetes Workload Container Environment Variable
+  categoryDescription: |
+    Modified environment variable fault disrupts a Kubernetes workload by
+    overwriting one named environment variable on a target container with an
+    invalid value.
+    - Simulates an operator/config-management mistake that breaks a
+      dependency (e.g. pointing at the wrong host:port for a downstream
+      service).
+    - Tests whether an agent detects the resulting error rate/latency
+      increase, diagnoses the bad environment variable, and restores the
+      original configuration.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

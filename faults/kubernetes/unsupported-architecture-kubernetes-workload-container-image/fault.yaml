@@ -1,0 +1,94 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Sets a container's image to a tag built only for an unsupported CPU
+    architecture (e.g. an arm64-only image on an amd64 node), causing the
+    pod to become stuck Pending in ImagePullBackOff/ErrImagePull, then
+    restores the original image. Mirrors ITBench SRE scenarios 23, 57 and 60
+    (fault library index 26,
+    "unsupported-architecture-kubernetes-workload-container-image"), which
+    all target the otel-demo `checkout` Deployment.
+kind: ChaosExperiment
+metadata:
+  name: unsupported-architecture-kubernetes-workload-container-image
+  labels:
+    name: unsupported-architecture-kubernetes-workload-container-image
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        ORIG_IMAGE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].image}")
+        if [ -z "$ORIG_IMAGE" ]; then
+          echo "container ${CONTAINER} not found on ${TARGET}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET} container=${CONTAINER} originalImage=${ORIG_IMAGE}"
+
+        echo "Injecting: setting image to unsupported-architecture reference ${INVALID_ARCH_IMAGE}"
+        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${INVALID_ARCH_IMAGE}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring image to ${ORIG_IMAGE}"
+        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${ORIG_IMAGE}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container name to mutate; defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # A real, currently-published image reference that publishes only a
+      # linux/arm64/v8 manifest (verified against Docker Hub's registry API:
+      # `arm64v8/busybox` is Docker's official per-architecture mirror repo
+      # and never publishes an amd64 variant). On an amd64 node this fails
+      # image pull with "no matching manifest for linux/amd64 in the
+      # manifest list entries", producing the ImagePullBackOff/Pending state
+      # ITBench's fault definition (index 26) describes. Pinned to a
+      # specific tag (rather than :latest) for reproducibility.
+      - name: INVALID_ARCH_IMAGE
+        value: "arm64v8/busybox:1.36.1-musl"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: unsupported-architecture-kubernetes-workload-container-image
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

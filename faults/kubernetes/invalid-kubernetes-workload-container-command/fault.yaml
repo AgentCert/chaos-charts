@@ -1,0 +1,113 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Overwrites a container's command (and clears its args) with a
+    nonexistent executable, causing the container to fail immediately and
+    the pod to enter CrashLoopBackOff, then restores the original
+    command/args (or removes them via strategic-merge if they were absent,
+    inheriting from the image's own ENTRYPOINT/CMD). Mirrors ITBench SRE
+    scenario 105 (otel-demo "product-catalog" container) and fault library
+    index 9 (invalid-kubernetes-workload-container-command).
+kind: ChaosExperiment
+metadata:
+  name: invalid-kubernetes-workload-container-command
+  labels:
+    name: invalid-kubernetes-workload-container-command
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        echo "Target=${TARGET} container=${CONTAINER}"
+
+        # Capture original command/args — empty output means the field is
+        # absent and is inherited from the image's own ENTRYPOINT/CMD
+        ORIG_COMMAND=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].command}")
+        ORIG_ARGS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].args}")
+        echo "Original command: ${ORIG_COMMAND:-<none, inherited from image>}"
+        echo "Original args: ${ORIG_ARGS:-<none, inherited from image>}"
+
+        echo "Injecting: overwriting command=${INVALID_COMMAND} args=${INVALID_ARGS} on ${CONTAINER}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":${INVALID_COMMAND},\"args\":${INVALID_ARGS}}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (strategic-merge-patch semantics),
+        # restoring the image's own ENTRYPOINT/CMD; otherwise restore the
+        # captured original value exactly
+        if [ -z "$ORIG_COMMAND" ]; then
+          COMMAND_JSON="null"
+        else
+          COMMAND_JSON="$ORIG_COMMAND"
+        fi
+        if [ -z "$ORIG_ARGS" ]; then
+          ARGS_JSON="null"
+        else
+          ARGS_JSON="$ORIG_ARGS"
+        fi
+        echo "Reverting command/args to original on ${CONTAINER}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":${COMMAND_JSON},\"args\":${ARGS_JSON}}]}}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container whose command/args are overwritten; defaults to the
+      # workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # invalid command/args to inject — a JSON array string patched
+      # verbatim into the container spec. Defaults to a nonexistent binary
+      # that fails immediately, matching ITBench fault library index 9's
+      # "invalid command" fixture and driving the container into
+      # CrashLoopBackOff.
+      - name: INVALID_COMMAND
+        value: '["/nonexistent-binary"]'
+      - name: INVALID_ARGS
+        value: "[]"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: invalid-kubernetes-workload-container-command
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

@@ -1,0 +1,48 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: valkey-workload-out-of-memory
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Clamps the valkey-cart container's memory limit/request to an
+      unrealistically low value to force an OOMKilled / CrashLoopBackOff,
+      then restores the original limit/request. Mirrors ITBench SRE scenario
+      "valkey-workload-out-of-memory".
+spec:
+  displayName: Valkey Workload Out Of Memory
+  categoryDescription: |
+    Valkey workload out-of-memory fault disrupts the otel-demo valkey-cart
+    workload by patching its container's memory limit/request down to an
+    unrealistically low ceiling.
+    - Approximates ITBench's own code-injection version of this fault (which
+      mounts a ConfigMap-backed script that adds a memory-consuming process
+      to the container) by instead forcing the Valkey process to be
+      OOM-killed on startup via a constrained memory ceiling.
+    - Tests whether an agent detects the resulting CrashLoopBackOff /
+      KubePodCrashLooping alert and restores a workable memory limit.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

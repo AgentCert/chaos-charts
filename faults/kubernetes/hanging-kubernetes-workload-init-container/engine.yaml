@@ -1,0 +1,31 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: hanging-init-container-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: hanging-kubernetes-workload-init-container-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: hanging-kubernetes-workload-init-container
+      spec:
+        components:
+          env:
+            # name of the appended init container that will hang
+            - name: HANG_CONTAINER_NAME
+              value: 'worker'
+            # image for the hanging init container
+            - name: HANG_CONTAINER_IMAGE
+              value: 'registry.access.redhat.com/ubi10-minimal:10.2-1782798957'
+            # shell command the hanging init container runs (never exits)
+            - name: HANG_COMMAND
+              value: 'sleep infinity'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

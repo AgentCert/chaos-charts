@@ -1,0 +1,108 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Cordons the Kubernetes node hosting the target workload's pod(s) (kubectl
+    cordon), marking it unschedulable so that new pods (scale-ups, rollouts,
+    evicted/rescheduled pods) can no longer land on it, then uncordons the
+    node to restore normal scheduling. Mirrors ITBench SRE fault library
+    index 1 ("Cordoned Kubernetes Worker Node"), exercised e.g. by ITBench
+    scenario 39 against otel-demo's `payment` Deployment.
+
+    This fault acts on a Node, which is a cluster-scoped resource, rather
+    than on a namespaced application object -- unlike the app-targeted
+    faults in this chart (e.g. scaled-to-zero-kubernetes-workload), it
+    follows the node-drain/node-taint precedent in this repo: scope is
+    Cluster and RBAC grants a ClusterRole covering `nodes` (get/list/patch).
+
+    SAFETY NOTE: a Kubernetes node is frequently shared by pods from many
+    workloads/namespaces. Cordoning it can prevent scheduling for OTHER,
+    unrelated pods on that same node too -- not just this fault's target.
+    Only run this fault against dedicated/isolated test nodes, or knowingly
+    accept that blast radius in shared clusters.
+kind: ChaosExperiment
+metadata:
+  name: cordoned-kubernetes-worker-node
+  labels:
+    name: cordoned-kubernetes-worker-node
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      # Resolve the node hosting the target application's pod(s)
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list"]
+      # Cordon/uncordon acts on the (cluster-scoped) Node object: get/list to
+      # read the node's current spec.unschedulable state, patch to cordon it
+      # and later restore that captured state
+      - apiGroups: [""]
+        resources: ["nodes"]
+        verbs: ["get", "list", "patch"]
+      # Performs CRUD operations on the events inside chaosengine and chaosresult
+      - apiGroups: [""]
+        resources: ["events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      # for creation, status polling and deletion of litmus chaos resources used within a chaos workflow
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target pod(s) in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        NODE_NAME=$(kubectl get pod -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].spec.nodeName}')
+        if [ -z "$NODE_NAME" ]; then
+          echo "no pod found matching label ${APP_LABEL} in ${APP_NAMESPACE} (or pod not yet scheduled to a node)" >&2
+          exit 1
+        fi
+        echo "Target node=${NODE_NAME}"
+
+        # Capture original schedulability so revert restores the true prior
+        # state instead of blindly uncordoning (the node may have already
+        # been cordoned for maintenance before this fault ran)
+        ORIG_UNSCHEDULABLE=$(kubectl get node "${NODE_NAME}" -o jsonpath='{.spec.unschedulable}')
+        echo "Original node spec.unschedulable: ${ORIG_UNSCHEDULABLE:-<false/unset>}"
+
+        echo "Injecting: cordoning node ${NODE_NAME}"
+        kubectl cordon "${NODE_NAME}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        if [ "$ORIG_UNSCHEDULABLE" = "true" ]; then
+          echo "Node ${NODE_NAME} was already cordoned before injection; leaving it cordoned"
+        else
+          echo "Reverting: uncordoning node ${NODE_NAME}"
+          kubectl uncordon "${NODE_NAME}"
+        fi
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        # Not consumed directly by this fault's node-resolution logic (the
+        # target node is located via the pod's spec.nodeName, not via the
+        # owning workload's kind), but declared for consistency with the
+        # chaos-operator's ChaosEngine.spec.appinfo -> env injection contract
+        # shared by every first-class fault in this chart.
+        value: "deployment"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: cordoned-kubernetes-worker-node
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

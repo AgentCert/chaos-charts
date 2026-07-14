@@ -1,0 +1,47 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: failing-name-resolution-kubernetes-workload-dns-policy
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Patches a workload's pod template dnsPolicy/dnsConfig to point at an
+      unreachable DNS server, breaking outgoing name resolution, then
+      restores the original DNS configuration. Mirrors ITBench SRE scenario
+      "failing-name-resolution-kubernetes-workload-dns-policy".
+spec:
+  displayName: Failing Name Resolution Kubernetes Workload DNS Policy
+  categoryDescription: |
+    Failing name resolution DNS policy fault disrupts a Kubernetes workload
+    by patching its pod template's dnsPolicy to "None" and pointing
+    dnsConfig.nameservers at a nonexistent/unreachable DNS server.
+    - Simulates a DNS misconfiguration that leaves the workload's own pods
+      Running/Ready while every outgoing service-name lookup fails.
+    - Tests whether an agent detects the resulting HighRequestErrorRate
+      alert, traces it to the malformed dnsPolicy/dnsConfig, and restores
+      normal name resolution.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

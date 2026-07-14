@@ -1,0 +1,128 @@
+fault: failing-name-resolution-kubernetes-workload-dns-policy
+version: 0.1.0
+description: >-
+  Patches a Deployment/StatefulSet's pod template dnsPolicy to "None" and
+  dnsConfig.nameservers to a deliberately unreachable DNS server, so the
+  workload can no longer resolve the names of the services it calls. Mirrors
+  ITBench SRE scenario 43 (failing-name-resolution-kubernetes-workload-dns-policy
+  against the otel-demo "frontend" Deployment).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod(s) remain Running/Ready but outgoing calls to dependent services fail"
+      - "Application logs show DNS resolution errors (e.g. 'getaddrinfo ENOTFOUND', 'no such host', 'Temporary failure in name resolution')"
+      - "HighRequestErrorRate alert fires for the affected service"
+      - "Deployment spec shows dnsPolicy: None with dnsConfig.nameservers pointing at an unreachable IP instead of the cluster DNS service"
+
+    goal: >
+      Patch a workload's pod template dnsPolicy/dnsConfig to point at a
+      nonexistent or unreachable DNS server to validate whether an agent
+      detects the resulting name-resolution failures (and consequent
+      HighRequestErrorRate alert), identifies the misconfigured DNS
+      policy in the Deployment spec, and restores normal name resolution.
+
+    remediation: >
+      Patch the Deployment/StatefulSet's pod template back to a working DNS
+      configuration (restore dnsPolicy to "ClusterFirst" and remove the
+      unreachable dnsConfig.nameservers entry, or `kubectl rollout undo` to
+      the prior revision), then verify the workload can resolve and reach
+      its dependent services again.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "List Deployments in the otel-demo namespace and identify the frontend Deployment reported in the alert."
+
+    - step: 3
+      action: "Get pod details"
+      detail: "Retrieve pod status for the frontend workload; note pods are Running/Ready despite errors, ruling out a crash-loop or probe failure."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; absence of scheduling/probe/image events points away from those causes and toward a spec-level misconfiguration."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the frontend Deployment's pod template spec and find dnsPolicy set to 'None' with dnsConfig.nameservers pointing at an unreachable IP (e.g. 10.255.255.1) instead of the cluster DNS service."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for HighRequestErrorRate correlated with the frontend service and its outbound calls to confirm the outage's blast radius."
+
+    - step: 7
+      action: "Patch or roll back the deployment"
+      detail: "Patch the pod template's dnsPolicy back to 'ClusterFirst' (removing the bad dnsConfig), or `kubectl rollout undo` the Deployment to the prior revision."
+
+    - step: 8
+      action: "Verify name resolution recovery"
+      detail: "Confirm the pod picks up the corrected DNS config, application logs stop showing resolution errors, and traffic/error-rate return to normal."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the otel-demo namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=otel-demo"
+      purpose: "Find the frontend Deployment reported in the alert."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Confirm frontend pods are Running/Ready despite the reported errors."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Check for probe/scheduling/image events that would point to a different root cause."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=frontend"
+      purpose: "Read the pod template spec and find the misconfigured dnsPolicy/dnsConfig."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(traces_span_metrics_calls_total{service_name=\"frontend\",status_code=\"STATUS_CODE_ERROR\"}[5m])'"
+      purpose: "Confirm elevated request error rate correlated with the frontend service's outbound calls."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=frontend patch={\"spec\":{\"template\":{\"spec\":{\"dnsPolicy\":\"ClusterFirst\",\"dnsConfig\":null}}}}"
+      purpose: "Restore the pod template's DNS policy so the workload can resolve service names again."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify replacement pods pick up the corrected DNS config and remain Running/Ready."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

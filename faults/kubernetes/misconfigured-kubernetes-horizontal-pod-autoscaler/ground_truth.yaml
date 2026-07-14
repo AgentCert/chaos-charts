@@ -1,0 +1,132 @@
+fault: misconfigured-kubernetes-horizontal-pod-autoscaler
+version: 0.1.0
+description: >-
+  Patches a HorizontalPodAutoscaler's CPU/memory utilization targets to
+  unrealistically low values so it scales up aggressively without ever
+  relieving load, then restores the original targets. Mirrors ITBench SRE
+  scenario 38 (fraud-detection/frontend/image-provider HPAs on otel-demo,
+  fault library index 11); the identical mechanism is also ITBench's one
+  FinOps scenario, evaluating unnecessary replica/cost churn instead of
+  availability.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "KubeHpaMaxedOut alert fires for the affected workload's autoscaler"
+      - "HPA status shows currentReplicas pinned at (or rapidly climbing toward) maxReplicas even under normal/low load"
+      - "kubectl describe hpa shows current CPU/memory utilization exceeding an implausibly low target (e.g. 20% CPU, 30% memory)"
+      - "Frequent SuccessfulRescale events / repeated scale-up actions with no corresponding drop in per-pod utilization"
+      - "Unusually high pod count and cluster resource consumption relative to actual traffic (cost impact for the FinOps framing of this same fault)"
+
+    goal: >
+      Patch a HorizontalPodAutoscaler's utilization targets to unrealistically
+      low values to validate whether an agent detects the resulting
+      over-aggressive autoscaling (KubeHpaMaxedOut / replicas maxed out
+      without relieving load) and restores the HPA's original, realistic
+      utilization targets — whether assessed as an availability/stability
+      issue (SRE) or as wasted spend from unnecessary replica churn (FinOps).
+
+    remediation: >
+      Inspect the HorizontalPodAutoscaler's spec (`kubectl get hpa -o yaml`),
+      identify the implausibly low averageUtilization targets, and patch
+      spec.metrics back to realistic values for the workload (e.g. via
+      `kubectl patch hpa` or `kubectl edit hpa`). Verify the replica count
+      settles back down to match actual load.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List HorizontalPodAutoscalers in target namespace"
+      detail: "List HPA objects in the application namespace and identify one whose replica count is maxed out or climbing without relief."
+
+    - step: 3
+      action: "Get HPA details"
+      detail: "Retrieve the HPA spec.metrics utilization targets and status; confirm the CPU/memory averageUtilization targets are implausibly low (e.g. 20%/30%)."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events / describe the HPA in the namespace to check for repeated SuccessfulRescale (scale-up) events."
+
+    - step: 5
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for the KubeHpaMaxedOut alert and current vs. max replica counts correlated with this HPA."
+
+    - step: 6
+      action: "Correct the HPA's utilization thresholds"
+      detail: "Patch the HPA's spec.metrics CPU/memory averageUtilization targets back to realistic values for the workload."
+
+    - step: 7
+      action: "Verify replica count stabilizes"
+      detail: "Re-list pods/HPA status to confirm the replica count settles down and stops climbing."
+
+    - step: 8
+      action: "Validate application health and cost"
+      detail: "Confirm the KubeHpaMaxedOut alert clears and resource/cost consumption returns to a level proportional to actual load."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=autoscaling/v2 kind=HorizontalPodAutoscaler namespace=<target-namespace>"
+      purpose: "Find the HPA whose replica count is maxed out or climbing without relief."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=autoscaling/v2 kind=HorizontalPodAutoscaler namespace=<target-namespace> name=<hpa-name>"
+      purpose: "Confirm the CPU/memory averageUtilization targets are implausibly low."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Check for repeated SuccessfulRescale events indicating continuous scale-up."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_horizontalpodautoscaler_status_current_replicas{namespace=\"<target-namespace>\"}'"
+      purpose: "Confirm KubeHpaMaxedOut / replica count pinned at maxReplicas."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=autoscaling/v2 kind=HorizontalPodAutoscaler namespace=<target-namespace> name=<hpa-name>"
+      purpose: "Restore the HPA's CPU/memory utilization targets to realistic values."
+      tool_available: true
+
+    - step: 7
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify the replica count stabilizes and stops climbing."
+      tool_available: true
+
+    - step: 8
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_horizontalpodautoscaler_status_current_replicas{namespace=\"<target-namespace>\"}'"
+      purpose: "Confirm replica count has settled to a level proportional to actual load."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 90
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 180
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

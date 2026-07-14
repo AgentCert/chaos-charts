@@ -1,0 +1,126 @@
+fault: valkey-workload-out-of-memory
+version: 0.1.0
+description: >-
+  Clamps the otel-demo valkey-cart container's memory limit/request to an
+  unrealistically low value, forcing it to be OOM-killed and enter
+  CrashLoopBackOff, then restores the original limit/request. Mirrors
+  ITBench SRE scenario 40 (valkey-cart OOM) and fault library index 28
+  (valkey-workload-out-of-memory).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "valkey-cart pod(s) in otel-demo show CrashLoopBackOff with a rapidly increasing restart count"
+      - "Container 'valkey-cart' last state is Terminated with reason OOMKilled, exitCode 137"
+      - "KubePodCrashLooping alert fires for otel-demo/valkey-cart"
+      - "cart / checkout services report connection errors or elevated latency talking to valkey-cart"
+
+    goal: >
+      Clamp the valkey-cart container's memory limit to an unrealistically
+      low value to reproduce an OOM kill / CrashLoopBackOff, validating
+      whether an agent detects the failure and restores the workload to a
+      healthy state.
+
+    remediation: >
+      Restore the valkey-cart Deployment's container memory limit/request to
+      a sane value (e.g. `kubectl rollout undo deployment/valkey-cart -n
+      otel-demo`, or patch resources.limits/requests.memory back), then
+      verify the pod stops crash-looping and reaches Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify the otel-demo application namespace."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "List pods in otel-demo and note valkey-cart is in CrashLoopBackOff with a high restart count."
+
+    - step: 3
+      action: "Get pod/container details"
+      detail: "Retrieve the valkey-cart pod status to confirm the container's last terminated reason is OOMKilled with exitCode 137."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in otel-demo; look for OOMKilling/Killing/BackOff events on the valkey-cart pod."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the valkey-cart Deployment spec and confirm the container's memory limit/request has been clamped far below its normal footprint."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for KubePodCrashLooping and container memory usage vs. limit for valkey-cart."
+
+    - step: 7
+      action: "Restore the memory limit"
+      detail: "Rollback the Deployment (or patch resources.limits/requests.memory back to a sane value) to remove the constrained memory ceiling."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm valkey-cart reaches Running/Ready and the restart count stops increasing."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the otel-demo namespace hosting valkey-cart."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Identify the valkey-cart pod(s) in CrashLoopBackOff with a high restart count."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Pod namespace=otel-demo name=<valkey-cart-pod>"
+      purpose: "Confirm the container's last state is Terminated with reason OOMKilled, exitCode 137."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Find OOMKilling/BackOff events correlated with the valkey-cart pod."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=valkey-cart"
+      purpose: "Read the Deployment spec and confirm the container's memory limit has been clamped to an unrealistically low value."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_container_status_restarts_total{namespace=\"otel-demo\",container=\"valkey-cart\"}'"
+      purpose: "Confirm the restart count for valkey-cart is climbing."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=otel-demo name=valkey-cart"
+      purpose: "Restore the previous revision to remove the constrained memory limit."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify valkey-cart reaches Running/Ready and restarts stop increasing."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

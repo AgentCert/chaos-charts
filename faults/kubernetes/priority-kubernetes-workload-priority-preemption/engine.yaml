@@ -1,0 +1,40 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: priority-preemption-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: priority-kubernetes-workload-priority-preemption-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: priority-kubernetes-workload-priority-preemption
+      spec:
+        components:
+          env:
+            # name/value of the temporary, higher-priority PriorityClass
+            - name: PRIORITY_CLASS_NAME
+              value: 'chaos-priority-preemption'
+            - name: PRIORITY_VALUE
+              value: '1000000'
+
+            # decoy/pressure workload used to force preemption
+            - name: DECOY_NAME
+              value: 'chaos-priority-preemption-decoy'
+            - name: DECOY_NAMESPACE
+              value: ''
+            - name: DECOY_IMAGE
+              value: 'registry.k8s.io/pause:3.9'
+            - name: DECOY_MEMORY_PERCENT
+              value: '85'
+            - name: DECOY_CPU_REQUEST
+              value: '100m'
+
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

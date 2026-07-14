@@ -1,0 +1,34 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: insufficient-resource-quota-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: insufficient-kubernetes-resource-quota-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: insufficient-kubernetes-resource-quota
+      spec:
+        components:
+          env:
+            # name of the ResourceQuota object to create/patch
+            - name: QUOTA_NAME
+              value: 'memory'
+            # underprovisioned hard limits
+            - name: QUOTA_HARD_REQUESTS_CPU
+              value: '10m'
+            - name: QUOTA_HARD_REQUESTS_MEMORY
+              value: '16Mi'
+            - name: QUOTA_HARD_LIMITS_CPU
+              value: '20m'
+            - name: QUOTA_HARD_LIMITS_MEMORY
+              value: '32Mi'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

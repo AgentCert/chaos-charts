@@ -1,0 +1,52 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: priority-kubernetes-workload-priority-preemption
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Creates a temporary, higher-priority PriorityClass and a decoy/pressure
+      Deployment to force the scheduler to preempt a lower-priority target
+      pod via resource pressure, then removes both. Mirrors ITBench SRE
+      scenario "priority-kubernetes-workload-priority-preemption".
+spec:
+  displayName: Priority Kubernetes Workload Priority Preemption
+  categoryDescription: |
+    Priority preemption fault disrupts a Kubernetes workload not by deleting
+    it directly, but by introducing a higher-priority competing workload that
+    starves its node of resources.
+    - Creates a cluster-scoped PriorityClass with a value higher than the
+      target's (default) priority.
+    - Creates a decoy/pressure Deployment using that PriorityClass, pinned to
+      the target's node and sized to consume most of its allocatable memory.
+    - The Kubernetes scheduler preempts (evicts) the lower-priority target
+      pod to make room; its replacement is left Pending with a
+      FailedScheduling/Preempted event until the decoy is removed.
+    - Tests whether an agent can distinguish resource-pressure-induced
+      preemption from a direct pod-delete or crash, and correctly identifies
+      and removes the offending PriorityClass/decoy workload.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

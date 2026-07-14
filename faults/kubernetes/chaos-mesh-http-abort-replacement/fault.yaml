@@ -1,0 +1,151 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    LitmusChaos-native approximation of Chaos Mesh's HTTPChaos "abort" action
+    (ITBench SRE scenario 27: aborted POST requests to OpenTelemetry Demo's
+    `quote` service, port 8080). Chaos Mesh intercepts traffic at L7 inside
+    the pod's network namespace and aborts only requests matching a method/
+    path; LitmusChaos has no equivalent HTTP-proxy primitive, so this fault
+    instead creates a NetworkPolicy that denies L3/L4 ingress on the target
+    port only (leaving any other ports the workload exposes reachable), then
+    deletes it to restore connectivity. This is a coarser approximation: it
+    drops ALL traffic to the port (not just POST requests) -- see the
+    ground_truth.yaml goal/remediation for the documented deviation.
+kind: ChaosExperiment
+metadata:
+  name: chaos-mesh-http-abort-replacement
+  labels:
+    name: chaos-mesh-http-abort-replacement
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list"]
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["networkpolicies"]
+        verbs: ["create", "get", "list", "delete"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        # APP_LABEL is a single "key=value" selector (the otel-demo convention
+        # is 'opentelemetry.io/name=<component>') -- split it to build the
+        # NetworkPolicy's podSelector so it targets exactly the pods backing
+        # ${TARGET}, same pattern as ingress-port-blocking-network-policy.
+        LABEL_KEY=${APP_LABEL%%=*}
+        LABEL_VALUE=${APP_LABEL#*=}
+        NETPOL_NAME=${NETPOL_NAME:-${TARGET}-http-abort-fault}
+
+        # Discover every containerPort the target pod(s) expose so we deny
+        # ingress on TARGET_PORT only and re-allow every other port -- this
+        # keeps the fault genuinely "port-scoped" (mirroring Chaos Mesh
+        # HTTPChaos's port-specific abort) rather than a blanket deny-all.
+        ALL_PORTS=$(kubectl get pods -n "${APP_NAMESPACE}" -l "${APP_LABEL}" \
+          -o jsonpath='{.items[0].spec.containers[*].ports[*].containerPort}' 2>/dev/null || true)
+        OTHER_PORTS=""
+        for p in $ALL_PORTS; do
+          if [ "$p" != "${TARGET_PORT}" ]; then
+            OTHER_PORTS="${OTHER_PORTS} ${p}"
+          fi
+        done
+        echo "Discovered container ports=[${ALL_PORTS:-none}] keeping-open=[${OTHER_PORTS:-none}] blocking=${TARGET_PORT}/${TARGET_PROTOCOL}"
+
+        # NOTE: the embedded newlines below are indented as (8-space YAML
+        # block-scalar baseline + desired script indentation), because this
+        # whole args script is itself a YAML block literal: every physical
+        # line -- including continuation lines inside this quoted string --
+        # must keep at least the block's 8-space baseline or YAML will
+        # think the literal block has ended. Only the 8 baseline spaces are
+        # stripped when the script is extracted, so what's left is exactly
+        # 2/4/6/8 spaces of real indentation, making "ingress:" a sibling of
+        # policyTypes: in the final NetworkPolicy manifest below.
+        if [ -z "$(echo "$OTHER_PORTS" | tr -d '[:space:]')" ]; then
+          INGRESS_BLOCK="  ingress: []"
+        else
+          PORTS_LIST=""
+          for p in $OTHER_PORTS; do
+            PORTS_LIST="${PORTS_LIST}
+              - protocol: TCP
+                port: ${p}"
+          done
+          INGRESS_BLOCK="  ingress:
+            - ports:${PORTS_LIST}"
+        fi
+
+        echo "Injecting: NetworkPolicy ${NETPOL_NAME} denies ingress on port ${TARGET_PORT}/${TARGET_PROTOCOL} to ${LABEL_KEY}=${LABEL_VALUE} in ${APP_NAMESPACE} (approximates Chaos Mesh HTTPChaos abort=true on the same port)"
+        cat <<EOF | kubectl apply -f -
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: ${NETPOL_NAME}
+          namespace: ${APP_NAMESPACE}
+          labels:
+            litmuschaos.io/fault: chaos-mesh-http-abort-replacement
+        spec:
+          podSelector:
+            matchLabels:
+              ${LABEL_KEY}: "${LABEL_VALUE}"
+          policyTypes:
+            - Ingress
+        ${INGRESS_BLOCK}
+        EOF
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: deleting NetworkPolicy ${NETPOL_NAME}"
+        kubectl delete networkpolicy -n "${APP_NAMESPACE}" "${NETPOL_NAME}" --ignore-not-found
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: "otel-demo"
+      - name: APP_LABEL
+        value: "opentelemetry.io/name=quote"
+      - name: APP_KIND
+        value: "deployment"
+
+      # port to deny ingress on -- matches ITBench scenario 27's Chaos Mesh
+      # HTTPChaos target (otel-demo `quote` service, port 8080)
+      - name: TARGET_PORT
+        value: "8080"
+      - name: TARGET_PROTOCOL
+        value: "TCP"
+
+      # name of the NetworkPolicy this fault creates; defaults to
+      # "<target>-http-abort-fault" if left blank, so it never collides
+      # with a pre-existing, legitimately-owned NetworkPolicy
+      - name: NETPOL_NAME
+        value: ""
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: chaos-mesh-http-abort-replacement
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

@@ -124,3 +124,72 @@ faults:
   - name: nonexistent-kubernetes-workload-persistent-volume-claim
     CSV: nonexistent-kubernetes-workload-persistent-volume-claim.chartserviceversion.yaml
     desc: "nonexistent-kubernetes-workload-persistent-volume-claim"
+  - name: opentelemetry-demo-feature-flag
+    CSV: opentelemetry-demo-feature-flag.chartserviceversion.yaml
+    desc: "opentelemetry-demo-feature-flag"
+  - name: unsupported-architecture-kubernetes-workload-container-image
+    CSV: unsupported-architecture-kubernetes-workload-container-image.chartserviceversion.yaml
+    desc: "unsupported-architecture-kubernetes-workload-container-image"
+  - name: insufficient-kubernetes-resource-quota
+    CSV: insufficient-kubernetes-resource-quota.chartserviceversion.yaml
+    desc: "insufficient-kubernetes-resource-quota"
+  - name: crashing-kubernetes-workload-init-container
+    CSV: crashing-kubernetes-workload-init-container.chartserviceversion.yaml
+    desc: "crashing-kubernetes-workload-init-container"
+  - name: modified-kubernetes-workload-container-environment-variable
+    CSV: modified-kubernetes-workload-container-environment-variable.chartserviceversion.yaml
+    desc: "modified-kubernetes-workload-container-environment-variable"
+  - name: ingress-port-blocking-network-policy
+    CSV: ingress-port-blocking-network-policy.chartserviceversion.yaml
+    desc: "ingress-port-blocking-network-policy"
+  - name: nonexistent-kubernetes-workload-node
+    CSV: nonexistent-kubernetes-workload-node.chartserviceversion.yaml
+    desc: "nonexistent-kubernetes-workload-node"
+  - name: valkey-workload-changed-password
+    CSV: valkey-workload-changed-password.chartserviceversion.yaml
+    desc: "valkey-workload-changed-password"
+  - name: misconfigured-kubernetes-horizontal-pod-autoscaler
+    CSV: misconfigured-kubernetes-horizontal-pod-autoscaler.chartserviceversion.yaml
+    desc: "misconfigured-kubernetes-horizontal-pod-autoscaler"
+  - name: cordoned-kubernetes-worker-node
+    CSV: cordoned-kubernetes-worker-node.chartserviceversion.yaml
+    desc: "cordoned-kubernetes-worker-node"
+  - name: valkey-workload-out-of-memory
+    CSV: valkey-workload-out-of-memory.chartserviceversion.yaml
+    desc: "valkey-workload-out-of-memory"
+  - name: unassigned-kubernetes-workload-container-resource-limits
+    CSV: unassigned-kubernetes-workload-container-resource-limits.chartserviceversion.yaml
+    desc: "unassigned-kubernetes-workload-container-resource-limits"
+  - name: priority-kubernetes-workload-priority-preemption
+    CSV: priority-kubernetes-workload-priority-preemption.chartserviceversion.yaml
+    desc: "priority-kubernetes-workload-priority-preemption"
+  - name: failing-name-resolution-kubernetes-workload-dns-policy
+    CSV: failing-name-resolution-kubernetes-workload-dns-policy.chartserviceversion.yaml
+    desc: "failing-name-resolution-kubernetes-workload-dns-policy"
+  - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+    CSV: unschedulable-kubernetes-workload-pod-anti-affinity-rule.chartserviceversion.yaml
+    desc: "unschedulable-kubernetes-workload-pod-anti-affinity-rule"
+  - name: hanging-kubernetes-workload-init-container
+    CSV: hanging-kubernetes-workload-init-container.chartserviceversion.yaml
+    desc: "hanging-kubernetes-workload-init-container"
+  - name: insufficient-kubernetes-workload-container-resources
+    CSV: insufficient-kubernetes-workload-container-resources.chartserviceversion.yaml
+    desc: "insufficient-kubernetes-workload-container-resources"
+  - name: kubernetes-api-server-request-surge
+    CSV: kubernetes-api-server-request-surge.chartserviceversion.yaml
+    desc: "kubernetes-api-server-request-surge"
+  - name: invalid-kubernetes-workload-container-command
+    CSV: invalid-kubernetes-workload-container-command.chartserviceversion.yaml
+    desc: "invalid-kubernetes-workload-container-command"
+  - name: deleted-kubernetes-service
+    CSV: deleted-kubernetes-service.chartserviceversion.yaml
+    desc: "deleted-kubernetes-service"
+  - name: chaos-mesh-pod-failure-replacement
+    CSV: chaos-mesh-pod-failure-replacement.chartserviceversion.yaml
+    desc: "chaos-mesh-pod-failure-replacement"
+  - name: chaos-mesh-http-body-tamper-replacement
+    CSV: chaos-mesh-http-body-tamper-replacement.chartserviceversion.yaml
+    desc: "chaos-mesh-http-body-tamper-replacement"
+  - name: chaos-mesh-http-abort-replacement
+    CSV: chaos-mesh-http-abort-replacement.chartserviceversion.yaml
+    desc: "chaos-mesh-http-abort-replacement"

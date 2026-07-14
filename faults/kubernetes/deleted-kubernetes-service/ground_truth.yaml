@@ -1,0 +1,124 @@
+fault: deleted-kubernetes-service
+version: 0.1.0
+description: >-
+  Deletes the Service object fronting a Kubernetes workload, preventing other
+  workloads from resolving/routing to it via its service name, then recreates
+  the Service from a captured manifest. Mirrors ITBench SRE scenario 114
+  (deleted-kubernetes-service against otel-demo product-catalog).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "The target Service object no longer exists (`kubectl get svc` returns NotFound)"
+      - "DNS lookups for <service>.<namespace>.svc.cluster.local fail for upstream callers"
+      - "Upstream callers receive connection refused / no route to host / name resolution errors"
+      - "HighRequestErrorRate alert fires for callers of the now-unreachable service"
+      - "The backing Deployment's pods are still Running/Ready — this is a networking-layer outage, not a pod-health outage"
+
+    goal: >
+      Delete a workload's Service object to validate whether an agent detects
+      the resulting loss of in-cluster routing/DNS resolution and recreates
+      the missing Service.
+
+    remediation: >
+      Recreate the Service (e.g. `kubectl apply` a manifest with the correct
+      selector and ports, or `helm upgrade`/re-sync from source) so Endpoints
+      repopulate and traffic resumes routing to the workload's pods.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List services in target namespace"
+      detail: "List Services in the application namespace and note that the expected service is missing entirely."
+
+    - step: 3
+      action: "List pods in target namespace"
+      detail: "Confirm the backing Deployment's pods are still Running/Ready, ruling out a pod-health issue and pointing to a missing Service/routing problem."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace to check for a recent Service deletion or downstream 'endpoints not found' / DNS resolution errors."
+
+    - step: 5
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for HighRequestErrorRate correlated with callers of the missing service."
+
+    - step: 6
+      action: "Inspect the backing workload"
+      detail: "Retrieve the Deployment's pod template labels and container ports to determine the selector/ports the recreated Service must use."
+
+    - step: 7
+      action: "Recreate the Service"
+      detail: "Apply a Service manifest (matching the workload's selector and ports) to restore in-cluster routing."
+
+    - step: 8
+      action: "Verify recovery"
+      detail: "Confirm the Service exists again, its Endpoints are populated with the workload's pod IPs, and traffic resumes."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=v1 kind=Service namespace=<target-namespace>"
+      purpose: "Discover that the expected Service object is missing."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Confirm the backing pods are still Running/Ready, isolating the issue to the missing Service."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Look for a Service deletion event or downstream connection/DNS failures."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(traces_span_metrics_calls_total{status_code=\"STATUS_CODE_ERROR\",namespace=\"<target-namespace>\"}[5m])'"
+      purpose: "Confirm HighRequestErrorRate for callers of the missing service."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Read the workload's pod template labels and container ports needed to recreate the Service."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Create"
+      command: "Resources: Create namespace=<target-namespace> apiVersion=v1 kind=Service manifest=<service-manifest>"
+      purpose: "Recreate the missing Service with the correct selector and ports."
+      tool_available: true
+
+    - step: 8
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Endpoints namespace=<target-namespace> name=<service-name>"
+      purpose: "Verify Endpoints are populated with the workload's pod IPs, confirming traffic can route again."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

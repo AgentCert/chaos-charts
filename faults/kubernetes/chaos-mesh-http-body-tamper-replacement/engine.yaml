@@ -1,0 +1,40 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: chaos-mesh-http-body-tamper-replacement-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: chaos-mesh-http-body-tamper-replacement-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: chaos-mesh-http-body-tamper-replacement
+      spec:
+        components:
+          env:
+            # Service fronting the target workload; if unset, resolved via applabel
+            - name: SERVICE_NAME
+              value: ''
+            # matches ITBench's HTTPChaos selector (port: 8080)
+            - name: SERVICE_PORT
+              value: '8080'
+            # best-effort guess at the email service's real HTTP endpoint
+            - name: REQUEST_PATH
+              value: '/send_order_confirmation'
+            - name: REQUEST_METHOD
+              value: 'POST'
+            # exact tampered payload from ITBench scenario 26's httpChaos patch.body.value
+            - name: TAMPERED_BODY
+              value: "{'email': '12345', 'order': 'error body'}"
+            - name: REQUEST_INTERVAL_SECONDS
+              value: '5'
+            - name: GENERATOR_IMAGE
+              value: 'curlimages/curl:8.10.1'
+            # matches ITBench scenario 26's own httpChaos duration fixture (55s)
+            - name: TOTAL_CHAOS_DURATION
+              value: '55'

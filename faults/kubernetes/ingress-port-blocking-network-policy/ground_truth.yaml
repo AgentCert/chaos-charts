@@ -1,0 +1,126 @@
+fault: ingress-port-blocking-network-policy
+version: 0.1.0
+description: >-
+  Creates a NetworkPolicy that denies all ingress traffic to a workload's
+  pods, then deletes it. Mirrors ITBench SRE fault library index 6
+  "ingress-port-blocking-network-policy" (scenario 31: all ingress traffic
+  blocked on OpenTelemetry Demo's `frontend` service).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "An unfamiliar NetworkPolicy exists in the namespace, denying all ingress to the target workload's pods"
+      - "Target pods remain Running/Ready (no pod-level health signal) — only network reachability is affected, not pod health"
+      - "Callers of the service see connection timeouts / no route to host / increased latency and errors"
+      - "HighRequestErrorRate and/or NoRequestsReceived alerts fire for the service"
+      - "kubectl -n <namespace> get networkpolicy shows a policy with an empty ingress rule list and policyTypes: [Ingress] selecting the workload's pods"
+
+    goal: >
+      Create a NetworkPolicy that blocks all ingress traffic to a workload's
+      pods to validate whether an agent detects the resulting connectivity
+      outage, locates the offending NetworkPolicy, and removes (or corrects)
+      it to restore traffic.
+
+    remediation: >
+      Identify the offending NetworkPolicy (`kubectl -n <namespace> get
+      networkpolicy`), inspect it to confirm it denies ingress to the
+      affected workload, then delete it (or edit it to allow the required
+      ingress rules) so traffic resumes flowing to the pods.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments and pods in target namespace"
+      detail: "Identify the workload (e.g. frontend) whose callers are reporting errors, and confirm its pods are Running/Ready."
+
+    - step: 3
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace for connectivity-related signals (NetworkPolicy creation is not always eventful, so absence of pod-crash events is itself a clue)."
+
+    - step: 4
+      action: "List NetworkPolicies in the namespace"
+      detail: "Run `kubectl -n <namespace> get networkpolicy` to spot an unexpected, recently-created deny-all policy."
+
+    - step: 5
+      action: "Inspect the suspicious NetworkPolicy"
+      detail: "Get the NetworkPolicy's spec and confirm its podSelector matches the affected workload, policyTypes includes Ingress, and the ingress rule list is empty (deny-all)."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for HighRequestErrorRate / NoRequestsReceived correlated with this service to corroborate the connectivity impact."
+
+    - step: 7
+      action: "Delete the offending NetworkPolicy"
+      detail: "Remove the deny-all NetworkPolicy (or patch it to permit the required ingress) so traffic can reach the pods again."
+
+    - step: 8
+      action: "Verify traffic recovery"
+      detail: "Confirm the NetworkPolicy is gone and the service is receiving/serving requests again via a health check or Prometheus query."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Confirm the target workload's pods are Running/Ready despite reported errors, pointing away from a pod-health issue."
+      tool_available: true
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Check for any recent events in the namespace; absence of crash/restart events narrows the cause toward networking."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=networking.k8s.io/v1 kind=NetworkPolicy namespace=<target-namespace>"
+      purpose: "Enumerate NetworkPolicies in the namespace to spot an unexpected deny-all policy."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=networking.k8s.io/v1 kind=NetworkPolicy namespace=<target-namespace> name=<networkpolicy-name>"
+      purpose: "Confirm the policy selects the affected workload's pods, sets policyTypes=[Ingress], and has an empty ingress rule list."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(traces_span_metrics_calls_total{service_name=\"<service-name>\",status_code=\"STATUS_CODE_ERROR\"}[5m])'"
+      purpose: "Confirm HighRequestErrorRate / NoRequestsReceived signals correlated with the affected service."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=networking.k8s.io/v1 kind=NetworkPolicy namespace=<target-namespace> name=<networkpolicy-name>"
+      purpose: "Remove the deny-all NetworkPolicy so ingress traffic to the workload is restored."
+      tool_available: true
+
+    - step: 8
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='up{namespace=\"<target-namespace>\"}'"
+      purpose: "Verify the service is reachable and serving traffic again after the policy is removed."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

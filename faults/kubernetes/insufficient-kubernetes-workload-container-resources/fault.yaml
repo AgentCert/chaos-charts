@@ -1,0 +1,104 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Patches a container's resources.requests/limits down to unrealistically
+    low values (default memory: 8Mi), causing the container to repeatedly
+    OOMKill or fail to start (CrashLoopBackOff), then restores the original
+    resources block. Mirrors ITBench SRE scenario 46
+    (insufficient-kubernetes-workload-container-resources, fault library
+    index 8), which targets otel-demo's "postgresql" component. NOTE: this
+    assumes the postgresql subchart is enabled in ACE's otel-demo deployment
+    (its upstream chart default), which was not independently verified in
+    this session.
+kind: ChaosExperiment
+metadata:
+  name: insufficient-kubernetes-workload-container-resources
+  labels:
+    name: insufficient-kubernetes-workload-container-resources
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        echo "Target=${TARGET} container=${CONTAINER}"
+
+        # Capture original resources block — empty string means none was set
+        ORIG_RESOURCES=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].resources}")
+        echo "Original resources: ${ORIG_RESOURCES:-<none>}"
+
+        FAULT_RESOURCES="{\"limits\":{\"cpu\":\"${FAULT_CPU_LIMIT}\",\"memory\":\"${FAULT_MEMORY_LIMIT}\"},\"requests\":{\"cpu\":\"${FAULT_CPU_REQUEST}\",\"memory\":\"${FAULT_MEMORY_REQUEST}\"}}"
+        echo "Injecting: patching ${CONTAINER} resources to insufficient values (requests=${FAULT_CPU_REQUEST}/${FAULT_MEMORY_REQUEST} limits=${FAULT_CPU_LIMIT}/${FAULT_MEMORY_LIMIT})"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":${FAULT_RESOURCES}}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (strategic-merge-patch semantics); otherwise restore original
+        if [ -z "$ORIG_RESOURCES" ]; then
+          RESOURCES_JSON="null"
+        else
+          RESOURCES_JSON="$ORIG_RESOURCES"
+        fi
+        echo "Reverting resources to original"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":${RESOURCES_JSON}}]}}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container name to patch; defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # insufficient resource values matching ITBench's own fixture (unrealistically low memory)
+      - name: FAULT_MEMORY_REQUEST
+        value: "8Mi"
+      - name: FAULT_MEMORY_LIMIT
+        value: "8Mi"
+      - name: FAULT_CPU_REQUEST
+        value: "1m"
+      - name: FAULT_CPU_LIMIT
+        value: "1m"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: insufficient-kubernetes-workload-container-resources
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

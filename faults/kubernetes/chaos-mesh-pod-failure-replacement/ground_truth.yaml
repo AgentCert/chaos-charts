@@ -1,0 +1,147 @@
+fault: chaos-mesh-pod-failure-replacement
+version: 0.1.0
+description: >-
+  Freezes the otel-demo `checkout` service's main process in place (SIGSTOP,
+  later SIGCONT) as a LitmusChaos-native replacement for Chaos Mesh's
+  PodChaos "pod-failure" action. Mirrors ITBench SRE scenario 18
+  ("This scenario simulates OpenTelemetry Demo's `checkout` service
+  experiencing a failure"), whose original disruption is a Chaos Mesh
+  Schedule/PodChaos (action=pod-failure, mode=all,
+  selector app.kubernetes.io/component=checkout, namespace otel-demo) --
+  a resource kind this LitmusChaos-only ACE deployment cannot run directly.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "checkout Pod still reports Running (and Ready, if any readiness probe existed) in `kubectl get pods` -- the freeze does not crash, delete, or restart the container"
+      - "checkout stops responding to gRPC calls from frontend/cart/other callers; callers experience timeouts rather than immediate connection-refused errors, since the kernel may still accept TCP connections even though the frozen application never replies"
+      - "checkout's own CPU usage drops to ~0 immediately after injection (a SIGSTOP'd process cannot consume CPU) while its restart count stays at 0"
+      - "Elevated request latency / error rate or timeout metrics for checkout-dependent operations (e.g. cart checkout flow) in Prometheus, and increased trace error spans/timeouts pointing at checkout"
+      - "`kubectl describe pod` on the checkout pod shows an unexpected extra ephemeral container named 'chaos-freeze-*' that was not part of the original Deployment spec"
+
+    goal: >
+      Freeze checkout's single running process via SIGSTOP/SIGCONT, without
+      deleting the pod or killing/restarting the container, to approximate
+      ITBench's Chaos Mesh PodChaos "pod-failure" action using
+      LitmusChaos-native primitives, and validate whether an agent can detect
+      a functionally dead but structurally healthy-looking Pod and take
+      corrective action.
+
+    remediation: >
+      Because the process is only paused (not crashed), this fault
+      self-reverts automatically via SIGCONT once TOTAL_CHAOS_DURATION
+      elapses, with no intervention required. For a faster recovery through
+      typical cluster-management tool surfaces (which generally expose
+      resource get/patch/scale/delete operations rather than raw
+      process-signal or ephemeral-container capabilities), the appropriate
+      remediation is to delete the affected checkout Pod (or roll out/restart
+      its Deployment) so the ReplicaSet controller replaces it with a fresh,
+      responsive instance immediately.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify otel-demo as the namespace hosting the affected application."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "List Pods in otel-demo; note that the checkout pod still shows Running (possibly Ready) despite the reported failure."
+
+    - step: 3
+      action: "Get checkout pod details"
+      detail: "Retrieve the checkout Pod spec/status; notice an unexpected extra ephemeral container (name prefixed 'chaos-freeze-') and that the main container's restart count is unchanged (ruling out a crash/OOM)."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; absence of Killing/BackOff/OOMKilling events (ruling out a crash loop) alongside a 'Created ephemeral container' event corroborates a deliberate freeze rather than an application crash."
+
+    - step: 5
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query request latency/error-rate/timeout metrics for the checkout service and its callers to confirm it is not actually serving traffic despite looking healthy."
+
+    - step: 6
+      action: "Correlate symptoms"
+      detail: "Conclude checkout's process is hung/unresponsive (not crashed, not evicted, not deleted) based on the combination of a healthy-looking Pod status plus failing request-level metrics."
+
+    - step: 7
+      action: "Force pod replacement"
+      detail: "Delete the affected checkout Pod (or restart its Deployment) so the ReplicaSet controller replaces it with a fresh, responsive instance."
+
+    - step: 8
+      action: "Verify recovery"
+      detail: "Re-list pods to confirm the new checkout pod reaches Running/Ready, and re-query Prometheus to confirm checkout's request latency/error-rate metrics have returned to normal."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the otel-demo namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Identify the checkout pod; note it still shows Running/Ready."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Pod namespace=otel-demo name=<checkout-pod>"
+      purpose: "Inspect containerStatuses/ephemeralContainerStatuses; spot the unexpected ephemeral debug container and unchanged restart count."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Confirm the absence of crash/OOM events and presence of a 'Created ephemeral container' event."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='histogram_quantile(0.95, sum(rate(http_server_duration_seconds_bucket{service_name=\"checkout\"}[5m])) by (le))'"
+      purpose: "Confirm checkout's request latency/error rate is abnormal despite the Pod looking healthy."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=v1 kind=Pod namespace=otel-demo name=<checkout-pod>"
+      purpose: "Force the ReplicaSet controller to replace the frozen pod with a fresh, responsive instance."
+      tool_available: true
+
+    - step: 7
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify the replacement checkout pod reaches Running/Ready."
+      tool_available: true
+
+    - step: 8
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='histogram_quantile(0.95, sum(rate(http_server_duration_seconds_bucket{service_name=\"checkout\"}[5m])) by (le))'"
+      purpose: "Confirm checkout's request latency/error rate has recovered."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: >-
+        Max time from fault injection to first correct symptom identification.
+        Set slightly higher than a crash/probe-failure fault because this
+        target has no configured liveness/readiness probe, so pod
+        status/phase alone will not reveal the fault -- the agent must
+        correlate healthy-looking pod status with failing request-level
+        metrics.
+      threshold: 90
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 180
+      unit: "seconds"
+
+    max_tool_calls:
+      description: >-
+        Max total tool invocations allowed (including retries). Set higher
+        than simpler faults (ITBench tags this scenario "complexity: high")
+        to allow for the extra correlation step between pod status and
+        request-level metrics.
+      threshold: 16
+      unit: "count"

@@ -1,0 +1,28 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: misconfigured-hpa-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'horizontalpodautoscaler'
+  chaosServiceAccount: misconfigured-kubernetes-horizontal-pod-autoscaler-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: misconfigured-kubernetes-horizontal-pod-autoscaler
+      spec:
+        components:
+          env:
+            # misconfigured CPU utilization target (deliberately too low)
+            - name: CPU_UTILIZATION_PERCENT
+              value: '20'
+            # misconfigured memory utilization target (deliberately too low)
+            - name: MEMORY_UTILIZATION_PERCENT
+              value: '30'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

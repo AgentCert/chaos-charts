@@ -1,0 +1,25 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: nonexistent-kubernetes-workload-node-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: nonexistent-kubernetes-workload-node-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: nonexistent-kubernetes-workload-node
+      spec:
+        components:
+          env:
+            # node name that does not exist in the cluster
+            - name: NONEXISTENT_NODE_NAME
+              value: 'nonexistent-node-fault'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

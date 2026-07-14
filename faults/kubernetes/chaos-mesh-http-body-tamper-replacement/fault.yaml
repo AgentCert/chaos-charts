@@ -1,0 +1,159 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Mirrors ITBench SRE scenario 26 (fault library index 26), which uses Chaos
+    Mesh's HTTPChaos to transparently proxy traffic through the chaos-daemon
+    and rewrite the POST body of real checkout->email requests in the
+    OpenTelemetry Demo app to `{'email': '12345', 'order': 'error body'}`.
+
+    HONEST LIMITATION: ACE's cluster provisions no service mesh and no Chaos
+    Mesh chaos-daemon (see the bookinfo chart's README: this cluster stack
+    does not provision Istio, and otel-demo is likewise not under any mesh),
+    so there is no transparent-proxy layer available to intercept and rewrite
+    HTTP bodies in flight. Genuinely faithful HTTP body tampering of real
+    application traffic is NOT achievable via plain kubectl/exec scripting,
+    and the OpenTelemetry Demo email service (a Ruby/Sinatra app) exposes no
+    config/env knob that would make it reject or mishandle a specific
+    previously-valid input shape on demand -- no such faithful config-based
+    approximation exists.
+
+    APPROXIMATION IMPLEMENTED: this experiment launches a short-lived pod that
+    directly sends synthetic HTTP requests, carrying ITBench's exact tampered
+    payload, straight at the target email Service on an interval. This
+    reproduces the same malformed-body handling failure signature (the
+    service receiving and choking on `{'email': '12345', 'order': 'error
+    body'}`) without needing a mesh/proxy layer -- but it does NOT intercept
+    or rewrite genuine in-flight checkout->email traffic the way Chaos Mesh's
+    HTTPChaos does; it only adds new synthetic malformed traffic alongside
+    the real traffic. Detection/remediation is designed around finding and
+    removing the rogue traffic-generator pod, which parallels ITBench's own
+    documented remediation for this scenario (pause/delete the Chaos Mesh
+    Schedule/HTTPChaos object) rather than changing the target application.
+kind: ChaosExperiment
+metadata:
+  name: chaos-mesh-http-body-tamper-replacement
+  labels:
+    name: chaos-mesh-http-body-tamper-replacement
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch", "create", "delete"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get"]
+      - apiGroups: [""]
+        resources: ["services"]
+        verbs: ["get", "list"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target workload=${TARGET}"
+
+        if [ -n "${SERVICE_NAME:-}" ]; then
+          SVC="$SERVICE_NAME"
+        else
+          SVC=$(kubectl get service -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        fi
+        if [ -z "$SVC" ]; then
+          echo "no Service found matching label ${APP_LABEL} in ${APP_NAMESPACE} (set SERVICE_NAME to override)" >&2
+          exit 1
+        fi
+        echo "Target service=${SVC} port=${SERVICE_PORT} path=${REQUEST_PATH}"
+
+        URL="http://${SVC}.${APP_NAMESPACE}.svc.cluster.local:${SERVICE_PORT}${REQUEST_PATH}"
+        GEN_POD="chaos-http-body-tamper-$(date +%s)"
+
+        echo "NOTE: ACE has no service mesh / Chaos Mesh transparent proxy, so"
+        echo "genuine in-flight tampering of real checkout->email traffic is not"
+        echo "reproducible via kubectl alone. Approximating by firing synthetic"
+        echo "requests carrying ITBench's exact tampered body directly at the"
+        echo "target service instead of intercepting real traffic in flight."
+
+        echo "Injecting: launching request-generator pod ${GEN_POD} -> ${URL}"
+        kubectl run "${GEN_POD}" -n "${APP_NAMESPACE}" \
+          --image="${GENERATOR_IMAGE}" \
+          --restart=Never \
+          --labels="chaos-injector=chaos-mesh-http-body-tamper-replacement" \
+          --env="TAMPER_URL=${URL}" \
+          --env="TAMPER_BODY=${TAMPERED_BODY}" \
+          --env="TAMPER_METHOD=${REQUEST_METHOD}" \
+          --env="TAMPER_INTERVAL=${REQUEST_INTERVAL_SECONDS}" \
+          --command -- /bin/sh -c 'while true; do curl -s -o /dev/null -w "%{http_code} " -X "$TAMPER_METHOD" -H "Content-Type: application/json" -d "$TAMPER_BODY" "$TAMPER_URL"; sleep "$TAMPER_INTERVAL"; done'
+
+        echo "Waiting for generator pod to become Ready"
+        kubectl wait -n "${APP_NAMESPACE}" "pod/${GEN_POD}" --for=condition=Ready --timeout=60s || true
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (tampered POST every ${REQUEST_INTERVAL_SECONDS}s)"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Recent generator log (HTTP status codes observed against ${SVC}):"
+        kubectl logs -n "${APP_NAMESPACE}" "${GEN_POD}" --tail=20 || true
+
+        echo "Reverting: no application state was ever modified (unlike a"
+        echo "config/patch fault) -- reverting simply means stopping the"
+        echo "synthetic tampered traffic by removing the generator pod."
+        kubectl delete pod "${GEN_POD}" -n "${APP_NAMESPACE}" --ignore-not-found --wait=false
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # Service fronting the target workload; if unset, resolved via APP_LABEL
+      - name: SERVICE_NAME
+        value: ""
+      # Matches ITBench's HTTPChaos selector (port: 8080)
+      - name: SERVICE_PORT
+        value: "8080"
+      # Best-effort guess at the email service's real HTTP endpoint (Ruby/Sinatra
+      # POST /send_order_confirmation); ITBench's HTTPChaos used path "*" since a
+      # transparent proxy matches any path -- override if the deployed chart's
+      # endpoint differs.
+      - name: REQUEST_PATH
+        value: "/send_order_confirmation"
+      - name: REQUEST_METHOD
+        value: "POST"
+      # Exact tampered payload from ITBench scenario 26's httpChaos patch.body.value
+      - name: TAMPERED_BODY
+        value: "{'email': '12345', 'order': 'error body'}"
+      - name: REQUEST_INTERVAL_SECONDS
+        value: "5"
+      - name: GENERATOR_IMAGE
+        value: "curlimages/curl:8.10.1"
+
+      # Matches ITBench scenario 26's own httpChaos duration fixture (55s)
+      - name: TOTAL_CHAOS_DURATION
+        value: "55"
+
+    labels:
+      name: chaos-mesh-http-body-tamper-replacement
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

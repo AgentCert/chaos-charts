@@ -1,0 +1,48 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: insufficient-kubernetes-resource-quota
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Creates or patches a namespace ResourceQuota with hard cpu/memory
+      limits too low for the workload to (re)schedule, then restores the
+      original quota (or deletes it if none existed). Mirrors ITBench SRE
+      scenario "insufficient-kubernetes-resource-quota".
+spec:
+  displayName: Insufficient Kubernetes Resource Quota
+  categoryDescription: |
+    Insufficient resource quota fault disrupts a Kubernetes namespace by
+    creating or tightening a ResourceQuota's hard cpu/memory limits so far
+    below the workload's real requirements that new pod admission fails.
+    - Simulates an operator/CI mistake that under-provisions a namespace
+      quota, or a quota that was correct until the workload grew.
+    - Tests whether an agent detects the resulting FailedCreate/'exceeded
+      quota' events and KubePodNotReady alert, attributes the failure to the
+      ResourceQuota rather than the workload spec, and raises or removes the
+      offending quota.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

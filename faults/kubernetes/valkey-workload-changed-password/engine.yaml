@@ -1,0 +1,34 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: valkey-workload-changed-password-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: valkey-workload-changed-password-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: valkey-workload-changed-password
+      spec:
+        components:
+          env:
+            # container whose command/args are forced to require a
+            # password; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # Secret name/key holding the Valkey password
+            - name: VALKEY_SECRET_NAME
+              value: 'valkey-credentials'
+            - name: VALKEY_SECRET_KEY
+              value: 'valkey-password'
+            # invalid password written into the Secret
+            - name: FAULT_PASSWORD
+              value: 'invalid_password'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

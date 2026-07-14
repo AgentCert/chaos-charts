@@ -1,0 +1,31 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: crashing-init-container-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: crashing-kubernetes-workload-init-container-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: crashing-kubernetes-workload-init-container
+      spec:
+        components:
+          env:
+            # distinctive name for the injected initContainer so revert can find it
+            - name: INIT_CONTAINER_NAME
+              value: 'chaos-crashing-init'
+            # small image used to run the bad script
+            - name: INIT_CONTAINER_IMAGE
+              value: 'busybox:1.36'
+            # the "bad script" that always fails, forcing Init:CrashLoopBackOff
+            - name: BAD_SCRIPT
+              value: "echo 'chaos: executing malformed startup script'; exit 1"
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

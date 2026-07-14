@@ -1,0 +1,22 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: deleted-kubernetes-service-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'service'
+  chaosServiceAccount: deleted-kubernetes-service-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: deleted-kubernetes-service
+      spec:
+        components:
+          env:
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

@@ -1,0 +1,136 @@
+fault: valkey-workload-changed-password
+version: 0.1.0
+description: >-
+  Changes the password used to authenticate to a Valkey (Redis-compatible)
+  workload by overwriting a Secret's password key and forcing the container
+  to require it, so dependent services can no longer authenticate. Mirrors
+  ITBench SRE fault library index 27 (valkey-workload-changed-password), as
+  exercised by ITBench SRE scenario 34 against OpenTelemetry Demo's
+  `valkey-cart` Deployment in the `otel-demo` namespace.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "HighRequestLatency alert fires for services on the cart/checkout path (frontend, cart, checkout)"
+      - "cart/checkout service logs show Valkey/Redis authentication errors (e.g. 'NOAUTH Authentication required' or 'WRONGPASS invalid username-password pair')"
+      - "valkey-cart pod restarts after its container command/args change to add --requirepass"
+      - "kubectl describe pod/deployment for valkey-cart shows a new --requirepass arg and a VALKEY_PASSWORD env var sourced from a valkey-credentials Secret"
+
+    goal: >
+      Overwrite a Valkey workload's authentication credential (via a Secret
+      plus a forced --requirepass container override) to validate whether an
+      agent detects the resulting authentication failures/latency increase
+      and restores connectivity for dependent services.
+
+    remediation: >
+      Restore the original credential by editing the `valkey-credentials`
+      Secret's `valkey-password` key back to the expected value
+      (`kubectl edit secret valkey-credentials -n otel-demo`), or roll back
+      the Deployment (`kubectl rollout undo`) to remove the injected
+      --requirepass override entirely; then verify dependent services (cart,
+      checkout) can reconnect without authentication errors and latency
+      returns to normal.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "List Deployments in the application namespace and note that valkey-cart recently restarted."
+
+    - step: 3
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace to check for a recent container spec change / restart on valkey-cart."
+
+    - step: 4
+      action: "Get valkey-cart deployment/pod details"
+      detail: "Retrieve the deployment spec to confirm the container now runs `valkey-server --requirepass` with a VALKEY_PASSWORD env var sourced from the valkey-credentials Secret."
+
+    - step: 5
+      action: "Check dependent service logs"
+      detail: "Inspect cart/checkout service logs for Valkey/Redis authentication errors (NOAUTH/WRONGPASS)."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for HighRequestLatency correlated with the cart/checkout services."
+
+    - step: 7
+      action: "Restore the credential or roll back the deployment"
+      detail: "Edit the valkey-credentials Secret's valkey-password key back to the expected value, or roll back the Deployment to remove the --requirepass override."
+
+    - step: 8
+      action: "Verify recovery"
+      detail: "Re-check dependent service logs/latency to confirm authentication succeeds and requests are served again."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application (otel-demo)."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=otel-demo"
+      purpose: "Find the valkey-cart Deployment and note recent restarts."
+      tool_available: true
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Check for a recent restart/spec-change event on the valkey-cart pod."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=valkey-cart"
+      purpose: "Confirm the container now runs with --requirepass and a VALKEY_PASSWORD env var from the valkey-credentials Secret."
+      tool_available: true
+
+    - step: 5
+      tool: "Pods: Log"
+      command: "Pods: Log namespace=otel-demo name=<cart-pod-name>"
+      purpose: "Find Valkey/Redis authentication errors (NOAUTH/WRONGPASS) in the dependent cart service's logs."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{namespace=\"otel-demo\"}[5m])) by (le, service_name))'"
+      purpose: "Confirm elevated request latency (HighRequestLatency) correlated with the cart/checkout services."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=v1 kind=Secret namespace=otel-demo name=valkey-credentials patch={stringData:{valkey-password:<original-value>}}"
+      purpose: "Restore the Secret's valkey-password key to its original value."
+      tool_available: true
+
+    - step: 8
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=otel-demo name=valkey-cart"
+      purpose: "Alternative remediation: undo the Deployment revision to remove the injected --requirepass override entirely."
+      tool_available: true
+
+    - step: 9
+      tool: "Pods: Log"
+      command: "Pods: Log namespace=otel-demo name=<cart-pod-name>"
+      purpose: "Verify authentication errors have stopped and the cart service is reconnecting successfully."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 150
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 16
+      unit: "count"

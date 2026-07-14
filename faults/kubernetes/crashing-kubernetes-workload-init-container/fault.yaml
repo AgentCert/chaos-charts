@@ -1,0 +1,109 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects an additional initContainer that runs a deliberately bad script
+    into a Deployment/StatefulSet's pod template, so the pod becomes stuck in
+    Init:CrashLoopBackOff and the main container never starts, then reverts
+    by removing only the injected initContainer. Mirrors ITBench SRE
+    scenario "crashing-kubernetes-workload-init-container" (fault library
+    index 2).
+kind: ChaosExperiment
+metadata:
+  name: crashing-kubernetes-workload-init-container
+  labels:
+    name: crashing-kubernetes-workload-init-container
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        # Capture how many initContainers already exist (0 means the field is
+        # absent/empty). Strategic-merge-patch merges initContainers by name
+        # (patchMergeKey=name, same additive convention used for volumeMounts
+        # in the nonexistent-pvc fault) and appends unmatched new entries to
+        # the end of the list, so this count also doubles as the index our
+        # injected initContainer will land at once appended.
+        ORIG_INIT_COUNT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath='{range .spec.template.spec.initContainers[*]}{.name}{"\n"}{end}' | (grep -c . || true))
+        echo "Target=${TARGET} existingInitContainers=${ORIG_INIT_COUNT}"
+
+        echo "Injecting: adding crashing initContainer '${INIT_CONTAINER_NAME}' (image=${INIT_CONTAINER_IMAGE})"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"initContainers\":[{\"name\":\"${INIT_CONTAINER_NAME}\",\"image\":\"${INIT_CONTAINER_IMAGE}\",\"command\":[\"/bin/sh\",\"-c\",\"${BAD_SCRIPT}\"]}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: strategic-merge-patch cannot delete a single item out of a
+        # keyed list (it can only add/merge entries), so unlike a scalar
+        # field (e.g. readinessProbe, where reverting to "no probe" is a
+        # simple null substitution) we must either null out the whole list
+        # (safe only if it was empty beforehand) or JSON-patch-remove just
+        # the one index we injected, leaving any pre-existing initContainers
+        # untouched.
+        if [ "${ORIG_INIT_COUNT}" -eq 0 ]; then
+          echo "Reverting: no initContainers existed originally, clearing the whole initContainers field"
+          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+            -p '{"spec":{"template":{"spec":{"initContainers":null}}}}'
+        else
+          echo "Reverting: removing only the injected initContainer at index ${ORIG_INIT_COUNT}"
+          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
+            -p "[{\"op\":\"remove\",\"path\":\"/spec/template/spec/initContainers/${ORIG_INIT_COUNT}\"}]"
+        fi
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: "otel-demo"
+      - name: APP_LABEL
+        value: "opentelemetry.io/name=recommendation"
+      - name: APP_KIND
+        value: "deployment"
+
+      # distinctive name for the injected initContainer so revert can find it
+      - name: INIT_CONTAINER_NAME
+        value: "chaos-crashing-init"
+
+      # small image used to run the bad script
+      - name: INIT_CONTAINER_IMAGE
+        value: "busybox:1.36"
+
+      # the "bad script" that always fails, forcing Init:CrashLoopBackOff
+      - name: BAD_SCRIPT
+        value: "echo 'chaos: executing malformed startup script'; exit 1"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: crashing-kubernetes-workload-init-container
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

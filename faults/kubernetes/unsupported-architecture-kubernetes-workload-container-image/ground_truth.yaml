@@ -1,0 +1,128 @@
+fault: unsupported-architecture-kubernetes-workload-container-image
+version: 0.1.0
+description: >-
+  Sets a container's image to a tag built only for an unsupported CPU
+  architecture (e.g. an arm64-only image on an amd64 node), then restores
+  the original image. Mirrors ITBench SRE scenarios 23, 57 and 60 (fault
+  library index 26), which all target the otel-demo `checkout` Deployment.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod(s) stuck Pending with ImagePullBackOff/ErrImagePull"
+      - "KubePodNotReady / KubeContainerWaiting alert for the checkout workload in otel-demo"
+      - "Kubernetes warning events: Failed to pull image ... no matching manifest for linux/amd64 in the manifest list entries"
+      - "Deployment's available replica count drops below desired as old pods are replaced by ones that never become Ready"
+
+    goal: >
+      Point a workload's container at an image tag published only for an
+      unsupported CPU architecture to validate whether an agent detects the
+      resulting ImagePullBackOff/Pending failure, recognizes the
+      architecture mismatch as the root cause, and restores a compatible
+      image.
+
+    remediation: >
+      Revert the container image to its previous known-good (multi-arch or
+      correctly-arched) tag via `kubectl rollout undo` or `kubectl set
+      image`, then verify the pod transitions to Running/Ready. If a
+      supported-architecture node genuinely does not exist in the cluster,
+      an alternative remediation is to correct the workload's nodeSelector/
+      affinity rather than the image.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "Identify the checkout pod(s) stuck in Pending/ImagePullBackOff."
+
+    - step: 3
+      action: "Get pod details"
+      detail: "Inspect the pod's container status/reason to confirm the image pull failure and note the failing image reference."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace to confirm the 'Failed to pull image' warning and the 'no matching manifest for linux/amd64' detail, indicating an architecture mismatch rather than a missing tag."
+
+    - step: 5
+      action: "Check node architectures"
+      detail: "List cluster nodes and their kubernetes.io/arch labels to confirm no node in the cluster can run the injected image."
+
+    - step: 6
+      action: "Get parent deployment details"
+      detail: "Retrieve the checkout Deployment spec to see the current (architecture-incompatible) image field."
+
+    - step: 7
+      action: "Roll back or correct the image"
+      detail: "Revert to the previous revision via rollout undo, or patch the image field back to a known-good, correctly-arched tag."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm the checkout pod pulls successfully and reaches Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the otel-demo namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Find the checkout pod(s) stuck in Pending/ImagePullBackOff."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: Get"
+      command: "Pods: Get namespace=otel-demo name=<checkout-pod-name>"
+      purpose: "Inspect container status and confirm the image pull failure reason."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Confirm the 'no matching manifest for linux/amd64' image pull failure event."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=v1 kind=Node"
+      purpose: "Check node kubernetes.io/arch labels to confirm the cluster has no node compatible with the injected image."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=checkout"
+      purpose: "Retrieve the deployment's current container image field."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=otel-demo name=checkout"
+      purpose: "Revert to the last known-good, correctly-arched revision."
+      tool_available: false
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify the replacement pod reaches Running/Ready."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

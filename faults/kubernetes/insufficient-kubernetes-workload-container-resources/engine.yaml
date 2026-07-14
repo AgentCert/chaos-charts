@@ -1,0 +1,34 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: insufficient-resources-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: insufficient-kubernetes-workload-container-resources-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: insufficient-kubernetes-workload-container-resources
+      spec:
+        components:
+          env:
+            # container whose resources are patched; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # insufficient resource values injected into the container
+            - name: FAULT_MEMORY_REQUEST
+              value: '8Mi'
+            - name: FAULT_MEMORY_LIMIT
+              value: '8Mi'
+            - name: FAULT_CPU_REQUEST
+              value: '1m'
+            - name: FAULT_CPU_LIMIT
+              value: '1m'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

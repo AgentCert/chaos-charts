@@ -1,0 +1,32 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: opentelemetry-demo-feature-flag-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'configmap'
+  chaosServiceAccount: opentelemetry-demo-feature-flag-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: opentelemetry-demo-feature-flag
+      spec:
+        components:
+          env:
+            # name of the feature flag to toggle (see flagd-config's
+            # demo.flagd.json ".flags" map for valid names)
+            - name: FLAG_NAME
+              value: 'loadGeneratorFloodHomepage'
+            # value written to the flag's defaultVariant during injection
+            - name: FLAG_STATE
+              value: 'on'
+            # fallback revert value if the original defaultVariant can't be captured
+            - name: FLAG_REVERT_STATE
+              value: 'off'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

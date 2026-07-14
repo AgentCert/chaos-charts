@@ -1,0 +1,35 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: kubernetes-api-server-request-surge-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: ''
+  chaosServiceAccount: kubernetes-api-server-request-surge-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: kubernetes-api-server-request-surge
+      spec:
+        components:
+          env:
+            # aggregate requests/sec the surge workload targets against the
+            # kube-apiserver (matches ITBench scenario 51's fixture)
+            - name: REQUESTS_PER_SECOND
+              value: '1000'
+            # number of load-generator pod replicas
+            - name: SURGE_REPLICAS
+              value: '5'
+            # name of the injected Deployment/ServiceAccount/Role/RoleBinding
+            - name: SURGE_WORKLOAD_NAME
+              value: 'workload-scanner'
+            # image used for the load-generator pods
+            - name: SURGE_IMAGE
+              value: 'litmuschaos/k8s:latest'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

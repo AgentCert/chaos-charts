@@ -1,0 +1,47 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: opentelemetry-demo-feature-flag
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Toggles a named OpenTelemetry Demo feature flag by patching the
+      flagd-config ConfigMap, then restores its original value. Mirrors
+      ITBench SRE scenario "opentelemetry-demo-feature-flag".
+spec:
+  displayName: OpenTelemetry Demo Feature Flag
+  categoryDescription: |
+    OpenTelemetry Demo feature flag fault activates one of the Demo's built-in
+    implemented faults (e.g. traffic floods, high CPU, service failures) by
+    flipping a flagd feature flag's defaultVariant in the flagd-config
+    ConfigMap.
+    - Simulates an operator/CI mistake or malicious change that leaves a
+      debug/chaos feature flag enabled in production.
+    - Tests whether an agent detects the resulting anomaly, traces it back to
+      the responsible feature flag, and restores the flag (plus a rollout
+      restart) to return the service to normal behavior.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

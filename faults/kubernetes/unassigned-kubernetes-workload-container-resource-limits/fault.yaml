@@ -1,0 +1,91 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Removes a container's resources.limits (cpu/memory) — leaving requests, if
+    any, untouched — so the container has no ceiling on resource consumption,
+    then restores the original resources.limits (or removes the field again if
+    none existed). Mirrors ITBench SRE scenario
+    "unassigned-kubernetes-workload-container-resource-limits" (fault library
+    index 24), as used in ITBench scenario 41 against the otel-demo "cart"
+    Deployment (there paired with a separate memory-stress injection).
+kind: ChaosExperiment
+metadata:
+  name: unassigned-kubernetes-workload-container-resource-limits
+  labels:
+    name: unassigned-kubernetes-workload-container-resource-limits
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        echo "Target=${TARGET} container=${CONTAINER}"
+
+        # Capture original resources.limits — empty string means no limits existed
+        ORIG_LIMITS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].resources.limits}")
+        echo "Original resources.limits: ${ORIG_LIMITS:-<none>}"
+
+        echo "Injecting: removing resources.limits from ${CONTAINER} (no ceiling on cpu/memory consumption)"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":{\"limits\":null}}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (strategic-merge-patch semantics); otherwise restore original
+        if [ -z "$ORIG_LIMITS" ]; then
+          LIMITS_JSON="null"
+        else
+          LIMITS_JSON="$ORIG_LIMITS"
+        fi
+        echo "Reverting resources.limits to original"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":{\"limits\":${LIMITS_JSON}}}]}}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container whose resources.limits are removed; defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: unassigned-kubernetes-workload-container-resource-limits
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

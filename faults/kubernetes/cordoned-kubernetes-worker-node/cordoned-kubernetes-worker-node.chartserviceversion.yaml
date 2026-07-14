@@ -1,0 +1,53 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: cordoned-kubernetes-worker-node
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Cordons the Kubernetes node hosting a target workload's pod(s), then
+      uncordons it. Mirrors ITBench SRE scenario
+      "cordoned-kubernetes-worker-node".
+spec:
+  displayName: Cordoned Kubernetes Worker Node
+  categoryDescription: |
+    Cordoned worker node fault disrupts scheduling for a Kubernetes workload
+    by marking the node hosting its pod(s) as unschedulable (`kubectl
+    cordon`).
+    - Simulates an operator mistake or a maintenance cordon left in place,
+      which blocks new pods (scale-ups, rollouts, evicted/rescheduled pods)
+      from landing on that node while leaving already-running pods
+      untouched.
+    - CAUTION: a node is frequently shared by pods from many workloads and
+      namespaces. Cordoning it can also block scheduling for OTHER,
+      unrelated pods on that same node -- not just this fault's target. Only
+      run this fault against dedicated/isolated test nodes, or knowingly
+      accept that blast radius in shared clusters.
+    - Tests whether an agent detects the resulting FailedScheduling/Pending
+      condition, identifies the cordoned node as the root cause, and
+      uncordons it.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

@@ -1,0 +1,128 @@
+fault: crashing-kubernetes-workload-init-container
+version: 0.1.0
+description: >-
+  Injects an initContainer that runs a deliberately bad script into a
+  Deployment's pod template, forcing the pod into Init:CrashLoopBackOff so the
+  main container never starts. Mirrors ITBench SRE scenarios 59 and 60
+  (crashing-kubernetes-workload-init-container against the otel-demo
+  recommendation Deployment).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod is stuck in Pending/Init phase; kubectl get pods shows Init:CrashLoopBackOff"
+      - "All application containers in the pod remain in the Waiting state (PodInitializing) and never start"
+      - "KubeContainerWaiting alert fires for the affected workload"
+      - "kubectl describe pod shows the injected init container repeatedly exiting with a non-zero code"
+      - "No new Ready replicas become available for the Deployment; upstream callers may see reduced capacity or errors"
+
+    goal: >
+      Inject a crashing initContainer into a Deployment to validate whether an
+      agent detects the resulting Init:CrashLoopBackOff / KubeContainerWaiting
+      condition, identifies the offending initContainer, and remediates by
+      rolling back or removing it so the pod becomes Ready again.
+
+    remediation: >
+      Roll back the Deployment to the previous revision
+      (`kubectl rollout undo deployment/<name>`), or directly edit the
+      Deployment to remove the faulty initContainer
+      (`kubectl edit deployment <name>`), then verify the pod leaves
+      Init:CrashLoopBackOff and its containers reach Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "List Deployments in the otel-demo namespace and note which one (recommendation) has pods not reaching Ready."
+
+    - step: 3
+      action: "List and inspect pods"
+      detail: "List pods for the deployment and identify the one stuck in Init:CrashLoopBackOff / PodInitializing."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; look for BackOff/Error events referencing the injected init container."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the Deployment's pod template spec to find the extra initContainer and the bad script/command it runs."
+
+    - step: 6
+      action: "Check Prometheus alerts"
+      detail: "Query for KubeContainerWaiting (and related pod-readiness signals) correlated with this workload."
+
+    - step: 7
+      action: "Roll back or edit the deployment"
+      detail: "Either rollout undo the Deployment to the prior revision or edit it to remove the faulty initContainer."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm the initContainer is gone and the pod reaches Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=otel-demo"
+      purpose: "Find the recommendation Deployment whose pods are not becoming Ready."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Identify the pod stuck in Init:CrashLoopBackOff / PodInitializing."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Find BackOff/Error events for the injected init container on the affected pod."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=recommendation"
+      purpose: "Inspect the pod template spec and confirm the extra initContainer running a bad script."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_container_status_waiting_reason{namespace=\"otel-demo\",reason=\"CrashLoopBackOff\"}'"
+      purpose: "Confirm the CrashLoopBackOff condition via Prometheus."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=otel-demo name=recommendation"
+      purpose: "Restore the previous revision to remove the faulty initContainer."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify the pod reaches Running/Ready after rollback."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

@@ -1,0 +1,51 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: chaos-mesh-http-abort-replacement
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      LitmusChaos-native approximation of Chaos Mesh's HTTPChaos abort
+      action: creates a port-scoped NetworkPolicy that denies ingress on a
+      target port, then deletes it. Mirrors ITBench SRE scenario 27
+      (aborted POST requests to OpenTelemetry Demo's `quote` service, port
+      8080).
+spec:
+  displayName: Chaos Mesh HTTP Abort Replacement
+  categoryDescription: |
+    Chaos Mesh HTTP abort replacement fault disrupts traffic to a Kubernetes
+    workload by creating a NetworkPolicy that denies ingress on a specific
+    port, approximating Chaos Mesh's HTTPChaos abort=true action (which
+    drops HTTP requests to a target service+port at the L7 proxy layer).
+    - Simulates aborted/dropped requests to otel-demo's `quote` service on
+      port 8080, without requiring Chaos Mesh to be installed in-cluster.
+    - Coarser than the original: blocks ALL traffic on the port (not just a
+      specific HTTP method), since NetworkPolicy has no L7 semantics.
+    - Tests whether an agent detects the resulting connectivity outage /
+      elevated error rate, locates the offending port-scoped NetworkPolicy,
+      and removes it to restore traffic.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

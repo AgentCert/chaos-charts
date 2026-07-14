@@ -1,0 +1,85 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Adds a nodeSelector referencing a node name that does not exist in the
+    cluster to a Deployment/StatefulSet's pod template, making the pod(s)
+    permanently unschedulable (stuck Pending), then restores the original
+    nodeSelector. Mirrors ITBench SRE fault library index 16
+    "nonexistent-kubernetes-workload-node".
+kind: ChaosExperiment
+metadata:
+  name: nonexistent-kubernetes-workload-node
+  labels:
+    name: nonexistent-kubernetes-workload-node
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        # Capture original nodeSelector — empty string means none existed
+        ORIG_NODE_SELECTOR=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath='{.spec.template.spec.nodeSelector}')
+        echo "Original nodeSelector: ${ORIG_NODE_SELECTOR:-<none>}"
+
+        echo "Injecting: setting nodeSelector kubernetes.io/hostname=${NONEXISTENT_NODE_NAME} on ${TARGET} (pod will become unschedulable/Pending)"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"kubernetes.io/hostname\":\"${NONEXISTENT_NODE_NAME}\"}}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (strategic-merge-patch semantics); otherwise restore original
+        if [ -z "$ORIG_NODE_SELECTOR" ]; then
+          NODE_SELECTOR_JSON="null"
+        else
+          NODE_SELECTOR_JSON="$ORIG_NODE_SELECTOR"
+        fi
+        echo "Reverting nodeSelector to original"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":${NODE_SELECTOR_JSON}}}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # node name that does not exist in the cluster; matches ITBench's own fixture
+      - name: NONEXISTENT_NODE_NAME
+        value: "nonexistent-node-fault"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: nonexistent-kubernetes-workload-node
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

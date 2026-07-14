@@ -1,0 +1,31 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: invalid-workload-command-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: invalid-kubernetes-workload-container-command-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: invalid-kubernetes-workload-container-command
+      spec:
+        components:
+          env:
+            # container whose command/args are overwritten; defaults to the
+            # workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # invalid command/args to inject (JSON array strings)
+            - name: INVALID_COMMAND
+              value: '["/nonexistent-binary"]'
+            - name: INVALID_ARGS
+              value: '[]'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

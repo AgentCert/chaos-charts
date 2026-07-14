@@ -1,0 +1,138 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Forces an OOMKilled / CrashLoopBackOff on the otel-demo valkey-cart
+    workload by patching its container's memory limit (and request) down to
+    an unrealistically low value, holding it there, then restoring the
+    original limit/request.
+
+    Design note: ITBench's own implementation of this fault (fault library
+    index 28, "valkey-workload-out-of-memory") injects a code change into the
+    Valkey container -- mounting a ConfigMap-backed script that adds a
+    memory-consuming process -- to reach the same CrashLoopBackOff/Terminated
+    end state. This experiment instead reproduces that symptom natively via
+    `kubectl patch` of the container's resources.limits/requests.memory,
+    without requiring a custom image, a ConfigMap-mounted script, or
+    `pods/exec` access into the target container. This keeps the fault
+    consistent with this chaos-chart's other simple kubectl-only experiments
+    (see scaled-to-zero-kubernetes-workload,
+    misconfigured-kubernetes-workload-container-readiness-probe).
+
+    Tradeoffs of this approach vs. ITBench's code-injection method:
+      - The exact memory ceiling needed to reliably trigger an OOM kill
+        depends on the Valkey build/allocator, its config (e.g. maxmemory),
+        and node memory-overcommit settings, so MEMORY_LIMIT may need
+        tuning per-environment; it is not a bit-for-bit reproduction of
+        ITBench's deterministic "extra memory-consuming process" mechanism.
+      - An exec-based memory hog (`kubectl exec` + a memory-allocating
+        command inside the target container, in the spirit of this chart's
+        pod-memory-hog experiment) was considered and rejected: it requires
+        `pods/exec` RBAC plus a memory-allocating binary (e.g. stress-ng,
+        python) to exist inside the upstream valkey/redis image, which is
+        not guaranteed and would make the fault image/version-dependent.
+      - The revert step restores the previously captured memory
+        limit/request (or removes the field entirely if none existed
+        before), so the workload's resource footprint is fully restored;
+        it does not, however, remove any extra ReplicaSet/revision history
+        left behind by the pod-template patch (the same tradeoff accepted by
+        misconfigured-kubernetes-workload-container-readiness-probe in this
+        chart).
+
+    Mirrors ITBench SRE scenario 40 (`valkey-cart` OOM in the
+    OpenTelemetry Demo) and fault library index 28
+    (valkey-workload-out-of-memory).
+kind: ChaosExperiment
+metadata:
+  name: valkey-workload-out-of-memory
+  labels:
+    name: valkey-workload-out-of-memory
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        echo "Target=${TARGET} container=${CONTAINER}"
+
+        # Capture original memory limit/request — empty string means the field was unset
+        ORIG_LIMIT_MEM=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].resources.limits.memory}")
+        ORIG_REQUEST_MEM=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].resources.requests.memory}")
+        echo "Original memory limit=${ORIG_LIMIT_MEM:-<none>} request=${ORIG_REQUEST_MEM:-<none>}"
+
+        echo "Injecting: clamping ${CONTAINER} memory limit/request to ${MEMORY_LIMIT} to force OOMKilled/CrashLoopBackOff"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":{\"limits\":{\"memory\":\"${MEMORY_LIMIT}\"},\"requests\":{\"memory\":\"${MEMORY_LIMIT}\"}}}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (strategic-merge-patch semantics on the
+        # resources.limits/requests maps); otherwise restore the captured value
+        if [ -z "$ORIG_LIMIT_MEM" ]; then
+          LIMIT_JSON="null"
+        else
+          LIMIT_JSON="\"$ORIG_LIMIT_MEM\""
+        fi
+        if [ -z "$ORIG_REQUEST_MEM" ]; then
+          REQUEST_JSON="null"
+        else
+          REQUEST_JSON="\"$ORIG_REQUEST_MEM\""
+        fi
+        echo "Reverting memory limit/request to original"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"resources\":{\"limits\":{\"memory\":${LIMIT_JSON}},\"requests\":{\"memory\":${REQUEST_JSON}}}}]}}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container whose memory limit/request is clamped; defaults to the workload name
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # unrealistically low memory ceiling (applied to both limit and request)
+      # to force the container to be OOM-killed on startup; matches ITBench's
+      # own scenario intent of driving valkey-cart into CrashLoopBackOff
+      - name: MEMORY_LIMIT
+        value: "8Mi"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: valkey-workload-out-of-memory
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

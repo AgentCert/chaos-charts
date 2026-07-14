@@ -1,0 +1,61 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: chaos-mesh-http-body-tamper-replacement
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Approximates ITBench's Chaos Mesh HTTPChaos POST-body-tampering scenario
+      against otel-demo's email service with a synthetic traffic generator,
+      since ACE's cluster has no service mesh / Chaos Mesh chaos-daemon
+      transparent-proxy layer to rewrite HTTP bodies in flight. See
+      fault.yaml/ground_truth.yaml for the documented approximation and its
+      limitations. Mirrors ITBench SRE scenario 26.
+spec:
+  displayName: Chaos Mesh HTTP Body Tamper Replacement
+  categoryDescription: |
+    ITBench SRE scenario 26 uses Chaos Mesh's HTTPChaos to transparently
+    intercept and rewrite the POST body of real checkout->email traffic in the
+    OpenTelemetry Demo application, to `{'email': '12345', 'order': 'error
+    body'}`.
+    - ACE's cluster provisions no service mesh and no Chaos Mesh chaos-daemon
+      (same as bookinfo/otel-demo generally), so there is no transparent-proxy
+      layer available to intercept and rewrite HTTP bodies in flight --
+      genuinely faithful reproduction of this fault is not achievable via
+      plain kubectl/exec scripting, and the target email service exposes no
+      config knob to approximate it either.
+    - This experiment is a documented, honest best-effort approximation: it
+      launches a short-lived pod that sends synthetic requests carrying
+      ITBench's exact tampered payload directly at the target service,
+      reproducing the same malformed-body handling failure signature without
+      intercepting real user traffic.
+    - Tests whether an agent detects the anomalous traffic-generator pod and
+      the resulting email-service errors, and remediates by removing the
+      generator pod -- paralleling ITBench's own remediation for this
+      scenario (pause/delete the Chaos Mesh schedule), rather than modifying
+      the target application.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

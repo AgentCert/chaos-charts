@@ -1,0 +1,28 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: valkey-workload-oom-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: valkey-workload-out-of-memory-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: valkey-workload-out-of-memory
+      spec:
+        components:
+          env:
+            # container whose memory limit/request is clamped; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # unrealistically low memory ceiling (limit+request) to force an OOM kill
+            - name: MEMORY_LIMIT
+              value: '8Mi'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

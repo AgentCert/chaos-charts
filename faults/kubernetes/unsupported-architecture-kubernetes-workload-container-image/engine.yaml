@@ -1,0 +1,30 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: unsupported-arch-image-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: unsupported-architecture-kubernetes-workload-container-image-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: unsupported-architecture-kubernetes-workload-container-image
+      spec:
+        components:
+          env:
+            # container whose image is mutated; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+
+            # arm64-only image reference (no amd64 manifest published)
+            - name: INVALID_ARCH_IMAGE
+              value: 'arm64v8/busybox:1.36.1-musl'
+
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

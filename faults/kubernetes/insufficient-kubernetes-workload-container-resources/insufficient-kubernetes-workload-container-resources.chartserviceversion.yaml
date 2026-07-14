@@ -1,0 +1,46 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: insufficient-kubernetes-workload-container-resources
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Patches a container's resources.requests/limits to unrealistically low
+      values, causing repeated OOMKilled/CrashLoopBackOff restarts, then
+      restores the original resources block. Mirrors ITBench SRE scenario
+      "insufficient-kubernetes-workload-container-resources".
+spec:
+  displayName: Insufficient Kubernetes Workload Container Resources
+  categoryDescription: |
+    Insufficient resources fault disrupts a Kubernetes workload by patching
+    the target container's resources.requests/limits down to unrealistically
+    low values (e.g. memory: 8Mi).
+    - Simulates a manifest misconfiguration that starves the container of
+      memory/CPU, driving it into OOMKilled/CrashLoopBackOff.
+    - Tests whether an agent detects KubePodCrashLooping and corrects the
+      resource configuration or performs a rollout undo.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

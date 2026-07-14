@@ -1,0 +1,126 @@
+fault: hanging-kubernetes-workload-init-container
+version: 0.1.0
+description: >-
+  Appends a hanging init container to the otel-demo `email` Deployment,
+  leaving its pods stuck in `Init:0/1`/Pending forever. Mirrors ITBench SRE
+  scenario 45 (hanging-kubernetes-workload-init-container, fault library
+  index 5).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "New pods for the `email` Deployment are stuck at STATUS Pending / READY Init:0/1"
+      - "The appended init container (e.g. `worker`) shows state Running indefinitely and never completes"
+      - "The main application container never starts; its status stays Waiting (reason: PodInitializing)"
+      - "KubeContainerWaiting alert fires for the affected pod/workload"
+      - "kubectl describe pod shows the init container never reaching Terminated; no readiness/liveness probes have run"
+
+    goal: >
+      Append a hanging (indefinitely-sleeping) init container to a workload
+      to validate whether an agent detects pods stuck perpetually in the
+      Init: state and removes or fixes the offending init container to
+      restore normal pod startup.
+
+    remediation: >
+      Roll back the Deployment to the prior revision (`kubectl rollout undo
+      deployment/email`) or edit it to remove the hanging initContainers
+      entry (or replace its command with one that completes), then verify
+      pods exit Init: state and the main container reaches Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to locate the otel-demo application namespace."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "Identify the `email` Deployment in the otel-demo namespace."
+
+    - step: 3
+      action: "List pods in namespace"
+      detail: "Note the pod(s) for the email workload stuck at STATUS Pending / READY Init:0/1."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; look for KubeContainerWaiting-type conditions and repeated 'PodInitializing' waits on the affected pod."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the Deployment's pod template initContainers list and spot the extra entry (e.g. `worker`) running an indefinite `sleep infinity`."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for KubeContainerWaiting / kube_pod_container_status_waiting signals correlated with this pod."
+
+    - step: 7
+      action: "Remove the hanging init container"
+      detail: "Roll back the Deployment (`kubectl rollout undo`) or edit it to delete the offending initContainers entry."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm the pod exits Init: state and the main container reaches Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application (otel-demo)."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=otel-demo"
+      purpose: "Find the `email` Deployment."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Identify the pod stuck at STATUS Pending / READY Init:0/1."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Find events indicating the init container never completes / KubeContainerWaiting."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=otel-demo name=email"
+      purpose: "Inspect the initContainers list and spot the extra hanging entry."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_container_status_waiting_reason{namespace=\"otel-demo\"}'"
+      purpose: "Confirm the KubeContainerWaiting condition via Prometheus."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=otel-demo name=email"
+      purpose: "Restore the previous revision to remove the hanging init container."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Verify the pod exits Init: state and reaches Running/Ready after rollback."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

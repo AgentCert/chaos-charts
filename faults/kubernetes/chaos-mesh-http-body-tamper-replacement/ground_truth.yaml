@@ -1,0 +1,136 @@
+fault: chaos-mesh-http-body-tamper-replacement
+version: 0.1.0
+description: >-
+  Approximates ITBench SRE scenario 26 (chaos-mesh-http-body-tamper-replacement),
+  which targets the OpenTelemetry Demo's `email` service in the `otel-demo`
+  namespace. ITBench's own mechanism uses Chaos Mesh's HTTPChaos to
+  transparently proxy traffic through its chaos-daemon and rewrite the body of
+  real checkout->email POST requests to `{'email': '12345', 'order': 'error
+  body'}`. ACE's cluster has no service mesh and no Chaos Mesh chaos-daemon
+  (confirmed: neither otel-demo nor bookinfo run under a mesh in this cluster
+  stack), so there is no transparent-proxy layer to intercept and rewrite HTTP
+  bodies in flight, and the email service (Ruby/Sinatra) exposes no config/env
+  knob to make it reject/mishandle a known-good input shape on demand -- no
+  faithful config-based approximation exists either. This fault instead
+  launches a short-lived pod that fires synthetic requests carrying ITBench's
+  exact tampered payload directly at the email Service, reproducing the same
+  malformed-body handling failure signature without a mesh, at the cost of not
+  intercepting genuine in-flight traffic. This is a documented partial
+  approximation, not a faithful reproduction of ITBench's injection mechanism.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "An unexpected Pod (label chaos-injector=chaos-mesh-http-body-tamper-replacement, not part of the otel-demo Helm release) is running in the otel-demo namespace"
+      - "That pod repeatedly POSTs the malformed body {'email': '12345', 'order': 'error body'} at the email service on an interval"
+      - "email service logs / responses show request-body parsing or handling errors (4xx/5xx) correlated with the rogue pod's traffic, with no corresponding change to the email Deployment's spec"
+      - "Elevated HTTP error rate specifically on the email component in Prometheus, uncorrelated with any config/rollout change"
+
+    goal: >
+      Validate whether an agent notices anomalous/unexplained traffic and
+      errors against the email service, traces it to an unexpected
+      traffic-generator pod running in the namespace (rather than assuming a
+      code or config regression in the email service itself), and remediates
+      by removing the rogue pod. This mirrors ITBench's own documented
+      remediation for this scenario, which is to pause and delete the Chaos
+      Mesh Schedule/HTTPChaos object causing the tamper -- not to change the
+      target application, since nothing about the email service's own
+      configuration is actually broken in either the original scenario or
+      this approximation.
+
+    remediation: >
+      Identify and delete the rogue traffic-generator Pod (label
+      chaos-injector=chaos-mesh-http-body-tamper-replacement) in the
+      otel-demo namespace to stop the tampered requests, then confirm the
+      email service's HTTP error rate returns to baseline. No Deployment,
+      Service, or config of the email service was ever modified, so no
+      rollback of the application itself is required or applicable -- only
+      removal of the injected traffic source.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "List pods in otel-demo and notice an extra pod not part of the normal Helm release, labeled chaos-injector=chaos-mesh-http-body-tamper-replacement."
+
+    - step: 3
+      action: "Inspect the suspicious pod"
+      detail: "Get the pod's spec (image/command/env) to confirm it is a curl loop POSTing a malformed JSON body to the email service."
+
+    - step: 4
+      action: "Check Kubernetes events and email service logs"
+      detail: "List namespace events and the email service's logs to correlate request-handling errors with the rogue pod's traffic."
+
+    - step: 5
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for elevated HTTP error rate on the email component and confirm it started when the rogue pod appeared."
+
+    - step: 6
+      action: "Delete the rogue pod"
+      detail: "Remove the traffic-generator pod to stop the tampered requests hitting the email service."
+
+    - step: 7
+      action: "Verify recovery"
+      detail: "Re-list pods to confirm the rogue pod is gone and query Prometheus to confirm the email service's error rate returns to baseline."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=otel-demo"
+      purpose: "Spot the extra pod not belonging to the otel-demo release, labeled chaos-injector=chaos-mesh-http-body-tamper-replacement."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Pod namespace=otel-demo name=<generator-pod>"
+      purpose: "Confirm the pod's image/command is generating tampered POST requests against the email service."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=otel-demo"
+      purpose: "Correlate elevated errors on the email service with the rogue pod's start time."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='sum(rate(http_server_requests_errors_total{namespace=\"otel-demo\",service=\"email\"}[5m]))'"
+      purpose: "Confirm elevated HTTP error rate on the email component."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=v1 kind=Pod namespace=otel-demo name=<generator-pod>"
+      purpose: "Remove the rogue traffic-generator pod to stop the tampered requests."
+      tool_available: true
+
+    - step: 7
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='sum(rate(http_server_requests_errors_total{namespace=\"otel-demo\",service=\"email\"}[5m]))'"
+      purpose: "Verify the email service's error rate has returned to baseline after removal."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 45
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 90
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 12
+      unit: "count"

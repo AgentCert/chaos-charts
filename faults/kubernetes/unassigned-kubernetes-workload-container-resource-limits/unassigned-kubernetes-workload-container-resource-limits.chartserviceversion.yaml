@@ -1,0 +1,49 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: unassigned-kubernetes-workload-container-resource-limits
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Removes a container's resources.limits (cpu/memory), leaving it with no
+      ceiling on resource consumption, then restores the original limits.
+      Mirrors ITBench SRE scenario
+      "unassigned-kubernetes-workload-container-resource-limits".
+spec:
+  displayName: Unassigned Kubernetes Workload Container Resource Limits
+  categoryDescription: |
+    Unassigned resource limits fault disrupts the resource ceiling of a
+    Kubernetes workload by removing the target container's
+    resources.limits (cpu/memory) block.
+    - Simulates a manifest change that drops resource limits, leaving a
+      container's consumption unbounded.
+    - Often combined with a separate resource-stress injection to produce a
+      runaway CPU/memory usage scenario.
+    - Tests whether an agent detects the missing limits (directly or via
+      unusually unbounded resource growth) and restores an appropriate
+      resources.limits configuration.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

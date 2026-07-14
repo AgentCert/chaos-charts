@@ -1,0 +1,25 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: unassigned-resource-limits-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: unassigned-kubernetes-workload-container-resource-limits-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: unassigned-kubernetes-workload-container-resource-limits
+      spec:
+        components:
+          env:
+            # container whose resources.limits are removed; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

@@ -1,0 +1,153 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Patches the OpenTelemetry Demo's 'flagd-config' ConfigMap, setting a named
+    feature flag's defaultVariant (e.g. to "on"), then restores its original
+    value. Mirrors ITBench SRE scenario "opentelemetry-demo-feature-flag"
+    (fault library index 18).
+kind: ChaosExperiment
+metadata:
+  name: opentelemetry-demo-feature-flag
+  labels:
+    name: opentelemetry-demo-feature-flag
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["get", "patch"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND}/flagd-config in ns=${APP_NAMESPACE}"
+        CURRENT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" flagd-config -o jsonpath='{.data.demo\.flagd\.json}')
+        if [ -z "$CURRENT" ]; then
+          echo "ConfigMap flagd-config has no 'demo.flagd.json' data key" >&2
+          exit 1
+        fi
+
+        if ! printf '%s\n' "$CURRENT" | grep -q "\"${FLAG_NAME}\"[[:space:]]*:[[:space:]]*{"; then
+          echo "flag '${FLAG_NAME}' not found in demo.flagd.json flags map" >&2
+          exit 1
+        fi
+
+        # Prints the current defaultVariant of the named flag's JSON object
+        # (empty if the flag has no defaultVariant field).
+        extract_variant() {
+          awk -v flag="$1" '
+            BEGIN { in_block=0; depth=0; found=0 }
+            {
+              line = $0
+              if (!in_block) {
+                if (match(line, "\"" flag "\"[[:space:]]*:[[:space:]]*\\{")) { in_block=1; depth=1; next }
+              } else {
+                if (depth == 1 && found == 0 && match(line, /"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+                  val = line
+                  sub(/^.*"defaultVariant"[[:space:]]*:[[:space:]]*"/, "", val)
+                  sub(/".*$/, "", val)
+                  print val
+                  found = 1
+                }
+                opens = gsub(/\{/, "{", line); closes = gsub(/\}/, "}", line)
+                depth += opens - closes
+                if (depth <= 0) in_block = 0
+              }
+            }
+          '
+        }
+
+        # Rewrites the named flag's defaultVariant in place; every other byte
+        # of the JSON document (other flags, ordering, description, etc.) is
+        # left untouched so the revert is byte-exact.
+        patch_variant() {
+          awk -v flag="$1" -v newval="$2" '
+            BEGIN { in_block=0; depth=0; found=0 }
+            {
+              line = $0
+              if (!in_block) {
+                if (match(line, "\"" flag "\"[[:space:]]*:[[:space:]]*\\{")) { in_block=1; depth=1; print line; next }
+              } else {
+                if (depth == 1 && found == 0 && match(line, /"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+                  sub(/"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/, "\"defaultVariant\": \"" newval "\"", line)
+                  found = 1
+                }
+                opens = gsub(/\{/, "{", line); closes = gsub(/\}/, "}", line)
+                depth += opens - closes
+                if (depth <= 0) in_block = 0
+              }
+              print line
+            }
+          '
+        }
+
+        apply_configmap() {
+          # $1 = full new demo.flagd.json content; JSON-escape it and merge-patch
+          # it back into the single opaque data key (no jq/python in this image).
+          ESCAPED=$(printf '%s\n' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" flagd-config --type=merge \
+            -p "{\"data\":{\"demo.flagd.json\":\"${ESCAPED}\"}}"
+        }
+
+        ORIG_VARIANT=$(printf '%s\n' "$CURRENT" | extract_variant "${FLAG_NAME}")
+        ORIG_VARIANT="${ORIG_VARIANT:-${FLAG_REVERT_STATE}}"
+        echo "flag=${FLAG_NAME} originalDefaultVariant=${ORIG_VARIANT}"
+
+        echo "Injecting: setting ${FLAG_NAME}.defaultVariant=${FLAG_STATE}"
+        INJECTED=$(printf '%s\n' "$CURRENT" | patch_variant "${FLAG_NAME}" "${FLAG_STATE}")
+        apply_configmap "$INJECTED"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring ${FLAG_NAME}.defaultVariant=${ORIG_VARIANT}"
+        REVERTED=$(printf '%s\n' "$INJECTED" | patch_variant "${FLAG_NAME}" "${ORIG_VARIANT}")
+        apply_configmap "$REVERTED"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo. This
+      # fault targets the flagd-config ConfigMap by a fixed name, not by
+      # label, so APP_LABEL is declared for interface consistency with other
+      # first-class faults but is not used by the script.
+      - name: APP_NAMESPACE
+        value: "otel-demo"
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "configmap"
+
+      # name of the feature flag to toggle, matching a key under
+      # flagd-config's demo.flagd.json ".flags" map (e.g. loadGeneratorFloodHomepage,
+      # adHighCpu, productCatalogFailure, ...)
+      - name: FLAG_NAME
+        value: "loadGeneratorFloodHomepage"
+
+      # value written to the flag's "defaultVariant" field during injection
+      - name: FLAG_STATE
+        value: "on"
+
+      # fallback revert value used only if the flag's original defaultVariant
+      # could not be captured before injection; normally the captured
+      # original value is used so the revert is exact
+      - name: FLAG_REVERT_STATE
+        value: "off"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: opentelemetry-demo-feature-flag
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

@@ -1,0 +1,128 @@
+fault: insufficient-kubernetes-workload-container-resources
+version: 0.1.0
+description: >-
+  Patches a container's resources.requests/limits down to unrealistically
+  low values (default memory: 8Mi), causing repeated OOMKilled/CrashLoopBackOff
+  restarts. Mirrors ITBench SRE scenario 46
+  (insufficient-kubernetes-workload-container-resources), which targets
+  otel-demo's "postgresql" Deployment/container.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod cycles through repeated restarts and shows CrashLoopBackOff status"
+      - "Container status shows 'Terminated' with reason OOMKilled between restarts"
+      - "KubePodCrashLooping alert fires for the affected workload"
+      - "kubectl describe pod shows a rising restart count and 'OOMKilled' / 'Back-off restarting failed container' events"
+      - "Dependent services that call this component may show elevated error rates or timeouts"
+
+    goal: >
+      Patch a container's resources.requests/limits to unrealistically low
+      values to validate whether an agent detects the resulting
+      CrashLoopBackOff/OOMKilled condition, identifies the misconfigured
+      resource block as the root cause, and restores the workload to a
+      healthy running state.
+
+    remediation: >
+      Revert the container's resources.requests/limits to adequate values
+      (e.g. `kubectl rollout undo deployment/<name>` or `kubectl edit
+      deployment <name>` to correct the resources block), then verify the
+      pod stabilizes and stops restarting.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "List Deployments/StatefulSets in the application namespace and note which one has a high/rising restart count."
+
+    - step: 3
+      action: "Get pod details"
+      detail: "Retrieve pod status to confirm CrashLoopBackOff and an OOMKilled last-termination reason with rising restart count."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; look for 'OOMKilling' / 'Back-off restarting failed container' events on the affected pod."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the Deployment spec to see the insufficient resources.requests/limits (e.g. memory: 8Mi) on the container."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for KubePodCrashLooping and container restart-count/OOM metrics correlated with this service."
+
+    - step: 7
+      action: "Rollback or fix the deployment"
+      detail: "Either rollout undo the Deployment or patch the container's resources.requests/limits to adequate values."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Confirm the pod transitions to Running/Ready and the restart count stops increasing."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Find the Deployment with a crash-looping pod."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Identify the pod in CrashLoopBackOff with a rising restart count."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Find OOMKilling / Back-off restarting events for the affected pod."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Read the Deployment spec and confirm the insufficient resources.requests/limits configuration."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_container_status_restarts_total{namespace=\"<target-namespace>\"}'"
+      purpose: "Confirm a rising restart count / OOMKill pattern via Prometheus."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Restore the previous revision to remove the insufficient resource configuration."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify the pod reaches Running/Ready and stops restarting after remediation."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

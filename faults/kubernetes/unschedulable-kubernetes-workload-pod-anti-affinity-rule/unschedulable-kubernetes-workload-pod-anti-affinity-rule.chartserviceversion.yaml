@@ -1,0 +1,49 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Patches a workload's pod template with an unsatisfiable required
+      inter-pod anti-affinity rule, causing replacement pods to become
+      permanently Pending, then restores the original affinity. Mirrors
+      ITBench SRE scenario
+      "unschedulable-kubernetes-workload-pod-anti-affinity-rule".
+spec:
+  displayName: Unschedulable Kubernetes Workload Pod Anti Affinity Rule
+  categoryDescription: |
+    Unschedulable pod anti-affinity fault disrupts scheduling of a Kubernetes
+    workload by patching its pod template with a
+    requiredDuringSchedulingIgnoredDuringExecution inter-pod anti-affinity
+    rule (against its own label, topologyKey=kubernetes.io/hostname) that the
+    cluster's node topology cannot satisfy.
+    - Simulates an operator/manifest mistake that leaves new/replacement pods
+      permanently Pending with a FailedScheduling warning.
+    - Tests whether an agent detects the resulting KubePodNotReady alert,
+      identifies the offending anti-affinity rule, and removes or corrects it.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

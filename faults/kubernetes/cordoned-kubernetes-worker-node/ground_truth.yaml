@@ -1,0 +1,125 @@
+fault: cordoned-kubernetes-worker-node
+version: 0.1.0
+description: >-
+  Cordons the Kubernetes node hosting a target workload's pod(s), marking it
+  unschedulable, then uncordons it. Mirrors ITBench SRE scenario 39
+  (cordoned-kubernetes-worker-node against otel-demo's `payment` Deployment,
+  fault library index 1).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "A node shows STATUS 'Ready,SchedulingDisabled' (spec.unschedulable=true)"
+      - "New or rescheduled pods for the affected workload remain Pending with a FailedScheduling event ('node(s) were unschedulable')"
+      - "Pods already running on the node keep running (cordon does not evict them), but the Deployment cannot scale up or reschedule replicas onto that node"
+      - "KubePodNotReady alert fires once a replacement pod fails to schedule"
+
+    goal: >
+      Cordon the node backing a workload's pod to validate whether an agent
+      detects the resulting FailedScheduling/Pending condition, correctly
+      identifies the cordoned node as the root cause (rather than the
+      workload's own spec), and uncordons it to restore normal scheduling.
+
+    remediation: >
+      Identify the cordoned node (`kubectl get nodes` shows
+      SchedulingDisabled) and run `kubectl uncordon <node>` to restore its
+      schedulability, then verify the affected pod(s) transition to
+      Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List pods in target namespace"
+      detail: "List pods in the application namespace and note any pod stuck Pending or a Deployment unable to reach desired replica count."
+
+    - step: 3
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; look for a FailedScheduling event referencing 'node(s) were unschedulable'."
+
+    - step: 4
+      action: "List nodes and their scheduling status"
+      detail: "List cluster nodes and identify which one shows STATUS 'Ready,SchedulingDisabled'."
+
+    - step: 5
+      action: "Get node details"
+      detail: "Retrieve the cordoned node's spec to confirm spec.unschedulable=true and correlate it with the node hosting/expected to host the affected pod."
+
+    - step: 6
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for KubePodNotReady and node-unschedulable signals correlated with this workload."
+
+    - step: 7
+      action: "Uncordon the node"
+      detail: "Patch the node's spec.unschedulable back to false (kubectl uncordon) to restore scheduling."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm the affected workload's pod(s) schedule successfully and reach Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Find pod(s) stuck Pending or a Deployment short of its desired replicas."
+      tool_available: true
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Find the FailedScheduling event indicating 'node(s) were unschedulable'."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=v1 kind=Node"
+      purpose: "Identify which node shows STATUS Ready,SchedulingDisabled."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Node name=<node-name>"
+      purpose: "Confirm spec.unschedulable=true on the suspected node."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_node_spec_unschedulable{node=\"<node-name>\"}'"
+      purpose: "Confirm via Prometheus that the node is marked unschedulable."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=v1 kind=Node name=<node-name> body={\"spec\":{\"unschedulable\":false}}"
+      purpose: "Uncordon the node so it can accept new pods again."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify the affected workload's pod(s) reach Running/Ready after uncordoning."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

@@ -1,0 +1,51 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: kubernetes-api-server-request-surge
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Deploys a load-generator workload that surges requests against the
+      kube-apiserver, degrading API responsiveness cluster-wide, then
+      removes it. Mirrors ITBench SRE scenario
+      "kubernetes-api-server-request-surge".
+spec:
+  displayName: Kubernetes API Server Request Surge
+  categoryDescription: |
+    Kubernetes API server request surge fault deploys a short-lived
+    load-generator Deployment inside a target namespace that hammers the
+    kube-apiserver with a high, sustained rate of API requests.
+    - Simulates a runaway/misbehaving in-cluster workload (e.g. a scanner,
+      poller, or misconfigured controller) that overwhelms the shared
+      control plane.
+    - Tests whether an agent recognizes that the resulting HighRequestLatency
+      degradation is cluster-wide (affecting other tenants/namespaces too,
+      not just the target application) and removes the offending workload.
+    - CAUTION: because the kube-apiserver is a single shared control-plane
+      component, this fault's blast radius extends beyond its target
+      namespace to the whole cluster.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

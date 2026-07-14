@@ -1,0 +1,45 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: hanging-kubernetes-workload-init-container
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Appends a hanging init container to a workload, leaving its pods stuck
+      in Init:0/1/Pending forever, then removes it. Mirrors ITBench SRE
+      scenario "hanging-kubernetes-workload-init-container".
+spec:
+  displayName: Hanging Kubernetes Workload Init Container
+  categoryDescription: |
+    Hanging init container fault disrupts a Kubernetes workload's startup by
+    appending an init container whose command never exits (e.g. `sleep
+    infinity`).
+    - Simulates a bad rollout that introduces an init container which hangs
+      indefinitely, blocking the main container from ever starting.
+    - Tests whether an agent detects the resulting KubeContainerWaiting
+      condition and removes or fixes the offending init container.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

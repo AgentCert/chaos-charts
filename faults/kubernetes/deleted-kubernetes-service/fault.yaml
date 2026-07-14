@@ -1,0 +1,94 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Deletes the Service object fronting a Kubernetes workload (identified by
+    label) so other workloads can no longer resolve/route to it via its
+    service name, then recreates the Service from a captured, cleaned-up copy
+    of its manifest. Mirrors ITBench SRE fault library index 30
+    "deleted-kubernetes-service" (scenario 114: otel-demo product-catalog).
+kind: ChaosExperiment
+metadata:
+  name: deleted-kubernetes-service
+  labels:
+    name: deleted-kubernetes-service
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["services"]
+        verbs: ["get", "list", "create", "patch", "delete"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        BACKUP_FILE="/tmp/${TARGET}-service-backup.yaml"
+        echo "Capturing full Service manifest for ${TARGET} to ${BACKUP_FILE} before deletion"
+        kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "${TARGET}" -o yaml --show-managed-fields=false > "${BACKUP_FILE}"
+
+        # Strip server-generated/immutable fields so the captured manifest can
+        # be re-applied as a brand-new object once the Service is deleted:
+        # resourceVersion is rejected outright on create; uid/generation/
+        # creationTimestamp/selfLink are server-assigned; status is a
+        # server-managed subresource; and clusterIP/clusterIPs are dropped so
+        # Kubernetes allocates a fresh address (the original one is released
+        # back to the pool the moment the Service is deleted, so re-requesting
+        # it by value is not guaranteed to succeed). The
+        # kubectl.kubernetes.io/last-applied-configuration annotation (stale
+        # once the object is recreated) is stripped too.
+        awk '
+          skip_status==1                { next }
+          /^status:/                     { skip_status=1; next }
+          skip_clusterips==1 && /^  - /  { next }
+          /^  clusterIPs:/               { skip_clusterips=1; next }
+                                          { skip_clusterips=0 }
+          /^  (resourceVersion|uid|selfLink|generation|creationTimestamp|clusterIP):/ { next }
+          /last-applied-configuration:/  { next }
+          { print }
+        ' "${BACKUP_FILE}" > "${BACKUP_FILE}.clean"
+        mv "${BACKUP_FILE}.clean" "${BACKUP_FILE}"
+
+        echo "Injecting: deleting Service ${TARGET}"
+        kubectl delete "${APP_KIND}" -n "${APP_NAMESPACE}" "${TARGET}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: recreating Service ${TARGET} from captured manifest"
+        kubectl apply -f "${BACKUP_FILE}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "service"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: deleted-kubernetes-service
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

@@ -1,0 +1,50 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: misconfigured-kubernetes-horizontal-pod-autoscaler
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Patches a HorizontalPodAutoscaler's CPU/memory utilization targets to
+      unrealistically low values, then restores them. Mirrors ITBench SRE/
+      FinOps scenario "misconfigured-kubernetes-horizontal-pod-autoscaler".
+spec:
+  displayName: Misconfigured Kubernetes Horizontal Pod Autoscaler
+  categoryDescription: |
+    Misconfigured HPA fault disrupts a workload's autoscaling behavior by
+    patching its HorizontalPodAutoscaler's CPU/memory averageUtilization
+    targets to unrealistically low values.
+    - Simulates an operator mistake that causes the HPA to react to normal or
+      low resource usage as if it were saturated, scaling toward maxReplicas
+      without ever relieving load.
+    - Dual-framed: the same injection/revert mechanism is used both as an SRE
+      availability/stability scenario (KubeHpaMaxedOut, over-aggressive
+      scaling) and as ITBench's one FinOps scenario (unnecessary replica
+      count and cost).
+    - Tests whether an agent detects the misconfigured utilization targets
+      and restores them to realistic values.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

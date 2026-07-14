@@ -1,0 +1,125 @@
+fault: unassigned-kubernetes-workload-container-resource-limits
+version: 0.1.0
+description: >-
+  Removes a container's resources.limits (cpu/memory), leaving any requests
+  untouched, so the container has no ceiling on resource consumption. Mirrors
+  ITBench SRE fault library index 24
+  (unassigned-kubernetes-workload-container-resource-limits), used in ITBench
+  scenario 41 against the otel-demo "cart" Deployment's "cart" container
+  (there paired with a separate chaos-mesh memory-stress injection to produce
+  a runaway-memory scenario; this fault only removes the safety ceiling — the
+  actual growth in usage is driven by the paired stressor or by organic load).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target container's spec has no resources.limits for cpu/memory — kubectl describe pod shows 'Limits: <none>'"
+      - "The container's resource usage can grow without a Kubernetes-enforced ceiling (no CPU throttling, no OOMKill safety net)"
+      - "When combined with a load/stress condition, node-level memory/CPU pressure and HighMemoryUsage-style alerts may fire without the usual per-pod OOMKilled containment"
+      - "kubectl get deployment -o yaml shows the container's resources block containing only requests (or being empty) where limits previously existed"
+
+    goal: >
+      Remove a container's resources.limits (cpu/memory) to validate whether
+      an agent detects the missing resource ceiling — either directly via
+      configuration inspection or indirectly via unusually unbounded resource
+      growth — and restores an appropriate limits configuration.
+
+    remediation: >
+      Patch the container's resources.limits back to appropriate cpu/memory
+      values (e.g. via `kubectl edit deployment` / `kubectl patch`) or perform
+      `kubectl rollout undo` to restore the previous revision, then verify the
+      limits are present again and resource usage is bounded.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "Find the Deployment whose container is suspected of unbounded resource consumption."
+
+    - step: 3
+      action: "Inspect deployment/pod resource configuration"
+      detail: "Read the Deployment spec (or describe the pod) to confirm the container's resources.limits block is missing while requests, if any, remain."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace looking for signs of resource pressure (e.g. evictions) or a recent manifest change removing the limits."
+
+    - step: 5
+      action: "Check Prometheus metrics/alerts"
+      detail: "Query container resource usage and limit metrics to confirm actual consumption is climbing with no corresponding limit ceiling."
+
+    - step: 6
+      action: "Patch or rollback the deployment"
+      detail: "Restore appropriate resources.limits values on the container, either by patching the resources block directly or via kubectl rollout undo."
+
+    - step: 7
+      action: "Verify remediation"
+      detail: "Re-inspect the deployment/pod to confirm resources.limits are present again and resource usage stabilizes within the new ceiling."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Find the Deployment whose container may be missing resource limits."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Read the Deployment spec and confirm the container's resources.limits block is absent."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Look for events correlated with the manifest change or resulting resource pressure."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_container_resource_limits{namespace=\"<target-namespace>\",resource=\"memory\"}'"
+      purpose: "Confirm no memory/cpu limit is reported for the affected container."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='container_memory_working_set_bytes{namespace=\"<target-namespace>\",container=\"<container-name>\"}'"
+      purpose: "Check whether actual resource usage is climbing unbounded without a ceiling."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Restore appropriate resources.limits (cpu/memory) on the affected container."
+      tool_available: true
+
+    - step: 8
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Verify resources.limits are present again and resource usage is bounded."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 90
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 150
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 16
+      unit: "count"

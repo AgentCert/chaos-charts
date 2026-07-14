@@ -1,0 +1,126 @@
+fault: modified-kubernetes-workload-container-environment-variable
+version: 0.1.0
+description: >-
+  Overwrites a named environment variable on a container with a bad value,
+  then restores the original value (or removes it if it did not exist).
+  Mirrors ITBench SRE scenario 16, which reassigns otel-demo's "shipping"
+  container QUOTE_ADDR env var to an unreachable address, and fault library
+  index 13 (modified-kubernetes-workload-container-environment-variable).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target container's environment variable holds an unexpected/invalid value (e.g. an address pointing at a nonexistent host:port)"
+      - "The pod restarts or its application logs show connection/DNS failures to the dependent service the variable used to point at"
+      - "HighRequestErrorRate and/or elevated latency for the calling service, and/or for the service that depends on it downstream"
+      - "kubectl describe pod/deployment shows the injected bad value instead of the expected configuration value"
+
+    goal: >
+      Overwrite a container's environment variable with an invalid value to
+      validate whether an agent detects the resulting dependency failure,
+      identifies the misconfigured variable, and restores the original
+      configuration value.
+
+    remediation: >
+      Restore the environment variable to its original (or a correct) value
+      via `kubectl rollout undo` or by patching/editing the Deployment's
+      container spec, then verify the pod restarts, becomes Ready, and the
+      downstream dependency call succeeds again.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "Find the Deployment/StatefulSet whose pods are erroring or restarting."
+
+    - step: 3
+      action: "Get deployment/pod details"
+      detail: "Retrieve the deployment spec and pod status; inspect the container's env list for an unexpected value."
+
+    - step: 4
+      action: "Check Kubernetes events and logs"
+      detail: "List events and/or pod logs for connection refused / DNS resolution errors referencing the misconfigured target."
+
+    - step: 5
+      action: "Check Prometheus alerts/metrics"
+      detail: "Query for HighRequestErrorRate or elevated latency correlated with this service and its dependency."
+
+    - step: 6
+      action: "Fix or roll back the environment variable"
+      detail: "Patch the container's environment variable back to its correct value, or `kubectl rollout undo` the deployment."
+
+    - step: 7
+      action: "Verify pod recovery"
+      detail: "Re-list pods to confirm they restart and reach Running/Ready with the corrected configuration."
+
+    - step: 8
+      action: "Validate application health"
+      detail: "Confirm the dependent service call succeeds again via logs or a Prometheus query."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Find the Deployment experiencing dependency errors."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Inspect the container's env list and spot the unexpected value."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Look for connection/DNS failure events or pod restarts tied to the misconfigured variable."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(http_client_requests_total{namespace=\"<target-namespace>\",status=~\"5..\"}[5m])'"
+      purpose: "Confirm elevated error rate correlated with the dependency call."
+      tool_available: true
+
+    - step: 6
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Restore the previous revision to undo the bad environment variable value."
+      tool_available: true
+
+    - step: 7
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify pods restart and reach Running/Ready after the rollback."
+      tool_available: true
+
+    - step: 8
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(http_client_requests_total{namespace=\"<target-namespace>\",status=~\"5..\"}[5m])'"
+      purpose: "Confirm the error rate has returned to baseline."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

@@ -1,0 +1,103 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Patches an existing HorizontalPodAutoscaler's resource-utilization targets
+    (CPU and memory) to unrealistically low values, causing the HPA to react
+    to normal/low load as if it were saturated and continually scale toward
+    maxReplicas without ever relieving load, then restores the original
+    utilization targets. Mirrors ITBench fault library index 11
+    (misconfigured-kubernetes-horizontal-pod-autoscaler), used against
+    otel-demo's fraud-detection, frontend, and image-provider Deployments'
+    HPAs in ITBench SRE scenario 38 (one fault injection per target HPA).
+    This exact same injection/revert mechanism is reused unchanged as
+    ITBench's one FinOps scenario: the SRE framing evaluates whether an agent
+    restores availability/stability, while the FinOps framing evaluates
+    whether an agent notices and corrects the unnecessary replica churn/cost
+    from over-aggressive autoscaling — only the assessment framing differs.
+kind: ChaosExperiment
+metadata:
+  name: misconfigured-kubernetes-horizontal-pod-autoscaler
+  labels:
+    name: misconfigured-kubernetes-horizontal-pod-autoscaler
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["autoscaling"]
+        resources: ["horizontalpodautoscalers"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        # Capture original utilization targets (whole metrics array) — empty
+        # means the HPA had no metrics (e.g. a legacy autoscaling/v1 object
+        # relying solely on spec.targetCPUUtilizationPercentage).
+        ORIG_METRICS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.metrics}')
+        echo "Original metrics: ${ORIG_METRICS:-<none>}"
+
+        MISCONFIGURED_METRICS="[{\"type\":\"Resource\",\"resource\":{\"name\":\"cpu\",\"target\":{\"type\":\"Utilization\",\"averageUtilization\":${CPU_UTILIZATION_PERCENT}}}},{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"target\":{\"type\":\"Utilization\",\"averageUtilization\":${MEMORY_UTILIZATION_PERCENT}}}}]"
+
+        echo "Injecting: forcing HPA ${TARGET} to target unrealistically low CPU (${CPU_UTILIZATION_PERCENT}%) / memory (${MEMORY_UTILIZATION_PERCENT}%) utilization"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+          -p "{\"spec\":{\"metrics\":${MISCONFIGURED_METRICS}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        # Revert: null removes the field (merge-patch semantics) if none
+        # existed originally; otherwise restore the captured metrics array.
+        if [ -z "$ORIG_METRICS" ]; then
+          METRICS_JSON="null"
+        else
+          METRICS_JSON="$ORIG_METRICS"
+        fi
+        echo "Reverting HPA ${TARGET} utilization targets to original"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+          -p "{\"spec\":{\"metrics\":${METRICS_JSON}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "horizontalpodautoscaler"
+
+      # misconfigured utilization targets, matching ITBench's own fixture
+      # values (see ITBench molecule test for this fault: cpu -> 20, mem -> 30)
+      - name: CPU_UTILIZATION_PERCENT
+        value: "20"
+      - name: MEMORY_UTILIZATION_PERCENT
+        value: "30"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: misconfigured-kubernetes-horizontal-pod-autoscaler
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

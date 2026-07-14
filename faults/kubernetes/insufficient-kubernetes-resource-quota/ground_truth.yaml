@@ -1,0 +1,130 @@
+fault: insufficient-kubernetes-resource-quota
+version: 0.1.0
+description: >-
+  Creates or patches a namespace ResourceQuota with hard cpu/memory limits far
+  too low for the workload to (re)schedule, then restores the quota's
+  original spec (or deletes it if none existed). Mirrors ITBench SRE scenarios
+  52 (otel-demo "checkout") and 102 (otel-demo "ad"), and fault library index
+  7 (insufficient-kubernetes-resource-quota).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "A ResourceQuota (default name 'memory') exists in the namespace with hard requests/limits far below what any real container needs"
+      - "New or replacement pods for the target Deployment/StatefulSet never get created — the ReplicaSet emits repeated FailedCreate events"
+      - "Events show 'forbidden: exceeded quota' or 'must specify limits.cpu/limits.memory/requests.cpu/requests.memory' for the affected container"
+      - "Deployment status shows a ReplicaFailure condition and the new ReplicaSet is stuck at 0 available replicas while the old ReplicaSet (if any) keeps serving"
+      - "KubePodNotReady alert fires because the workload cannot bring up new/updated pods"
+
+    goal: >
+      Inject an underprovisioned ResourceQuota into the application's
+      namespace to validate whether an agent detects the resulting
+      FailedCreate/'exceeded quota' pod-admission failures, correctly
+      attributes them to the ResourceQuota (rather than the workload's own
+      spec), and restores the ability to schedule pods by raising or removing
+      the offending quota.
+
+    remediation: >
+      Increase the ResourceQuota's hard limits to values that accommodate the
+      workload (`kubectl -n <namespace> edit resourcequota <quota-name>`), or
+      delete the quota entirely if it is not actually required
+      (`kubectl -n <namespace> delete resourcequota <quota-name>`), then
+      verify the stuck ReplicaSet's pod(s) get created and reach Running/Ready.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments/pods in target namespace"
+      detail: "Notice the Deployment isn't reaching its desired replica count and/or a ReplicaSet shows 0 available new pods."
+
+    - step: 3
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; find repeated FailedCreate events on the ReplicaSet with an 'exceeded quota' or 'must specify limits/requests' message."
+
+    - step: 4
+      action: "List ResourceQuotas in the namespace"
+      detail: "Find the ResourceQuota object referenced in the FailedCreate event message."
+
+    - step: 5
+      action: "Get ResourceQuota details"
+      detail: "Retrieve the quota's spec.hard and status.used to confirm the hard limits are set far below the workload's actual requests/limits."
+
+    - step: 6
+      action: "Check Prometheus alerts"
+      detail: "Query for KubePodNotReady correlated with the affected workload/namespace."
+
+    - step: 7
+      action: "Raise or remove the offending ResourceQuota"
+      detail: "Patch the quota's hard limits to accommodate the workload, or delete the quota if it isn't required."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Re-list pods/ReplicaSets to confirm the previously stuck pod(s) are now created and reach Running/Ready."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Find the Deployment whose new ReplicaSet is stuck at 0 available replicas."
+      tool_available: true
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Find repeated FailedCreate events on the ReplicaSet reporting 'exceeded quota'."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=v1 kind=ResourceQuota namespace=<target-namespace>"
+      purpose: "Locate the ResourceQuota object named in the FailedCreate event message."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=ResourceQuota namespace=<target-namespace> name=<quota-name>"
+      purpose: "Read spec.hard/status.used to confirm the quota's limits are underprovisioned for the workload."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_status_ready{namespace=\"<target-namespace>\",condition=\"true\"}'"
+      purpose: "Confirm the workload is missing Ready replicas via Prometheus."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=v1 kind=ResourceQuota namespace=<target-namespace> name=<quota-name> patch={\"spec\":{\"hard\":{...}}}"
+      purpose: "Raise the quota's hard limits (or delete the quota) so the workload's pods can be admitted."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify the previously stuck pod(s) are now created and reach Running/Ready."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 180
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 16
+      unit: "count"

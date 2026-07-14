@@ -1,0 +1,29 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: unschedulable-pod-anti-affinity-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+      spec:
+        components:
+          env:
+            # label (key=value) the anti-affinity rule targets; defaults to
+            # the workload's own applabel above (its own pods)
+            - name: ANTI_AFFINITY_LABEL
+              value: ''
+            # topology domain the anti-affinity rule is scoped to
+            - name: TOPOLOGY_KEY
+              value: 'kubernetes.io/hostname'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

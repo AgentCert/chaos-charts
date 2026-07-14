@@ -1,0 +1,159 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Changes the password used to authenticate to a Valkey (Redis-compatible)
+    workload by overwriting a Secret's password key and patching the target
+    container to require it via `valkey-server --requirepass`, so dependent
+    services holding the old/no credential can no longer authenticate. The
+    original Secret value (or its absence) and the container's original
+    command/args are captured before injection and restored exactly on
+    revert. Mirrors ITBench SRE fault library index 27
+    "valkey-workload-changed-password", as exercised by ITBench SRE scenario
+    34 against OpenTelemetry Demo's `valkey-cart` Deployment in the
+    `otel-demo` namespace.
+
+    Mechanism note / assumption: ACE's otel-demo chart is a pure pass-through
+    Helm dependency on upstream open-telemetry/opentelemetry-helm-charts
+    @0.40.9 (see app-charts/charts/otel-demo/values.yaml) and does not itself
+    vendor or override the valkey-cart component's manifests, so there is no
+    literal Secret/values file in this repo to confirm against. Per the
+    upstream chart's own known convention (and confirmed directly against
+    ITBench's own fault-injection playbook at
+    scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_changed_password.yaml),
+    the default valkey-cart container runs unauthenticated (no --requirepass,
+    no pre-existing credentials Secret); this fault is what *introduces* the
+    Secret `valkey-credentials` (key `valkey-password`) and forces
+    `--requirepass` on the container, exactly as ITBench's own injector does.
+    If a `valkey-credentials`/`valkey-password` Secret already exists (e.g. a
+    previously-hardened deployment), its original value is captured and
+    restored verbatim instead of being deleted.
+kind: ChaosExperiment
+metadata:
+  name: valkey-workload-changed-password
+  labels:
+    name: valkey-workload-changed-password
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "create", "patch", "delete"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        echo "Target=${TARGET} container=${CONTAINER} secret=${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY}"
+
+        # Capture original command/args -- the injected
+        # `valkey-server --requirepass $(VALKEY_PASSWORD)` override fully
+        # replaces both fields, so they must be restored verbatim (or
+        # removed, if unset) on revert.
+        ORIG_COMMAND=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].command}")
+        ORIG_ARGS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].args}")
+        echo "Original command: ${ORIG_COMMAND:-<none>}"
+        echo "Original args: ${ORIG_ARGS:-<none>}"
+
+        # Capture whether the credentials Secret already existed (and, if
+        # so, its original base64-encoded password value) so it can be
+        # restored exactly rather than merely deleted on revert.
+        SECRET_EXISTED="false"
+        ORIG_SECRET_VALUE=""
+        if kubectl get secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" >/dev/null 2>&1; then
+          SECRET_EXISTED="true"
+          ORIG_SECRET_VALUE=$(kubectl get secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" \
+            -o jsonpath="{.data.${VALKEY_SECRET_KEY}}")
+        fi
+        echo "Secret ${VALKEY_SECRET_NAME} existed=${SECRET_EXISTED}"
+
+        echo "Injecting: setting ${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY} to an invalid password"
+        if [ "$SECRET_EXISTED" = "true" ]; then
+          kubectl patch secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --type=merge \
+            -p "{\"stringData\":{\"${VALKEY_SECRET_KEY}\":\"${FAULT_PASSWORD}\"}}"
+        else
+          kubectl create secret generic "${VALKEY_SECRET_NAME}" -n "${APP_NAMESPACE}" \
+            --from-literal="${VALKEY_SECRET_KEY}=${FAULT_PASSWORD}"
+        fi
+
+        echo "Injecting: forcing ${CONTAINER} to require the (now-invalid) password"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic -p \
+          "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":[\"valkey-server\"],\"args\":[\"--requirepass\",\"\$(VALKEY_PASSWORD)\"],\"env\":[{\"name\":\"VALKEY_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"${VALKEY_SECRET_NAME}\",\"key\":\"${VALKEY_SECRET_KEY}\"}}}]}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring original command/args, removing injected env var"
+        if [ -z "$ORIG_COMMAND" ]; then COMMAND_JSON="null"; else COMMAND_JSON="$ORIG_COMMAND"; fi
+        if [ -z "$ORIG_ARGS" ]; then ARGS_JSON="null"; else ARGS_JSON="$ORIG_ARGS"; fi
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic -p \
+          "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":${COMMAND_JSON},\"args\":${ARGS_JSON},\"env\":[{\"name\":\"VALKEY_PASSWORD\",\"\$patch\":\"delete\"}]}]}}}}"
+
+        if [ "$SECRET_EXISTED" = "true" ]; then
+          echo "Reverting: restoring original ${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY} value"
+          kubectl patch secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --type=merge \
+            -p "{\"data\":{\"${VALKEY_SECRET_KEY}\":\"${ORIG_SECRET_VALUE}\"}}"
+        else
+          echo "Reverting: deleting ${VALKEY_SECRET_NAME} (it did not exist before fault injection)"
+          kubectl delete secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --ignore-not-found
+        fi
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container whose command/args are forced to require a password;
+      # defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # Secret name/key holding the Valkey password, matching ITBench's own
+      # fixture (scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_changed_password.yaml
+      # and fault library index 27's solution template)
+      - name: VALKEY_SECRET_NAME
+        value: "valkey-credentials"
+      - name: VALKEY_SECRET_KEY
+        value: "valkey-password"
+
+      # the invalid password written into the Secret, matching ITBench's
+      # own fixture value
+      - name: FAULT_PASSWORD
+        value: "invalid_password"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: valkey-workload-changed-password
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

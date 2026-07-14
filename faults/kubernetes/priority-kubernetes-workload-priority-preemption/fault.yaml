@@ -1,0 +1,148 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Creates a temporary, higher-priority PriorityClass and a decoy/pressure
+    Deployment sized to consume most of the target pod's node, forcing the
+    Kubernetes scheduler to preempt (evict) the lower-priority target pod to
+    make room. This is a resource-pressure-induced preemption fault, not a
+    direct pod-delete: the target's replacement pod is left Pending with a
+    FailedScheduling/Preempted event until the decoy is removed. Mirrors
+    ITBench SRE scenario "priority-kubernetes-workload-priority-preemption"
+    (fault library index 19).
+kind: ChaosExperiment
+metadata:
+  name: priority-kubernetes-workload-priority-preemption
+  labels:
+    name: priority-kubernetes-workload-priority-preemption
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      # delete the decoy pod(s) directly during revert, in case the decoy
+      # Deployment's cascading pod delete is not immediate
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["delete"]
+      # read the target pod's node and that node's allocatable resources, to
+      # size the decoy's resource requests
+      - apiGroups: [""]
+        resources: ["nodes"]
+        verbs: ["get"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["get", "list"]
+      # create/delete the decoy pressure Deployment
+      - apiGroups: ["apps"]
+        resources: ["deployments"]
+        verbs: ["create", "delete"]
+      # create/delete the temporary, higher-priority PriorityClass (cluster-scoped)
+      - apiGroups: ["scheduling.k8s.io"]
+        resources: ["priorityclasses"]
+        verbs: ["create", "delete"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        TARGET_POD=$(kubectl get pods -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET_POD" ]; then
+          echo "no running pod found for ${APP_KIND}/${TARGET} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        NODE=$(kubectl get pod -n "${APP_NAMESPACE}" "$TARGET_POD" -o jsonpath='{.spec.nodeName}')
+        if [ -z "$NODE" ]; then
+          echo "could not determine the scheduling node for pod ${TARGET_POD}" >&2
+          exit 1
+        fi
+        echo "Target pod=${TARGET_POD} is scheduled on node=${NODE}"
+
+        # Size the decoy's memory request as a percentage of the target node's
+        # allocatable memory, so the scheduler cannot fit the (higher-priority)
+        # decoy on that node without preempting lower-priority pods already
+        # running there -- including the target's pod.
+        NODE_ALLOC_MEM_RAW=$(kubectl get node "$NODE" -o jsonpath='{.status.allocatable.memory}')
+        NODE_ALLOC_MEM_KI=${NODE_ALLOC_MEM_RAW%Ki}
+        DECOY_MEM_KI=$(( NODE_ALLOC_MEM_KI * DECOY_MEMORY_PERCENT / 100 ))
+        DECOY_MEMORY_REQUEST="${DECOY_MEM_KI}Ki"
+        DECOY_NS="${DECOY_NAMESPACE:-$APP_NAMESPACE}"
+        echo "Node allocatable memory=${NODE_ALLOC_MEM_RAW}; decoy will request ${DECOY_MEMORY_REQUEST} (${DECOY_MEMORY_PERCENT}%), pinned to node=${NODE}"
+
+        echo "Injecting: creating higher-priority PriorityClass ${PRIORITY_CLASS_NAME} (value=${PRIORITY_VALUE})"
+        kubectl create priorityclass "${PRIORITY_CLASS_NAME}" \
+          --value="${PRIORITY_VALUE}" \
+          --description="Temporary priority class created by the priority-kubernetes-workload-priority-preemption chaos fault"
+
+        echo "Injecting: creating decoy pressure Deployment ${DECOY_NAME} in ${DECOY_NS}"
+        DECOY_MANIFEST="{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"${DECOY_NAME}\",\"namespace\":\"${DECOY_NS}\",\"labels\":{\"app\":\"${DECOY_NAME}\",\"chaos.itbench.io/role\":\"priority-preemption-decoy\"}},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"${DECOY_NAME}\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"${DECOY_NAME}\"}},\"spec\":{\"priorityClassName\":\"${PRIORITY_CLASS_NAME}\",\"nodeSelector\":{\"kubernetes.io/hostname\":\"${NODE}\"},\"containers\":[{\"name\":\"decoy\",\"image\":\"${DECOY_IMAGE}\",\"resources\":{\"requests\":{\"cpu\":\"${DECOY_CPU_REQUEST}\",\"memory\":\"${DECOY_MEMORY_REQUEST}\"}}}]}}}}"
+        echo "$DECOY_MANIFEST" | kubectl apply -f -
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (the target pod should be preempted, and its replacement left Pending with a FailedScheduling/Preempted event)"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: deleting decoy Deployment ${DECOY_NAME} and PriorityClass ${PRIORITY_CLASS_NAME}"
+        kubectl delete deployment "${DECOY_NAME}" -n "${DECOY_NS}" --ignore-not-found=true
+        kubectl delete pods -n "${DECOY_NS}" -l "app=${DECOY_NAME}" --ignore-not-found=true --force --grace-period=0 || true
+        kubectl delete priorityclass "${PRIORITY_CLASS_NAME}" --ignore-not-found=true
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # name/value of the temporary, cluster-scoped PriorityClass created to
+      # outrank the target workload (which normally has no priorityClassName,
+      # i.e. the default priority of 0)
+      - name: PRIORITY_CLASS_NAME
+        value: "chaos-priority-preemption"
+      - name: PRIORITY_VALUE
+        value: "1000000"
+
+      # the decoy/pressure workload used to force preemption
+      - name: DECOY_NAME
+        value: "chaos-priority-preemption-decoy"
+      # namespace for the decoy Deployment; defaults to APP_NAMESPACE if unset
+      - name: DECOY_NAMESPACE
+        value: ""
+      # minimal image with no work to do -- only its resource *requests*
+      # (not actual usage) matter for scheduler bin-packing/preemption
+      - name: DECOY_IMAGE
+        value: "registry.k8s.io/pause:3.9"
+      # percentage of the target node's allocatable memory requested by the
+      # decoy, sized to force preemption of lower-priority pods on that node
+      - name: DECOY_MEMORY_PERCENT
+        value: "85"
+      - name: DECOY_CPU_REQUEST
+        value: "100m"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: priority-kubernetes-workload-priority-preemption
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

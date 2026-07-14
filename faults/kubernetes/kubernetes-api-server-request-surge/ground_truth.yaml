@@ -1,0 +1,136 @@
+fault: kubernetes-api-server-request-surge
+version: 0.1.0
+description: >-
+  Deploys a load-generator Deployment (default name `workload-scanner`)
+  inside the target namespace that hammers the kube-apiserver with a
+  sustained, high-rate burst of API requests. Mirrors ITBench SRE scenario
+  51 (kubernetes-api-server-request-surge against the `otel-demo` namespace)
+  and fault library index 10. CAUTION: the kube-apiserver is a single,
+  cluster-wide control-plane component -- although the injected workload
+  lives in one namespace, the resulting latency degradation
+  (HighRequestLatency / KubeAPILatencyHigh-style) is NOT scoped to that
+  namespace. It affects apiserver responsiveness for every namespace and
+  tenant sharing the cluster, so blast radius extends well beyond the
+  target application.
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "kube-apiserver request latency (apiserver_request_duration_seconds) is elevated cluster-wide, not just for the target namespace"
+      - "Other, unrelated workloads/namespaces experience slow or timed-out kubectl/controller API calls (client-side throttling, 'context deadline exceeded')"
+      - "An unfamiliar Deployment/ReplicaSet/Pods (default name 'workload-scanner') is running in the target namespace, not part of the application's own manifest"
+      - "HighRequestLatency golden-signal alert fires; kube-apiserver CPU/memory usage spikes"
+
+    goal: >
+      Deploy a workload inside a target namespace that generates a
+      sustained surge of requests against the kube-apiserver, to validate
+      whether an agent correctly attributes cluster-wide API latency
+      degradation to an in-namespace load-generator workload (rather than
+      assuming the symptom is isolated to that namespace or to the target
+      application itself), and removes the offending workload.
+
+    remediation: >
+      Identify the injected load-generator Deployment (default name
+      `workload-scanner`) in the affected namespace and delete it (or
+      lower its request rate), per ITBench's own remediation guidance
+      (`kubectl -n <namespace> delete deployment workload-scanner`); then
+      verify kube-apiserver request latency returns to baseline
+      cluster-wide, not just within the target namespace.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application (otel-demo) is deployed."
+
+    - step: 2
+      action: "List deployments/pods in target namespace"
+      detail: "List workloads in the application namespace and spot an unfamiliar 'workload-scanner' Deployment/pods not part of the app's own manifest."
+
+    - step: 3
+      action: "Get deployment details"
+      detail: "Retrieve the workload-scanner Deployment's spec (replicas, image, command/env) to confirm it is a load-generator rather than a legitimate app component."
+
+    - step: 4
+      action: "Query kube-apiserver latency metrics"
+      detail: "Query Prometheus for apiserver_request_duration_seconds (or apiserver_request_total) cluster-wide to confirm elevated latency is NOT confined to the target namespace -- i.e. other tenants are affected too."
+
+    - step: 5
+      action: "Check Kubernetes events"
+      detail: "List events across namespaces for signs of API throttling/slow scheduling correlated with the surge window."
+
+    - step: 6
+      action: "Correlate root cause"
+      detail: "Conclude the workload-scanner Deployment's request volume, not an apiserver infra fault, is the root cause of the cluster-wide latency degradation."
+
+    - step: 7
+      action: "Delete the load-generator deployment"
+      detail: "Remove the workload-scanner Deployment (and its ServiceAccount/Role/RoleBinding if present) from the target namespace to stop the request surge."
+
+    - step: 8
+      action: "Verify apiserver latency recovery"
+      detail: "Re-query kube-apiserver latency metrics cluster-wide to confirm request latency has returned to baseline and no residual load-generator pods remain."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Spot the unfamiliar 'workload-scanner' Deployment among the namespace's workloads."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Confirm workload-scanner pods are actively running and note their replica count/age."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=workload-scanner"
+      purpose: "Inspect the Deployment's image/command/env to confirm it is a request-surge load generator."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket[5m])) by (le))'"
+      purpose: "Confirm kube-apiserver p99 latency is elevated cluster-wide, beyond just the target namespace."
+      tool_available: true
+
+    - step: 6
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Check for throttling/slow-scheduling events correlated with the surge window."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=workload-scanner"
+      purpose: "Remove the injected load-generator Deployment to stop the request surge."
+      tool_available: true
+
+    - step: 8
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket[5m])) by (le))'"
+      purpose: "Verify kube-apiserver latency has returned to baseline cluster-wide after remediation."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"
