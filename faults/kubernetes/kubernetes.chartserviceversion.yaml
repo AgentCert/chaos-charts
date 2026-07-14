@@ -7,219 +7,141 @@ metadata:
   annotations:
     categories: Kubernetes
     chartDescription: Injects kubernetes chaos experiment
-    executionPlane: "kubernetes"
+    executionPlane: kubernetes
 spec:
   displayName: Kubernetes
-  categoryDescription: >
-    Kubernetes is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easier management and discovery. It will install all the experiments which can be used to inject chaos into containerized applications.
+  categoryDescription: 'Kubernetes is an open-source system for automating deployment,
+    scaling, and management of containerized applications. It groups containers that
+    make up an application into logical units for easier management and discovery.
+    It will install all the experiments which can be used to inject chaos into containerized
+    applications.
+
+    '
   faults:
-    - name: pod-delete
-      description: It injects pod-delete chaos in a Kubernetes pod.
-      displayName: "Pod Delete"
-    - name: container-kill
-      description: It injects container-kill chaos in a Kubernetes pod .
-      displayName: "Container Kill"
-    - name: pod-cpu-hog
-      description: It injects cpu-hog chaos in a Kubernetes pod.
-      displayName: "Pod CPU Hog"
-    - name: pod-network-loss
-      description: It injects network-loss chaos in a Kubernetes pod.
-      displayName: "Pod Network Loss"
-    - name: pod-network-latency
-      description: It injects network-latency chaos in a Kubernetes pod.
-      displayName: "Pod Network Latency"
-    - name: pod-network-corruption
-      description: It injects network-corruption chaos in a Kubernetes pod.
-      displayName: "Pod Network Corruption"
-    - name: node-drain
-      description: It injects node-drain chaos in a Kubernetes node.
-      displayName: "Node Drain"
-    - name: node-cpu-hog
-      description: It injects node-cpu-hog chaos in a Kubernetes node.
-      displayName: "Node CPU Hog"
-    - name: node-restart
-      description: It injects node-restart chaos in a Kubernetes node.
-      displayName: "Node Restart"
-    - name: disk-fill
-      description: It injects disk-fill chaos in a Kubernetes node.
-      displayName: "Disk Fill"
-    - name: node-memory-hog
-      description: It injects node-memory-hog chaos in a Kubernetes node.
-      displayName: "Node Memory Hog"
-    - name: node-poweroff
-      description: Node poweroff contains chaos experiment to poweroff a node via SSH.
-      displayName: "Node Poweroff"
-    - name: pod-memory-hog
-      description: It injects pod-memory-hog chaos in a Kubernetes pod.
-      displayName: "Pod Memory Hog"
-    - name: kubelet-service-kill
-      description: It injects kubelet-service-kill chaos in a Kubernetes node.
-      displayName: "Kubelet Service Kill"
-    - name: pod-network-duplication
-      description: It injects pod-network-duplication chaos in a Kubernetes pod.
-      displayName: "Pod Network Duplication"
-    - name: node-taint
-      description: It injects node-taint chaos in a Kubernetes node.
-      displayName: "Node Taint"
-    - name: docker-service-kill
-      description: It injects docker-service-kill chaos in a Kubernetes pod.
-      displayName: "Docker Service Kill"
-    - name: pod-autoscaler
-      description: It injects pod-autoscaler chaos in a Kubernetes pod.
-      displayName: "Pod Autoscaler"
-    - name: node-io-stress
-      description: It injects node-io-stress chaos in a Kubernetes node.
-      displayName: "Node IO Stress"
-    - name: pod-io-stress
-      description: It injects pod-io-stress chaos in a Kubernetes pod.
-      displayName: "Pod IO Stress"
-    - name: pod-dns-error
-      description: It injects pod-dns-error chaos in a Kubernetes pod.
-      displayName: "Pod DNS Error"
-    - name: pod-dns-spoof
-      description: It injects pod-dns-spoof chaos in a Kubernetes pod.
-      displayName: "Pod DNS Spoof"
-    - name: pod-cpu-hog-exec
-      description: It injects pod-cpu-hog-exec chaos in a Kubernetes pod.
-      displayName: "Pod CPU Hog Exec"
-    - name: pod-memory-hog-exec
-      description: It injects pod-memory-hog-exec chaos in a Kubernetes pod.
-      displayName: "Pod Memory Hog Exec"
-    - name: pod-network-partition
-      description: It injects pod-network-partition chaos in a Kubernetes pod.
-      displayName: "Pod Network Partition"
-    - name: pod-http-latency
-      description: It injects pod-http-latency chaos in a Kubernetes pod.
-      displayName: "Pod HTTP Latency"
-    - name: pod-http-status-code
-      description: It injects pod-http-status-code chaos in a Kubernetes pod.
-      displayName: "Pod HTTP Status Code"
-    - name: pod-http-modify-header
-      description: It injects pod-http-modify-header chaos in a Kubernetes pod.
-      displayName: "Pod HTTP Modify Header"
-    - name: pod-http-modify-body
-      description: It injects pod-http-modify-body chaos in a Kubernetes pod.
-      displayName: "Pod HTTP Modify Body"
-    - name: pod-http-reset-peer
-      description: It injects pod-http-reset-peer chaos in a Kubernetes pod.
-      displayName: "Pod HTTP Reset Peer"
-    - name: pod-network-rate-limit
-      description: It injects pod-network-rate-limit chaos in a Kubernetes pod.
-      displayName: "Pod Network Rate Limit"
-    - name: install-application
-      description: Installs/deploys an application into the Kubernetes cluster for chaos testing.
-      displayName: "Install Application"
-    - name: install-agent
-      description: Installs/deploys an AI agent into the Kubernetes cluster for chaos testing.
-      displayName: "Install Agent"
-    - name: uninstall-application
-      description: Uninstalls/removes an application from the Kubernetes cluster after chaos testing.
-      displayName: "Uninstall Application"
-    - name: uninstall-agent
-      description: Uninstalls/removes an AI agent from the Kubernetes cluster after chaos testing.
-      displayName: "Uninstall Agent"
-    - name: scaled-to-zero-kubernetes-workload
-      description: Scales a workload to zero replicas, then restores it. Mirrors ITBench SRE scenario "scaled-to-zero-kubernetes-workload".
-      displayName: "Scaled To Zero Kubernetes Workload"
-    - name: nonexistent-kubernetes-workload-container-image
-      description: Sets a container image to a nonexistent tag causing ImagePullBackOff, then restores the original. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-container-image".
-      displayName: "Nonexistent Kubernetes Workload Container Image"
-    - name: misconfigured-kubernetes-workload-container-readiness-probe
-      description: Patches a container readinessProbe to an unreachable port causing NotReady, then restores. Mirrors ITBench SRE scenario "misconfigured-kubernetes-workload-container-readiness-probe".
-      displayName: "Misconfigured Kubernetes Workload Container Readiness Probe"
-    - name: modified-target-port-kubernetes-service
-      description: Changes a Service targetPort to a broken value causing traffic failure, then restores. Mirrors ITBench SRE scenario "modified-target-port-kubernetes-service".
-      displayName: "Modified Target Port Kubernetes Service"
-    - name: invalid-kubernetes-service-selector
-      description: Replaces a Service selector with an invalid value so no pods match, then restores. Mirrors ITBench SRE scenario "invalid-kubernetes-service-selector".
-      displayName: "Invalid Kubernetes Service Selector"
-    - name: nonexistent-kubernetes-workload-persistent-volume-claim
-      description: Creates a PVC with an invalid StorageClass and mounts it into a workload causing Pending/Init, then reverts. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-persistent-volume-claim".
-      displayName: "Nonexistent Kubernetes Workload Persistent Volume Claim"
-    - name: opentelemetry-demo-feature-flag
-      description: Toggles a named OpenTelemetry Demo feature flag by patching the flagd-config ConfigMap, then restores it. Mirrors ITBench SRE scenarios 1/3/52.
-      displayName: "OpenTelemetry Demo Feature Flag"
-    - name: unsupported-architecture-kubernetes-workload-container-image
-      description: Sets a container's image to a tag built only for an unsupported CPU architecture, causing ImagePullBackOff, then restores. Mirrors ITBench SRE scenarios 23/57/60.
-      displayName: "Unsupported Architecture Kubernetes Workload Container Image"
-    - name: insufficient-kubernetes-resource-quota
-      description: Creates or patches a namespace ResourceQuota with hard cpu/memory limits too low for the workload, then reverts. Mirrors ITBench SRE scenarios 52/102.
-      displayName: "Insufficient Kubernetes Resource Quota"
-    - name: crashing-kubernetes-workload-init-container
-      description: Injects an initContainer that crashes due to a bad script, forcing a Deployment's pod into Init:CrashLoopBackOff, then reverts. Mirrors ITBench SRE scenarios 59/60.
-      displayName: "Crashing Kubernetes Workload Init Container"
-    - name: modified-kubernetes-workload-container-environment-variable
-      description: Overwrites one named environment variable on a container with a bad value, then restores the original. Mirrors ITBench SRE scenario "modified-kubernetes-workload-container-environment-variable".
-      displayName: "Modified Kubernetes Workload Container Environment Variable"
-    - name: ingress-port-blocking-network-policy
-      description: Creates a NetworkPolicy that denies all ingress traffic to a workload's pods, then deletes it. Mirrors ITBench SRE scenario "ingress-port-blocking-network-policy".
-      displayName: "Ingress Port Blocking Network Policy"
-    - name: nonexistent-kubernetes-workload-node
-      description: Adds a nodeSelector referencing a node name that does not exist, leaving the workload permanently Pending, then reverts. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-node".
-      displayName: "Nonexistent Kubernetes Workload Node"
-    - name: valkey-workload-changed-password
-      description: Changes the password/credential used to authenticate to a Valkey workload, then restores it. Mirrors ITBench SRE scenario "valkey-workload-changed-password".
-      displayName: "Valkey Workload Changed Password"
-    - name: misconfigured-kubernetes-horizontal-pod-autoscaler
-      description: Patches a HorizontalPodAutoscaler's CPU/memory utilization targets to unrealistically low values, then reverts. Mirrors ITBench SRE scenario 38 (also used, unchanged, as ITBench's one FinOps scenario).
-      displayName: "Misconfigured Kubernetes Horizontal Pod Autoscaler"
-    - name: cordoned-kubernetes-worker-node
-      description: Cordons the Kubernetes node hosting a target workload's pod(s), then uncordons it. Mirrors ITBench SRE scenario "cordoned-kubernetes-worker-node". Caution -- affects all pods on the cordoned node, not just the target.
-      displayName: "Cordoned Kubernetes Worker Node"
-    - name: valkey-workload-out-of-memory
-      description: Clamps the valkey-cart container's memory limit/request to an unrealistically low value to force OOMKilled, then reverts. Mirrors ITBench SRE scenario "valkey-workload-out-of-memory".
-      displayName: "Valkey Workload Out Of Memory"
-    - name: unassigned-kubernetes-workload-container-resource-limits
-      description: Removes a container's resources.limits (cpu/memory), leaving it with no consumption ceiling, then restores. Mirrors ITBench SRE scenario "unassigned-kubernetes-workload-container-resource-limits".
-      displayName: "Unassigned Kubernetes Workload Container Resource Limits"
-    - name: priority-kubernetes-workload-priority-preemption
-      description: Creates a temporary higher-priority PriorityClass and decoy Deployment to force scheduler preemption of a target workload's pod, then cleans up. Mirrors ITBench SRE scenario "priority-kubernetes-workload-priority-preemption".
-      displayName: "Priority Kubernetes Workload Priority Preemption"
-    - name: failing-name-resolution-kubernetes-workload-dns-policy
-      description: Patches a workload's pod template dnsPolicy/dnsConfig to point at an unreachable DNS server, then reverts. Mirrors ITBench SRE scenario "failing-name-resolution-kubernetes-workload-dns-policy".
-      displayName: "Failing Name Resolution Kubernetes Workload DNS Policy"
-    - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
-      description: Patches a workload's pod template with an unsatisfiable required inter-pod anti-affinity rule, then reverts. Mirrors ITBench SRE scenario "unschedulable-kubernetes-workload-pod-anti-affinity-rule".
-      displayName: "Unschedulable Kubernetes Workload Pod Anti Affinity Rule"
-    - name: hanging-kubernetes-workload-init-container
-      description: Appends a hanging init container to a workload, leaving its pods stuck in Init:0/1/Pending forever, then reverts. Mirrors ITBench SRE scenario "hanging-kubernetes-workload-init-container".
-      displayName: "Hanging Kubernetes Workload Init Container"
-    - name: insufficient-kubernetes-workload-container-resources
-      description: Patches a container's resources.requests/limits to unrealistically low values, causing repeated OOMKilled/CrashLoopBackOff, then reverts. Mirrors ITBench SRE scenario "insufficient-kubernetes-workload-container-resources".
-      displayName: "Insufficient Kubernetes Workload Container Resources"
-    - name: kubernetes-api-server-request-surge
-      description: Deploys a load-generator workload that surges requests against the kube-apiserver, degrading API responsiveness, then cleans up. Mirrors ITBench SRE scenario "kubernetes-api-server-request-surge". Caution -- affects apiserver-wide latency, not just the target namespace.
-      displayName: "Kubernetes API Server Request Surge"
-    - name: invalid-kubernetes-workload-container-command
-      description: Overwrites a container's command with a nonexistent executable, causing CrashLoopBackOff, then restores. Mirrors ITBench SRE scenario "invalid-kubernetes-workload-container-command".
-      displayName: "Invalid Kubernetes Workload Container Command"
-    - name: deleted-kubernetes-service
-      description: Deletes the Service fronting a workload, then recreates it from a captured manifest. Mirrors ITBench SRE scenario "deleted-kubernetes-service".
-      displayName: "Deleted Kubernetes Service"
-    - name: chaos-mesh-pod-failure-replacement
-      description: LitmusChaos-native replacement for Chaos Mesh's PodChaos "pod-failure" action -- freezes a target container via SIGSTOP/SIGCONT through an ephemeral debug container, then resumes it. Mirrors ITBench SRE scenario 18 (no Chaos Mesh dependency).
-      displayName: "Chaos Mesh Pod Failure Replacement"
-    - name: chaos-mesh-http-body-tamper-replacement
-      description: Best-effort LitmusChaos-native approximation of Chaos Mesh's HTTPChaos POST-body-tampering scenario against otel-demo's email service -- generates synthetic malformed traffic rather than intercepting real traffic (documented partial fidelity). Mirrors ITBench SRE scenario 26 (no Chaos Mesh dependency).
-      displayName: "Chaos Mesh HTTP Body Tamper Replacement"
-    - name: chaos-mesh-http-abort-replacement
-      description: LitmusChaos-native approximation of Chaos Mesh's HTTPChaos abort action via a port-scoped NetworkPolicy (L3/L4, coarser than the original L7 POST-only abort -- documented fidelity gap). Mirrors ITBench SRE scenario 27 (no Chaos Mesh dependency).
-      displayName: "Chaos Mesh HTTP Abort Replacement"
+  - name: pod-delete
+    description: It injects pod-delete chaos in a Kubernetes pod.
+    displayName: Pod Delete
+  - name: container-kill
+    description: It injects container-kill chaos in a Kubernetes pod .
+    displayName: Container Kill
+  - name: pod-cpu-hog
+    description: It injects cpu-hog chaos in a Kubernetes pod.
+    displayName: Pod CPU Hog
+  - name: pod-network-loss
+    description: It injects network-loss chaos in a Kubernetes pod.
+    displayName: Pod Network Loss
+  - name: pod-network-latency
+    description: It injects network-latency chaos in a Kubernetes pod.
+    displayName: Pod Network Latency
+  - name: pod-network-corruption
+    description: It injects network-corruption chaos in a Kubernetes pod.
+    displayName: Pod Network Corruption
+  - name: node-drain
+    description: It injects node-drain chaos in a Kubernetes node.
+    displayName: Node Drain
+  - name: node-cpu-hog
+    description: It injects node-cpu-hog chaos in a Kubernetes node.
+    displayName: Node CPU Hog
+  - name: node-restart
+    description: It injects node-restart chaos in a Kubernetes node.
+    displayName: Node Restart
+  - name: disk-fill
+    description: It injects disk-fill chaos in a Kubernetes node.
+    displayName: Disk Fill
+  - name: node-memory-hog
+    description: It injects node-memory-hog chaos in a Kubernetes node.
+    displayName: Node Memory Hog
+  - name: node-poweroff
+    description: Node poweroff contains chaos experiment to poweroff a node via SSH.
+    displayName: Node Poweroff
+  - name: pod-memory-hog
+    description: It injects pod-memory-hog chaos in a Kubernetes pod.
+    displayName: Pod Memory Hog
+  - name: kubelet-service-kill
+    description: It injects kubelet-service-kill chaos in a Kubernetes node.
+    displayName: Kubelet Service Kill
+  - name: pod-network-duplication
+    description: It injects pod-network-duplication chaos in a Kubernetes pod.
+    displayName: Pod Network Duplication
+  - name: node-taint
+    description: It injects node-taint chaos in a Kubernetes node.
+    displayName: Node Taint
+  - name: docker-service-kill
+    description: It injects docker-service-kill chaos in a Kubernetes pod.
+    displayName: Docker Service Kill
+  - name: pod-autoscaler
+    description: It injects pod-autoscaler chaos in a Kubernetes pod.
+    displayName: Pod Autoscaler
+  - name: node-io-stress
+    description: It injects node-io-stress chaos in a Kubernetes node.
+    displayName: Node IO Stress
+  - name: pod-io-stress
+    description: It injects pod-io-stress chaos in a Kubernetes pod.
+    displayName: Pod IO Stress
+  - name: pod-dns-error
+    description: It injects pod-dns-error chaos in a Kubernetes pod.
+    displayName: Pod DNS Error
+  - name: pod-dns-spoof
+    description: It injects pod-dns-spoof chaos in a Kubernetes pod.
+    displayName: Pod DNS Spoof
+  - name: pod-cpu-hog-exec
+    description: It injects pod-cpu-hog-exec chaos in a Kubernetes pod.
+    displayName: Pod CPU Hog Exec
+  - name: pod-memory-hog-exec
+    description: It injects pod-memory-hog-exec chaos in a Kubernetes pod.
+    displayName: Pod Memory Hog Exec
+  - name: pod-network-partition
+    description: It injects pod-network-partition chaos in a Kubernetes pod.
+    displayName: Pod Network Partition
+  - name: pod-http-latency
+    description: It injects pod-http-latency chaos in a Kubernetes pod.
+    displayName: Pod HTTP Latency
+  - name: pod-http-status-code
+    description: It injects pod-http-status-code chaos in a Kubernetes pod.
+    displayName: Pod HTTP Status Code
+  - name: pod-http-modify-header
+    description: It injects pod-http-modify-header chaos in a Kubernetes pod.
+    displayName: Pod HTTP Modify Header
+  - name: pod-http-modify-body
+    description: It injects pod-http-modify-body chaos in a Kubernetes pod.
+    displayName: Pod HTTP Modify Body
+  - name: pod-http-reset-peer
+    description: It injects pod-http-reset-peer chaos in a Kubernetes pod.
+    displayName: Pod HTTP Reset Peer
+  - name: pod-network-rate-limit
+    description: It injects pod-network-rate-limit chaos in a Kubernetes pod.
+    displayName: Pod Network Rate Limit
+  - name: install-application
+    description: Installs/deploys an application into the Kubernetes cluster for chaos
+      testing.
+    displayName: Install Application
+  - name: install-agent
+    description: Installs/deploys an AI agent into the Kubernetes cluster for chaos
+      testing.
+    displayName: Install Agent
+  - name: uninstall-application
+    description: Uninstalls/removes an application from the Kubernetes cluster after
+      chaos testing.
+    displayName: Uninstall Application
+  - name: uninstall-agent
+    description: Uninstalls/removes an AI agent from the Kubernetes cluster after
+      chaos testing.
+    displayName: Uninstall Agent
   keywords:
-    - Kubernetes
+  - Kubernetes
   maintainers:
-    - name: ksatchit
-      email: karthik.s@harness.io
+  - name: ksatchit
+    email: karthik.s@harness.io
   minKubeVersion: 1.12.0
   links:
-    - name: Kubernetes Website
-      url: https://kubernetes.io
-    - name: Source Code
-      url: https://github.com/kubernetes/kubernetes
-    - name: Kubernetes Slack
-      url: https://slack.kubernetes.io/
-    - name: Documentation
-      url: https://litmuschaos.github.io/litmus/experiments/categories/contents/#kubernetes
+  - name: Kubernetes Website
+    url: https://kubernetes.io
+  - name: Source Code
+    url: https://github.com/kubernetes/kubernetes
+  - name: Kubernetes Slack
+    url: https://slack.kubernetes.io/
+  - name: Documentation
+    url: https://litmuschaos.github.io/litmus/experiments/categories/contents/#kubernetes
   icon:
-    - url: https://github.com/litmuschaos/chaos-charts/blob/master/faults/kubernetes/icons/kubernetes.png
-      mediatype: image/png
+  - url: https://github.com/litmuschaos/chaos-charts/blob/master/faults/kubernetes/icons/kubernetes.png
+    mediatype: image/png

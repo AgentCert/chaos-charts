@@ -1,5 +1,21 @@
 # ITBench Fault-Studio Conformance — Handoff
 
+> **Update — superseded status, read this first:** all 30 ITBench SRE fault bundles are
+> now complete (the "2 of 6" status below is historical). Current status for this and all
+> follow-on work lives in `OPEN_WEIGHT_CERTIFICATION_HANDOFF.md` at the ace-monorepo root.
+>
+> **Path change:** the 29 ITBench-derived fault bundles referenced throughout this document
+> as `chaos-charts/faults/kubernetes/<fault-name>/` now live at
+> `chaos-charts/faults/itbench/<fault-name>/` instead — moved into their own ChaosHub
+> category (`itbench.chartserviceversion.yaml` / `itbench.package.yaml`, displayName
+> "ITBench") so they're distinguishable in the Litmus portal from the ~35 pre-existing
+> generic LitmusChaos faults that remain under `faults/kubernetes/`. Everything below about
+> *how* the ChaosHub mechanism works (the `fault.yaml`/`engine.yaml`/`ground_truth.yaml`
+> pattern, `combine-all-crs.go`, the two category-index files) is still accurate — it now
+> just also applies identically to the `faults/itbench/` category directory. Non-ITBench
+> faults mentioned here (`pod-delete`, `install-application`, etc.) were not moved and
+> remain under `faults/kubernetes/`.
+
 **Status as of this handoff: 2 of 6 fault bundles complete. Work paused mid-task at the user's request, to hand off to a fresh session (different account, after a GitHub ownership transfer).**
 
 If you are picking this up cold: read this whole file before touching anything. It is written to be self-contained — you should not need access to the prior conversation, the original ITBench repo, or any external ITBench clone. Everything required is inlined below.

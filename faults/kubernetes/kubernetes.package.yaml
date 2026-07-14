@@ -1,195 +1,108 @@
 ---
 packageName: kubernetes
 faults:
-  - name: pod-delete
-    CSV: pod-delete.chartserviceversion.yaml
-    desc: "pod-delete"
-  - name: container-kill
-    CSV: container-kill.chartserviceversion.yaml
-    desc: "container-kill"
-  - name: pod-network-loss
-    CSV: pod-network-loss.chartserviceversion.yaml
-    desc: "pod-network-loss"
-  - name: pod-network-latency
-    CSV: pod-network-latency.chartserviceversion.yaml
-    desc: "pod-network-latency"
-  - name: pod-cpu-hog
-    CSV: pod-cpu-hog.chartserviceversion.yaml
-    desc: "pod-cpu-hog"
-  - name: node-cpu-hog
-    CSV: node-cpu-hog.chartserviceversion.yaml
-    desc: "node-cpu-hog"
-  - name: disk-fill
-    CSV: disk-fill.chartserviceversion.yaml
-    desc: "disk-fill"
-  - name: node-drain
-    CSV: node-drain.chartserviceversion.yaml
-    desc: "node-drain"
-  - name: pod-network-corruption
-    CSV: pod-network-corruption.chartserviceversion.yaml
-    desc: "pod-network-corruption"
-  - name: node-memory-hog
-    CSV: node-memory-hog.chartserviceversion.yaml
-    desc: "node-memory-hog"
-  - name: node-poweroff
-    CSV: node-poweroff.chartserviceversion.yaml
-    desc: "node-poweroff"
-  - name: node-restart
-    CSV: node-restart.chartserviceversion.yaml
-    desc: "node-restart"
-  - name: pod-memory-hog
-    CSV: pod-memory-hog.chartserviceversion.yaml
-    desc: "pod-memory-hog"
-  - name: kubelet-service-kill
-    CSV: kubelet-service-kill.chartserviceversion.yaml
-    desc: "kubelet-service-kill"
-  - name: pod-network-duplication
-    CSV: pod-network-duplication.chartserviceversion.yaml
-    desc: "pod-network-duplication"
-  - name: node-taint
-    CSV: node-taint.chartserviceversion.yaml
-    desc: "node-taint"
-  - name: docker-service-kill
-    CSV: docker-service-kill.chartserviceversion.yaml
-    desc: "docker-service-kill"
-  - name: pod-autoscaler
-    CSV: pod-autoscaler.chartserviceversion.yaml
-    desc: "pod-autoscaler"
-  - name: node-io-stress
-    CSV: node-io-stress.chartserviceversion.yaml
-    desc: "node-io-stress"
-  - name: pod-io-stress
-    CSV: pod-io-stress.chartserviceversion.yaml
-    desc: "pod-io-stress"
-  - name: pod-dns-error
-    CSV: pod-dns-error.chartserviceversion.yaml
-    desc: "pod-dns-error"
-  - name: pod-dns-spoof
-    CSV: pod-dns-spoof.chartserviceversion.yaml
-    desc: "pod-dns-spoof"
-  - name: pod-cpu-hog-exec
-    CSV: pod-cpu-hog-exec.chartserviceversion.yaml
-    desc: "pod-cpu-hog-exec"
-  - name: pod-memory-hog-exec
-    CSV: pod-memory-hog-exec.chartserviceversion.yaml
-    desc: "pod-memory-hog-exec"
-  - name: pod-network-partition
-    CSV: pod-network-partition.chartserviceversion.yaml
-    desc: "pod-network-partition"
-  - name: pod-http-latency
-    CSV: pod-http-latency.chartserviceversion.yaml
-    desc: "pod-http-latency"
-  - name: pod-http-status-code
-    CSV: pod-http-status-code.chartserviceversion.yaml
-    desc: "pod-http-status-code"
-  - name: pod-http-modify-header
-    CSV: pod-http-modify-header.chartserviceversion.yaml
-    desc: "pod-http-modify-header"
-  - name: pod-http-modify-body
-    CSV: pod-http-modify-body.chartserviceversion.yaml
-    desc: "pod-http-modify-body"
-  - name: pod-http-reset-peer
-    CSV: pod-http-reset-peer.chartserviceversion.yaml
-    desc: "pod-http-reset-peer"
-  - name: pod-network-rate-limit
-    CSV: pod-network-rate-limit.chartserviceversion.yaml
-    desc: "pod-network-rate-limit"
-  - name: install-application
-    CSV: install-application.chartserviceversion.yaml
-    desc: "install-application"
-  - name: install-agent
-    CSV: install-agent.chartserviceversion.yaml
-    desc: "install-agent"
-  - name: uninstall-application
-    CSV: uninstall-application.chartserviceversion.yaml
-    desc: "uninstall-application"
-  - name: uninstall-agent
-    CSV: uninstall-agent.chartserviceversion.yaml
-    desc: "uninstall-agent"
-  - name: scaled-to-zero-kubernetes-workload
-    CSV: scaled-to-zero-kubernetes-workload.chartserviceversion.yaml
-    desc: "scaled-to-zero-kubernetes-workload"
-  - name: nonexistent-kubernetes-workload-container-image
-    CSV: nonexistent-kubernetes-workload-container-image.chartserviceversion.yaml
-    desc: "nonexistent-kubernetes-workload-container-image"
-  - name: misconfigured-kubernetes-workload-container-readiness-probe
-    CSV: misconfigured-kubernetes-workload-container-readiness-probe.chartserviceversion.yaml
-    desc: "misconfigured-kubernetes-workload-container-readiness-probe"
-  - name: modified-target-port-kubernetes-service
-    CSV: modified-target-port-kubernetes-service.chartserviceversion.yaml
-    desc: "modified-target-port-kubernetes-service"
-  - name: invalid-kubernetes-service-selector
-    CSV: invalid-kubernetes-service-selector.chartserviceversion.yaml
-    desc: "invalid-kubernetes-service-selector"
-  - name: nonexistent-kubernetes-workload-persistent-volume-claim
-    CSV: nonexistent-kubernetes-workload-persistent-volume-claim.chartserviceversion.yaml
-    desc: "nonexistent-kubernetes-workload-persistent-volume-claim"
-  - name: opentelemetry-demo-feature-flag
-    CSV: opentelemetry-demo-feature-flag.chartserviceversion.yaml
-    desc: "opentelemetry-demo-feature-flag"
-  - name: unsupported-architecture-kubernetes-workload-container-image
-    CSV: unsupported-architecture-kubernetes-workload-container-image.chartserviceversion.yaml
-    desc: "unsupported-architecture-kubernetes-workload-container-image"
-  - name: insufficient-kubernetes-resource-quota
-    CSV: insufficient-kubernetes-resource-quota.chartserviceversion.yaml
-    desc: "insufficient-kubernetes-resource-quota"
-  - name: crashing-kubernetes-workload-init-container
-    CSV: crashing-kubernetes-workload-init-container.chartserviceversion.yaml
-    desc: "crashing-kubernetes-workload-init-container"
-  - name: modified-kubernetes-workload-container-environment-variable
-    CSV: modified-kubernetes-workload-container-environment-variable.chartserviceversion.yaml
-    desc: "modified-kubernetes-workload-container-environment-variable"
-  - name: ingress-port-blocking-network-policy
-    CSV: ingress-port-blocking-network-policy.chartserviceversion.yaml
-    desc: "ingress-port-blocking-network-policy"
-  - name: nonexistent-kubernetes-workload-node
-    CSV: nonexistent-kubernetes-workload-node.chartserviceversion.yaml
-    desc: "nonexistent-kubernetes-workload-node"
-  - name: valkey-workload-changed-password
-    CSV: valkey-workload-changed-password.chartserviceversion.yaml
-    desc: "valkey-workload-changed-password"
-  - name: misconfigured-kubernetes-horizontal-pod-autoscaler
-    CSV: misconfigured-kubernetes-horizontal-pod-autoscaler.chartserviceversion.yaml
-    desc: "misconfigured-kubernetes-horizontal-pod-autoscaler"
-  - name: cordoned-kubernetes-worker-node
-    CSV: cordoned-kubernetes-worker-node.chartserviceversion.yaml
-    desc: "cordoned-kubernetes-worker-node"
-  - name: valkey-workload-out-of-memory
-    CSV: valkey-workload-out-of-memory.chartserviceversion.yaml
-    desc: "valkey-workload-out-of-memory"
-  - name: unassigned-kubernetes-workload-container-resource-limits
-    CSV: unassigned-kubernetes-workload-container-resource-limits.chartserviceversion.yaml
-    desc: "unassigned-kubernetes-workload-container-resource-limits"
-  - name: priority-kubernetes-workload-priority-preemption
-    CSV: priority-kubernetes-workload-priority-preemption.chartserviceversion.yaml
-    desc: "priority-kubernetes-workload-priority-preemption"
-  - name: failing-name-resolution-kubernetes-workload-dns-policy
-    CSV: failing-name-resolution-kubernetes-workload-dns-policy.chartserviceversion.yaml
-    desc: "failing-name-resolution-kubernetes-workload-dns-policy"
-  - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
-    CSV: unschedulable-kubernetes-workload-pod-anti-affinity-rule.chartserviceversion.yaml
-    desc: "unschedulable-kubernetes-workload-pod-anti-affinity-rule"
-  - name: hanging-kubernetes-workload-init-container
-    CSV: hanging-kubernetes-workload-init-container.chartserviceversion.yaml
-    desc: "hanging-kubernetes-workload-init-container"
-  - name: insufficient-kubernetes-workload-container-resources
-    CSV: insufficient-kubernetes-workload-container-resources.chartserviceversion.yaml
-    desc: "insufficient-kubernetes-workload-container-resources"
-  - name: kubernetes-api-server-request-surge
-    CSV: kubernetes-api-server-request-surge.chartserviceversion.yaml
-    desc: "kubernetes-api-server-request-surge"
-  - name: invalid-kubernetes-workload-container-command
-    CSV: invalid-kubernetes-workload-container-command.chartserviceversion.yaml
-    desc: "invalid-kubernetes-workload-container-command"
-  - name: deleted-kubernetes-service
-    CSV: deleted-kubernetes-service.chartserviceversion.yaml
-    desc: "deleted-kubernetes-service"
-  - name: chaos-mesh-pod-failure-replacement
-    CSV: chaos-mesh-pod-failure-replacement.chartserviceversion.yaml
-    desc: "chaos-mesh-pod-failure-replacement"
-  - name: chaos-mesh-http-body-tamper-replacement
-    CSV: chaos-mesh-http-body-tamper-replacement.chartserviceversion.yaml
-    desc: "chaos-mesh-http-body-tamper-replacement"
-  - name: chaos-mesh-http-abort-replacement
-    CSV: chaos-mesh-http-abort-replacement.chartserviceversion.yaml
-    desc: "chaos-mesh-http-abort-replacement"
+- name: pod-delete
+  CSV: pod-delete.chartserviceversion.yaml
+  desc: pod-delete
+- name: container-kill
+  CSV: container-kill.chartserviceversion.yaml
+  desc: container-kill
+- name: pod-network-loss
+  CSV: pod-network-loss.chartserviceversion.yaml
+  desc: pod-network-loss
+- name: pod-network-latency
+  CSV: pod-network-latency.chartserviceversion.yaml
+  desc: pod-network-latency
+- name: pod-cpu-hog
+  CSV: pod-cpu-hog.chartserviceversion.yaml
+  desc: pod-cpu-hog
+- name: node-cpu-hog
+  CSV: node-cpu-hog.chartserviceversion.yaml
+  desc: node-cpu-hog
+- name: disk-fill
+  CSV: disk-fill.chartserviceversion.yaml
+  desc: disk-fill
+- name: node-drain
+  CSV: node-drain.chartserviceversion.yaml
+  desc: node-drain
+- name: pod-network-corruption
+  CSV: pod-network-corruption.chartserviceversion.yaml
+  desc: pod-network-corruption
+- name: node-memory-hog
+  CSV: node-memory-hog.chartserviceversion.yaml
+  desc: node-memory-hog
+- name: node-poweroff
+  CSV: node-poweroff.chartserviceversion.yaml
+  desc: node-poweroff
+- name: node-restart
+  CSV: node-restart.chartserviceversion.yaml
+  desc: node-restart
+- name: pod-memory-hog
+  CSV: pod-memory-hog.chartserviceversion.yaml
+  desc: pod-memory-hog
+- name: kubelet-service-kill
+  CSV: kubelet-service-kill.chartserviceversion.yaml
+  desc: kubelet-service-kill
+- name: pod-network-duplication
+  CSV: pod-network-duplication.chartserviceversion.yaml
+  desc: pod-network-duplication
+- name: node-taint
+  CSV: node-taint.chartserviceversion.yaml
+  desc: node-taint
+- name: docker-service-kill
+  CSV: docker-service-kill.chartserviceversion.yaml
+  desc: docker-service-kill
+- name: pod-autoscaler
+  CSV: pod-autoscaler.chartserviceversion.yaml
+  desc: pod-autoscaler
+- name: node-io-stress
+  CSV: node-io-stress.chartserviceversion.yaml
+  desc: node-io-stress
+- name: pod-io-stress
+  CSV: pod-io-stress.chartserviceversion.yaml
+  desc: pod-io-stress
+- name: pod-dns-error
+  CSV: pod-dns-error.chartserviceversion.yaml
+  desc: pod-dns-error
+- name: pod-dns-spoof
+  CSV: pod-dns-spoof.chartserviceversion.yaml
+  desc: pod-dns-spoof
+- name: pod-cpu-hog-exec
+  CSV: pod-cpu-hog-exec.chartserviceversion.yaml
+  desc: pod-cpu-hog-exec
+- name: pod-memory-hog-exec
+  CSV: pod-memory-hog-exec.chartserviceversion.yaml
+  desc: pod-memory-hog-exec
+- name: pod-network-partition
+  CSV: pod-network-partition.chartserviceversion.yaml
+  desc: pod-network-partition
+- name: pod-http-latency
+  CSV: pod-http-latency.chartserviceversion.yaml
+  desc: pod-http-latency
+- name: pod-http-status-code
+  CSV: pod-http-status-code.chartserviceversion.yaml
+  desc: pod-http-status-code
+- name: pod-http-modify-header
+  CSV: pod-http-modify-header.chartserviceversion.yaml
+  desc: pod-http-modify-header
+- name: pod-http-modify-body
+  CSV: pod-http-modify-body.chartserviceversion.yaml
+  desc: pod-http-modify-body
+- name: pod-http-reset-peer
+  CSV: pod-http-reset-peer.chartserviceversion.yaml
+  desc: pod-http-reset-peer
+- name: pod-network-rate-limit
+  CSV: pod-network-rate-limit.chartserviceversion.yaml
+  desc: pod-network-rate-limit
+- name: install-application
+  CSV: install-application.chartserviceversion.yaml
+  desc: install-application
+- name: install-agent
+  CSV: install-agent.chartserviceversion.yaml
+  desc: install-agent
+- name: uninstall-application
+  CSV: uninstall-application.chartserviceversion.yaml
+  desc: uninstall-application
+- name: uninstall-agent
+  CSV: uninstall-agent.chartserviceversion.yaml
+  desc: uninstall-agent

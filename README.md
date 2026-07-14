@@ -91,7 +91,8 @@ Everything else (CRDs, RBAC, Kyverno policies) tracks upstream.
 
 ```
 chaos-charts/
-├── faults/kubernetes/                # 36 fault definitions (one directory each)
+├── faults/kubernetes/                # 35 generic LitmusChaos fault definitions
+├── faults/itbench/                   # 29 ITBench-derived fault definitions — see below
 │   ├── pod-delete/, pod-cpu-hog/, pod-memory-hog/, pod-io-stress/
 │   ├── pod-network-latency/, pod-network-loss/, pod-network-corruption/
 │   ├── pod-network-duplication/, pod-network-partition/, pod-network-rate-limit/
@@ -143,6 +144,13 @@ chaos-charts/
 ---
 
 ## Kubernetes chaos fault inventory
+
+Two ChaosHub categories exist under `faults/`: `kubernetes` (generic LitmusChaos
+experiments, listed below) and `itbench` (29 fault bundles that reimplement IBM
+Research's ITBench SRE scenario catalog — see
+[`faults/itbench/itbench.chartserviceversion.yaml`](faults/itbench/itbench.chartserviceversion.yaml)
+and [`ITBENCH_HANDOFF.md`](ITBENCH_HANDOFF.md) for the full list and design notes).
+Each category has its own aggregated `experiments.yaml` (see next section).
 
 | Category | Faults |
 |---|---|
@@ -197,15 +205,17 @@ The workflows reference the installer images directly:
 
 ## Building the aggregated `experiments.yaml`
 
-The Makefile aggregates the per-fault `fault.yaml` files into one
-`faults/kubernetes/experiments.yaml` multi-document file — the shape ChaosCenter installs
-in a single `kubectl apply`.
+The Makefile aggregates the per-fault `fault.yaml` files into one `experiments.yaml`
+multi-document file **per category directory** under `faults/` (currently
+`faults/kubernetes/experiments.yaml` and `faults/itbench/experiments.yaml`) — the shape
+ChaosCenter installs in a single `kubectl apply`.
 
 ```bash
 make deps              # pip install packaging (used by version_validator.py)
 make versionmaker      # extracts version metadata from each chartserviceversion.yaml
 make combineExpCR      # runs scripts/combine-all-crs.go
-                       # → faults/kubernetes/experiments.yaml (deduplicated by CRD name)
+                       # → faults/<category>/experiments.yaml (deduplicated by CRD name,
+                       #   one output file per faults/* subdirectory)
 make push              # auto-increment versions + git push (CI)
 ```
 
@@ -218,8 +228,9 @@ are consumed as source tarballs.
 
 ChaosCenter is configured with this repo as the default ChaosHub via
 `DEFAULT_HUB_GIT_URL=https://github.com/agentcert/chaos-charts`. When a user clicks
-*Browse Hub* in the UI, the GraphQL server clones the repo, walks
-`faults/kubernetes/`, and renders each fault as a card. Selecting a fault stages its
+*Browse Hub* in the UI, the GraphQL server clones the repo, walks each `faults/*`
+category directory (`kubernetes`, `itbench`), and renders each fault as a card under its
+category's `displayName` (`Kubernetes`, `ITBench`). Selecting a fault stages its
 `fault.yaml` for inclusion in the next scenario.
 
 The chaoscenter side of this contract is documented in
@@ -235,9 +246,10 @@ The upstream `chaos-charts` install recipe still works (no release tags are cut 
 fork yet — use `master`):
 
 ```bash
-# Clone and apply the aggregated kubernetes chart in the sock-shop namespace
+# Clone and apply every aggregated category chart (kubernetes + itbench) in the
+# sock-shop namespace
 git clone https://github.com/AgentCert/chaos-charts.git
-find chaos-charts/faults/kubernetes -name experiments.yaml \
+find chaos-charts/faults -name experiments.yaml \
   | xargs kubectl apply -n sock-shop -f -
 ```
 
