@@ -1,0 +1,78 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Replaces a Service's selector with an invalid label value so the Service
+    has no matching Endpoints, causing all inbound traffic to be dropped, then
+    restores the original selector. Mirrors ITBench SRE scenario
+    "invalid-kubernetes-service-selector" (index 36).
+kind: ChaosExperiment
+metadata:
+  name: invalid-kubernetes-service-selector
+  labels:
+    name: invalid-kubernetes-service-selector
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events", "services", "endpoints"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        # Capture the full selector object as JSON for restore
+        ORIG_SELECTOR=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.selector}')
+        echo "Original selector: ${ORIG_SELECTOR}"
+
+        INVALID_SELECTOR_VALUE="invalid-workload-${RANDOM_SUFFIX:-1}"
+        echo "Injecting: setting selector app.kubernetes.io/name=${INVALID_SELECTOR_VALUE}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+          -p "{\"spec\":{\"selector\":{\"app.kubernetes.io/name\":\"${INVALID_SELECTOR_VALUE}\"}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring original selector"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+          -p "{\"spec\":{\"selector\":${ORIG_SELECTOR}}}"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "service"
+
+      # suffix appended to "invalid-workload-" to make the selector value unique
+      - name: RANDOM_SUFFIX
+        value: "1"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: invalid-kubernetes-service-selector
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

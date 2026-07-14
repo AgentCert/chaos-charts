@@ -1,0 +1,101 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Creates a PersistentVolumeClaim referencing an invalid StorageClass, patches
+    the target workload to mount it, causing pods to stuck in Pending/Init due to
+    a FailedMount event, then reverts via rollout undo and deletes the PVC.
+    Mirrors ITBench SRE scenario
+    "nonexistent-kubernetes-workload-persistent-volume-claim" (index 53).
+kind: ChaosExperiment
+metadata:
+  name: nonexistent-kubernetes-workload-persistent-volume-claim
+  labels:
+    name: nonexistent-kubernetes-workload-persistent-volume-claim
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events", "persistentvolumeclaims"]
+        verbs: ["create", "get", "list", "patch", "update", "delete"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets", "deployments/rollback"]
+        verbs: ["get", "list", "patch", "update", "create"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+        PVC_NAME="${TARGET}-fault-pvc"
+        echo "Target=${TARGET} container=${CONTAINER} PVC=${PVC_NAME}"
+
+        echo "Creating PVC ${PVC_NAME} with invalid StorageClass ${INVALID_STORAGE_CLASS}"
+        kubectl apply -f - <<JSON
+        {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "metadata": {"name": "${PVC_NAME}", "namespace": "${APP_NAMESPACE}"},
+          "spec": {
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {"requests": {"storage": "25Mi"}},
+            "storageClassName": "${INVALID_STORAGE_CLASS}"
+          }
+        }
+        JSON
+
+        echo "Patching ${TARGET} to mount fault PVC at ${PVC_MOUNT_PATH}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"volumeMounts\":[{\"name\":\"fault-volume\",\"mountPath\":\"${PVC_MOUNT_PATH}\"}]}],\"volumes\":[{\"name\":\"fault-volume\",\"persistentVolumeClaim\":{\"claimName\":\"${PVC_NAME}\"}}]}}}}"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: rollout undo ${TARGET}, then deleting fault PVC"
+        kubectl rollout undo -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}"
+        kubectl delete pvc -n "${APP_NAMESPACE}" "${PVC_NAME}" --ignore-not-found
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "deployment"
+
+      # container name to add the volumeMount to; defaults to the workload name if unset
+      - name: TARGET_CONTAINER
+        value: ""
+
+      # StorageClass name that does not exist in the cluster
+      - name: INVALID_STORAGE_CLASS
+        value: "invalid-class-name"
+
+      # mount path for the fault volume inside the container
+      - name: PVC_MOUNT_PATH
+        value: "/data/fault"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: nonexistent-kubernetes-workload-persistent-volume-claim
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

@@ -106,3 +106,21 @@ faults:
   - name: uninstall-agent
     CSV: uninstall-agent.chartserviceversion.yaml
     desc: "uninstall-agent"
+  - name: scaled-to-zero-kubernetes-workload
+    CSV: scaled-to-zero-kubernetes-workload.chartserviceversion.yaml
+    desc: "scaled-to-zero-kubernetes-workload"
+  - name: nonexistent-kubernetes-workload-container-image
+    CSV: nonexistent-kubernetes-workload-container-image.chartserviceversion.yaml
+    desc: "nonexistent-kubernetes-workload-container-image"
+  - name: misconfigured-kubernetes-workload-container-readiness-probe
+    CSV: misconfigured-kubernetes-workload-container-readiness-probe.chartserviceversion.yaml
+    desc: "misconfigured-kubernetes-workload-container-readiness-probe"
+  - name: modified-target-port-kubernetes-service
+    CSV: modified-target-port-kubernetes-service.chartserviceversion.yaml
+    desc: "modified-target-port-kubernetes-service"
+  - name: invalid-kubernetes-service-selector
+    CSV: invalid-kubernetes-service-selector.chartserviceversion.yaml
+    desc: "invalid-kubernetes-service-selector"
+  - name: nonexistent-kubernetes-workload-persistent-volume-claim
+    CSV: nonexistent-kubernetes-workload-persistent-volume-claim.chartserviceversion.yaml
+    desc: "nonexistent-kubernetes-workload-persistent-volume-claim"

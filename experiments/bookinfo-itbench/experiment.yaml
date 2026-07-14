@@ -49,27 +49,20 @@ spec:
             template: install-application
         - - name: install-agent
             template: install-agent
+        - - name: install-chaos-experiments
+            template: install-chaos-experiments
 
         # ── Scenario #36 ── details service invalid selector ───────────────
         # ITBench: invalid-kubernetes-service-selector
         # Symptom: HighRequestErrorRate — details Service routes to no pods.
-        - - name: inject-scenario-36
-            template: inject-scenario-36
-        - - name: wait-scenario-36
-            template: wait-fault
-        - - name: revert-scenario-36
-            template: revert-scenario-36
+        - - name: scenario-36-invalid-selector
+            template: scenario-36-invalid-selector
 
         # ── Scenario #53 ── reviews-v3 nonexistent PVC ─────────────────────
         # ITBench: nonexistent-kubernetes-workload-persistent-volume-claim
         # Symptom: KubePodNotReady — reviews-v3 pod stuck in Pending/Init
-        # because its PVC references a StorageClass that does not exist.
-        - - name: inject-scenario-53
-            template: inject-scenario-53
-        - - name: wait-scenario-53
-            template: wait-fault
-        - - name: revert-scenario-53
-            template: revert-scenario-53
+        - - name: scenario-53-nonexistent-pvc
+            template: scenario-53-nonexistent-pvc
 
         # ── Optional cleanup ───────────────────────────────────────────────
         # Uncomment to tear down after evaluation:
@@ -106,80 +99,262 @@ spec:
           - "--set=agent.workflowUid={{workflow.uid}}"
           - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
 
+    # ── Install ChaosExperiment CRs ─────────────────────────────────────────
+    # Applies both ITBench ChaosExperiment definitions into the admin namespace
+    # so the chaos-operator can find them when ChaosEngine CRs are created below.
+
+    - name: install-chaos-experiments
+      inputs:
+        artifacts:
+          - name: invalid-kubernetes-service-selector
+            path: /tmp/invalid-kubernetes-service-selector.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Replaces a Service's selector with an invalid label value so the Service
+                    has no matching Endpoints, causing all inbound traffic to be dropped,
+                    then restores the original selector.
+                kind: ChaosExperiment
+                metadata:
+                  name: invalid-kubernetes-service-selector
+                  labels:
+                    name: invalid-kubernetes-service-selector
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events", "services", "endpoints"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        echo "Target=${TARGET}"
+                        ORIG_SELECTOR=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.selector}')
+                        echo "Original selector: ${ORIG_SELECTOR}"
+                        INVALID_SELECTOR_VALUE="invalid-workload-${RANDOM_SUFFIX:-1}"
+                        echo "Injecting: setting selector app.kubernetes.io/name=${INVALID_SELECTOR_VALUE}"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+                          -p "{\"spec\":{\"selector\":{\"app.kubernetes.io/name\":\"${INVALID_SELECTOR_VALUE}\"}}}"
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: restoring original selector"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=merge \
+                          -p "{\"spec\":{\"selector\":${ORIG_SELECTOR}}}"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "service"
+                      - name: RANDOM_SUFFIX
+                        value: "1"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: invalid-kubernetes-service-selector
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+          - name: nonexistent-kubernetes-workload-persistent-volume-claim
+            path: /tmp/nonexistent-kubernetes-workload-persistent-volume-claim.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Creates a PVC with an invalid StorageClass and mounts it into the target
+                    workload, causing pods to be stuck in Pending/Init, then reverts via
+                    rollout undo and deletes the PVC.
+                kind: ChaosExperiment
+                metadata:
+                  name: nonexistent-kubernetes-workload-persistent-volume-claim
+                  labels:
+                    name: nonexistent-kubernetes-workload-persistent-volume-claim
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events", "persistentvolumeclaims"]
+                        verbs: ["create", "get", "list", "patch", "update", "delete"]
+                      - apiGroups: ["apps"]
+                        resources: ["deployments", "statefulsets", "deployments/rollback"]
+                        verbs: ["get", "list", "patch", "update", "create"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+                        PVC_NAME="${TARGET}-fault-pvc"
+                        echo "Target=${TARGET} container=${CONTAINER} PVC=${PVC_NAME}"
+                        echo "Creating PVC ${PVC_NAME} with invalid StorageClass ${INVALID_STORAGE_CLASS}"
+                        kubectl apply -f - <<JSON
+                        {
+                          "apiVersion": "v1",
+                          "kind": "PersistentVolumeClaim",
+                          "metadata": {"name": "${PVC_NAME}", "namespace": "${APP_NAMESPACE}"},
+                          "spec": {
+                            "accessModes": ["ReadWriteOnce"],
+                            "resources": {"requests": {"storage": "25Mi"}},
+                            "storageClassName": "${INVALID_STORAGE_CLASS}"
+                          }
+                        }
+                        JSON
+                        echo "Patching ${TARGET} to mount fault PVC at ${PVC_MOUNT_PATH}"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+                          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"volumeMounts\":[{\"name\":\"fault-volume\",\"mountPath\":\"${PVC_MOUNT_PATH}\"}]}],\"volumes\":[{\"name\":\"fault-volume\",\"persistentVolumeClaim\":{\"claimName\":\"${PVC_NAME}\"}}]}}}}"
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: rollout undo ${TARGET}, then deleting fault PVC"
+                        kubectl rollout undo -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}"
+                        kubectl delete pvc -n "${APP_NAMESPACE}" "${PVC_NAME}" --ignore-not-found
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "deployment"
+                      - name: TARGET_CONTAINER
+                        value: ""
+                      - name: INVALID_STORAGE_CLASS
+                        value: "invalid-class-name"
+                      - name: PVC_MOUNT_PATH
+                        value: "/data/fault"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: nonexistent-kubernetes-workload-persistent-volume-claim
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+      outputs: {}
+      metadata: {}
+      container:
+        image: litmuschaos/k8s:latest
+        command:
+          - sh
+          - "-c"
+        args:
+          - kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 10
+
     # ── Scenario #36: details service invalid selector ───────────────────────
     # Mirrors ITBench scenario index 36 (invalid-kubernetes-service-selector).
-    # Replaces the details Service selector with an invalid label value so that
-    # the Service has no matching Endpoints, causing HighRequestErrorRate on
-    # the productpage → details call path.
-    # Remediation: patch the selector back to {"app": "details"}.
+    # Replaces the details Service selector so no pods match; agent must
+    # detect HighRequestErrorRate and restore the selector.
 
-    - name: inject-scenario-36
+    - name: scenario-36-invalid-selector
+      inputs:
+        artifacts:
+          - name: scenario-36-invalid-selector
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-36-invalid-selector-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'book-info'
+                    applabel: 'app=details'
+                    appkind: 'service'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: invalid-kubernetes-service-selector
+                      spec:
+                        components:
+                          env:
+                            - name: RANDOM_SUFFIX
+                              value: '1'
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl patch -n book-info service/details
-            --type=json
-            -p '[{"op":"replace","path":"/spec/selector","value":{"app.kubernetes.io/name":"invalid-workload"}}]'
-
-    - name: revert-scenario-36
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl patch -n book-info service/details
-            --type=json
-            -p '[{"op":"replace","path":"/spec/selector","value":{"app":"details"}}]'
-            || true
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Scenario #53: reviews-v3 nonexistent PVC ─────────────────────────────
     # Mirrors ITBench scenario index 53 (nonexistent-kubernetes-workload-
-    # persistent-volume-claim). Creates a PVC that references an invalid
-    # StorageClass ("invalid-class-name") so it stays Pending, then patches
-    # reviews-v3 to mount it. The pod enters Pending/Init:0/1 with a
-    # FailedMount event, triggering KubePodNotReady.
-    # Remediation: rollout undo or remove the volume + delete the broken PVC.
+    # persistent-volume-claim). Creates a PVC with invalid StorageClass and
+    # mounts it into reviews-v3; agent must detect KubePodNotReady / FailedMount
+    # and perform rollout undo + PVC deletion.
 
-    - name: inject-scenario-53
+    - name: scenario-53-nonexistent-pvc
+      inputs:
+        artifacts:
+          - name: scenario-53-nonexistent-pvc
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-53-nonexistent-pvc-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'book-info'
+                    applabel: 'app=reviews,version=v3'
+                    appkind: 'deployment'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: nonexistent-kubernetes-workload-persistent-volume-claim
+                      spec:
+                        components:
+                          env:
+                            - name: TARGET_CONTAINER
+                              value: 'reviews'
+                            - name: INVALID_STORAGE_CLASS
+                              value: 'invalid-class-name'
+                            - name: PVC_MOUNT_PATH
+                              value: '/data/fault'
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - |
-            kubectl apply -f - <<'JSON'
-            {
-              "apiVersion": "v1",
-              "kind": "PersistentVolumeClaim",
-              "metadata": {"name": "reviews-v3", "namespace": "book-info"},
-              "spec": {
-                "accessModes": ["ReadWriteOnce"],
-                "resources": {"requests": {"storage": "25Mi"}},
-                "storageClassName": "invalid-class-name"
-              }
-            }
-            JSON
-            kubectl patch -n book-info deployment/reviews-v3 \
-              --type=strategic \
-              -p '{"spec":{"template":{"spec":{"containers":[{"name":"reviews","volumeMounts":[{"name":"database","mountPath":"/data/database"}]}],"securityContext":{"fsGroup":1000},"volumes":[{"name":"database","persistentVolumeClaim":{"claimName":"reviews-v3"}}]}}}}'
-
-    - name: revert-scenario-53
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - |
-            kubectl rollout undo -n book-info deployment/reviews-v3 || true
-            kubectl delete pvc -n book-info reviews-v3 --ignore-not-found || true
-
-    # ── Shared wait template ─────────────────────────────────────────────────
-
-    - name: wait-fault
-      container:
-        image: alpine:3.20
-        command: [sh, -c]
-        args: ["sleep {{workflow.parameters.faultDuration}}"]
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Optional teardown ────────────────────────────────────────────────────
     - name: delete-application

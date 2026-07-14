@@ -1,0 +1,113 @@
+fault: modified-target-port-kubernetes-service
+version: 0.1.0
+description: >-
+  Replaces a Service's first port targetPort with a broken value (default 9999),
+  causing all traffic to be routed to a closed pod port, then restores the
+  original targetPort. Mirrors ITBench SRE scenario 30
+  (modified-target-port-kubernetes-service).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "HighRequestErrorRate alert for the affected service"
+      - "Connections to the service time out or are refused"
+      - "Service Endpoints are present but pods reject connections (targetPort mismatch)"
+      - "kubectl get svc shows a targetPort value inconsistent with the pod's containerPort"
+
+    goal: >
+      Change a Service's targetPort to a value no pod listens on to validate
+      whether an agent detects the resulting HighRequestErrorRate, identifies
+      the misconfigured Service port, and corrects the targetPort.
+
+    remediation: >
+      Patch the Service's targetPort back to the correct value (the port the
+      target pod actually listens on) using `kubectl edit service` or
+      `kubectl patch service`.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "Check Prometheus alerts"
+      detail: "Query for HighRequestErrorRate correlated with the affected service."
+
+    - step: 3
+      action: "Get service details"
+      detail: "Retrieve the Service spec and note the targetPort value; compare with the pod's containerPort."
+
+    - step: 4
+      action: "List endpoints"
+      detail: "Inspect the Endpoints object to confirm pods are matched but traffic fails (port mismatch)."
+
+    - step: 5
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace for any connection-failure or probe-failure indications."
+
+    - step: 6
+      action: "Patch the Service"
+      detail: "Replace targetPort with the correct value the pod actually listens on."
+
+    - step: 7
+      action: "Validate application health"
+      detail: "Confirm the service is receiving/serving traffic again via a health check or Prometheus query."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(http_requests_total{namespace=\"<target-namespace>\",status=~\"5..\"}[1m])'"
+      purpose: "Confirm elevated error rate on the affected service."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Service namespace=<target-namespace> name=<service-name>"
+      purpose: "Read the Service spec and identify the misconfigured targetPort."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Endpoints namespace=<target-namespace> name=<service-name>"
+      purpose: "Confirm endpoints are present but traffic is failing due to port mismatch."
+      tool_available: true
+
+    - step: 5
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Look for connection-refused or probe-failure events."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=v1 kind=Service namespace=<target-namespace> name=<service-name> patch=[{op:replace,path:/spec/ports/0/targetPort,value:<correct-port>}]"
+      purpose: "Restore the correct targetPort so traffic routes to the pod."
+      tool_available: true
+
+    - step: 7
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='up{namespace=\"<target-namespace>\"}'"
+      purpose: "Confirm the service is healthy again."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 12
+      unit: "count"

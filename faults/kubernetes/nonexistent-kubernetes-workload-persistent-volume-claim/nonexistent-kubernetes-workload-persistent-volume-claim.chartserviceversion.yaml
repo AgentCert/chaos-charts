@@ -1,0 +1,46 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: nonexistent-kubernetes-workload-persistent-volume-claim
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Creates a PVC with an invalid StorageClass and mounts it into a workload,
+      causing pods to become stuck in Pending/Init, then reverts via rollout
+      undo. Mirrors ITBench SRE scenario
+      "nonexistent-kubernetes-workload-persistent-volume-claim".
+spec:
+  displayName: Nonexistent Kubernetes Workload Persistent Volume Claim
+  categoryDescription: |
+    Nonexistent PVC fault disrupts a Kubernetes workload by creating a
+    PersistentVolumeClaim that references a StorageClass that does not exist,
+    then patching the target Deployment to mount it. The pod enters
+    Pending/Init with a FailedMount event, simulating a storage misconfiguration.
+    - Simulates a missing or wrong StorageClass that prevents pod scheduling.
+    - Tests whether an agent detects KubePodNotReady / FailedMount and performs
+      a rollout undo or removes the broken volume reference.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

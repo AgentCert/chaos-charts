@@ -1,0 +1,44 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: modified-target-port-kubernetes-service
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Replaces a Service's targetPort with a broken value, routing traffic to
+      a closed port, then restores the original. Mirrors ITBench SRE scenario
+      "modified-target-port-kubernetes-service".
+spec:
+  displayName: Modified Target Port Kubernetes Service
+  categoryDescription: |
+    Modified target port fault disrupts traffic to a Kubernetes workload by
+    changing the target Service's first port targetPort to a value no pod
+    listens on.
+    - Simulates an operator mistake that silently breaks service routing.
+    - Tests whether an agent detects HighRequestErrorRate and corrects the
+      Service's targetPort.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

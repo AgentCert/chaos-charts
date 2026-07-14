@@ -50,46 +50,32 @@ spec:
             template: install-application
         - - name: install-agent
             template: install-agent
+        - - name: install-chaos-experiments
+            template: install-chaos-experiments
 
         # ── Scenario #58 ── accounting scaled to zero ──────────────────────
         # ITBench: scaled-to-zero-kubernetes-workload
         # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting
-        - - name: inject-scenario-58
-            template: inject-scenario-58
-        - - name: wait-scenario-58
-            template: wait-fault
-        - - name: revert-scenario-58
-            template: revert-scenario-58
+        - - name: scenario-58-scaled-to-zero
+            template: scenario-58-scaled-to-zero
 
         # ── Scenario #20 ── product-catalog nonexistent container image ────
         # ITBench: nonexistent-kubernetes-workload-container-image
         # Symptom: KubePodNotReady on product-catalog
-        - - name: inject-scenario-20
-            template: inject-scenario-20
-        - - name: wait-scenario-20
-            template: wait-fault
-        - - name: revert-scenario-20
-            template: revert-scenario-20
+        - - name: scenario-20-nonexistent-image
+            template: scenario-20-nonexistent-image
 
         # ── Scenario #49 ── frontend misconfigured readiness probe ─────────
         # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
         # Symptom: KubePodNotReady on frontend
-        - - name: inject-scenario-49
-            template: inject-scenario-49
-        - - name: wait-scenario-49
-            template: wait-fault
-        - - name: revert-scenario-49
-            template: revert-scenario-49
+        - - name: scenario-49-readiness-probe
+            template: scenario-49-readiness-probe
 
         # ── Scenario #30 ── ad service wrong target port ───────────────────
         # ITBench: modified-target-port-kubernetes-service
         # Symptom: HighRequestErrorRate on ad service
-        - - name: inject-scenario-30
-            template: inject-scenario-30
-        - - name: wait-scenario-30
-            template: wait-fault
-        - - name: revert-scenario-30
-            template: revert-scenario-30
+        - - name: scenario-30-target-port
+            template: scenario-30-target-port
 
         # ── Optional cleanup ───────────────────────────────────────────────
         # Uncomment to tear down after evaluation:
@@ -126,110 +112,467 @@ spec:
           - "--set=agent.workflowUid={{workflow.uid}}"
           - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
 
+    # ── Install ChaosExperiment CRs ─────────────────────────────────────────
+    # Applies all 4 ITBench ChaosExperiment definitions into the admin namespace
+    # so the chaos-operator can find them when ChaosEngine CRs are created below.
+
+    - name: install-chaos-experiments
+      inputs:
+        artifacts:
+          - name: scaled-to-zero-kubernetes-workload
+            path: /tmp/scaled-to-zero-kubernetes-workload.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Scales a Deployment/StatefulSet identified by label to zero replicas, then
+                    restores its original replica count. Mirrors ITBench SRE scenario
+                    "scaled-to-zero-kubernetes-workload" (fault library index 20).
+                kind: ChaosExperiment
+                metadata:
+                  name: scaled-to-zero-kubernetes-workload
+                  labels:
+                    name: scaled-to-zero-kubernetes-workload
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["apps"]
+                        resources: ["deployments", "statefulsets", "deployments/scale", "statefulsets/scale"]
+                        verbs: ["get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        ORIG_REPLICAS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.replicas}')
+                        ORIG_REPLICAS=${ORIG_REPLICAS:-1}
+                        echo "Target=${TARGET} originalReplicas=${ORIG_REPLICAS}"
+                        echo "Injecting: scaling ${TARGET} to 0 replicas"
+                        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas=0
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: scaling ${TARGET} back to ${ORIG_REPLICAS} replicas"
+                        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas="${ORIG_REPLICAS}"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "deployment"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: scaled-to-zero-kubernetes-workload
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+          - name: nonexistent-kubernetes-workload-container-image
+            path: /tmp/nonexistent-kubernetes-workload-container-image.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Sets a container's image to a nonexistent tag, causing ImagePullBackOff /
+                    ErrImagePull, then restores the original image.
+                kind: ChaosExperiment
+                metadata:
+                  name: nonexistent-kubernetes-workload-container-image
+                  labels:
+                    name: nonexistent-kubernetes-workload-container-image
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["apps"]
+                        resources: ["deployments", "statefulsets"]
+                        verbs: ["get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+                        ORIG_IMAGE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].image}")
+                        if [ -z "$ORIG_IMAGE" ]; then
+                          echo "container ${CONTAINER} not found on ${TARGET}" >&2
+                          exit 1
+                        fi
+                        echo "Target=${TARGET} container=${CONTAINER} originalImage=${ORIG_IMAGE}"
+                        echo "Injecting: setting image to ${INVALID_IMAGE}"
+                        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${INVALID_IMAGE}"
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: restoring image to ${ORIG_IMAGE}"
+                        kubectl set image -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" "${CONTAINER}=${ORIG_IMAGE}"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "deployment"
+                      - name: TARGET_CONTAINER
+                        value: ""
+                      - name: INVALID_IMAGE
+                        value: "quay.io/it-bench/hello-bench-invalid:1.0.0"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: nonexistent-kubernetes-workload-container-image
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+          - name: misconfigured-kubernetes-workload-container-readiness-probe
+            path: /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Patches a container's readinessProbe to probe an unreachable port,
+                    causing the pod to stay NotReady, then restores the original probe.
+                kind: ChaosExperiment
+                metadata:
+                  name: misconfigured-kubernetes-workload-container-readiness-probe
+                  labels:
+                    name: misconfigured-kubernetes-workload-container-readiness-probe
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["apps"]
+                        resources: ["deployments", "statefulsets"]
+                        verbs: ["get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
+                        echo "Target=${TARGET} container=${CONTAINER}"
+                        ORIG_PROBE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
+                          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].readinessProbe}")
+                        echo "Original readinessProbe: ${ORIG_PROBE:-<none>}"
+                        BROKEN_PROBE="{\"failureThreshold\":3,\"httpGet\":{\"path\":\"${PROBE_PATH}\",\"port\":${PROBE_PORT},\"scheme\":\"HTTP\"},\"periodSeconds\":5,\"successThreshold\":1,\"timeoutSeconds\":3}"
+                        echo "Injecting: setting broken readinessProbe on ${CONTAINER} (port=${PROBE_PORT} path=${PROBE_PATH})"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+                          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"readinessProbe\":${BROKEN_PROBE}}]}}}}"
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        if [ -z "$ORIG_PROBE" ]; then PROBE_JSON="null"; else PROBE_JSON="$ORIG_PROBE"; fi
+                        echo "Reverting readinessProbe to original"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
+                          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"readinessProbe\":${PROBE_JSON}}]}}}}"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "deployment"
+                      - name: TARGET_CONTAINER
+                        value: ""
+                      - name: PROBE_PATH
+                        value: "/ready"
+                      - name: PROBE_PORT
+                        value: "40"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: misconfigured-kubernetes-workload-container-readiness-probe
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+          - name: modified-target-port-kubernetes-service
+            path: /tmp/modified-target-port-kubernetes-service.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Replaces a Service's first port targetPort with a broken value,
+                    causing traffic to be routed to a closed port, then restores the original.
+                kind: ChaosExperiment
+                metadata:
+                  name: modified-target-port-kubernetes-service
+                  labels:
+                    name: modified-target-port-kubernetes-service
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events", "services"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        echo "Target=${TARGET}"
+                        ORIG_PORT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.ports[0].targetPort}')
+                        echo "Original targetPort: ${ORIG_PORT}"
+                        echo "Injecting: setting targetPort to ${BROKEN_TARGET_PORT}"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
+                          -p "[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":${BROKEN_TARGET_PORT}}]"
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: restoring targetPort to ${ORIG_PORT}"
+                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
+                          -p "[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":${ORIG_PORT}}]"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "service"
+                      - name: BROKEN_TARGET_PORT
+                        value: "9999"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: modified-target-port-kubernetes-service
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+      outputs: {}
+      metadata: {}
+      container:
+        image: litmuschaos/k8s:latest
+        command:
+          - sh
+          - "-c"
+        args:
+          - kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 10
+
     # ── Scenario #58: accounting scaled to zero ─────────────────────────────
     # Mirrors ITBench scenario index 58 (scaled-to-zero-kubernetes-workload).
-    # Scales the accounting Deployment to 0 replicas, causing
-    # HighRequestErrorRate and NoRequestsReceived alerts.
-    # Remediation: scale back to ≥1 replica or rollout undo.
+    # Scales the accounting Deployment to 0 replicas; agent must restore it.
 
-    - name: inject-scenario-58
+    - name: scenario-58-scaled-to-zero
+      inputs:
+        artifacts:
+          - name: scenario-58-scaled-to-zero
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-58-scaled-to-zero-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'otel-demo'
+                    applabel: 'opentelemetry.io/name=accounting'
+                    appkind: 'deployment'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: scaled-to-zero-kubernetes-workload
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - "kubectl scale -n otel-demo deployment/accounting --replicas=0"
-
-    - name: revert-scenario-58
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - "kubectl scale -n otel-demo deployment/accounting --replicas=1 || true"
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Scenario #20: product-catalog nonexistent container image ────────────
     # Mirrors ITBench scenario index 20 (nonexistent-kubernetes-workload-
-    # container-image). Sets the product-catalog container image to a
-    # deliberately invalid tag so the pod enters ImagePullBackOff /
-    # ErrImagePull, triggering KubePodNotReady.
-    # Remediation: rollout undo or set image back to valid tag.
+    # container-image). Sets the product-catalog image to an invalid tag;
+    # agent must detect KubePodNotReady and rollout undo.
 
-    - name: inject-scenario-20
+    - name: scenario-20-nonexistent-image
+      inputs:
+        artifacts:
+          - name: scenario-20-nonexistent-image
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-20-nonexistent-image-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'otel-demo'
+                    applabel: 'opentelemetry.io/name=product-catalog'
+                    appkind: 'deployment'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: nonexistent-kubernetes-workload-container-image
+                      spec:
+                        components:
+                          env:
+                            - name: TARGET_CONTAINER
+                              value: 'product-catalog'
+                            - name: INVALID_IMAGE
+                              value: 'quay.io/it-bench/hello-bench-invalid:1.0.0'
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl set image
-            -n otel-demo
-            deployment/product-catalog
-            product-catalog=quay.io/it-bench/hello-bench-invalid:1.0.0
-
-    - name: revert-scenario-20
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - "kubectl rollout undo -n otel-demo deployment/product-catalog || true"
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Scenario #49: frontend misconfigured readiness probe ────────────────
     # Mirrors ITBench scenario index 49 (misconfigured-kubernetes-workload-
-    # container-readiness-probe). Patches the frontend Deployment to probe
-    # /ready on port 40, which is never open, so the pod stays NotReady.
-    # Remediation: rollout undo or edit the probe back to the correct path/port.
+    # container-readiness-probe). Patches frontend readinessProbe to port 40;
+    # agent must detect KubePodNotReady and roll back.
 
-    - name: inject-scenario-49
+    - name: scenario-49-readiness-probe
+      inputs:
+        artifacts:
+          - name: scenario-49-readiness-probe
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-49-readiness-probe-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'otel-demo'
+                    applabel: 'opentelemetry.io/name=frontend'
+                    appkind: 'deployment'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: misconfigured-kubernetes-workload-container-readiness-probe
+                      spec:
+                        components:
+                          env:
+                            - name: TARGET_CONTAINER
+                              value: 'frontend'
+                            - name: PROBE_PATH
+                              value: '/ready'
+                            - name: PROBE_PORT
+                              value: '40'
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl patch -n otel-demo deployment/frontend
-            --type=strategic
-            -p '{"spec":{"template":{"spec":{"containers":[{"name":"frontend","readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/ready","port":40,"scheme":"HTTP"},"periodSeconds":5,"successThreshold":1,"timeoutSeconds":3}}]}}}}'
-
-    - name: revert-scenario-49
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - "kubectl rollout undo -n otel-demo deployment/frontend || true"
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Scenario #30: ad service wrong target port ───────────────────────────
     # Mirrors ITBench scenario index 30 (modified-target-port-kubernetes-
-    # service). Changes the ad Service's targetPort from 8080 to 9999 so
-    # that traffic is routed to a closed port, triggering HighRequestErrorRate.
-    # Remediation: patch the targetPort back to 8080.
+    # service). Changes the ad Service's targetPort to 9999; agent must
+    # detect HighRequestErrorRate and restore the correct port.
 
-    - name: inject-scenario-30
+    - name: scenario-30-target-port
+      inputs:
+        artifacts:
+          - name: scenario-30-target-port
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: scenario-30-target-port-chaos
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                spec:
+                  appinfo:
+                    appns: 'otel-demo'
+                    applabel: 'opentelemetry.io/name=ad'
+                    appkind: 'service'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: modified-target-port-kubernetes-service
+                      spec:
+                        components:
+                          env:
+                            - name: BROKEN_TARGET_PORT
+                              value: '9999'
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
       container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl patch -n otel-demo service/ad
-            --type=json
-            -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":9999}]'
-
-    - name: revert-scenario-30
-      container:
-        image: litmuschaos/k8s:latest
-        command: [sh, -c]
-        args:
-          - >-
-            kubectl patch -n otel-demo service/ad
-            --type=json
-            -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":8080}]'
-            || true
-
-    # ── Shared wait template ─────────────────────────────────────────────────
-    # Holds the fault for `faultDuration` seconds. The flash-agent runs
-    # concurrently and must detect and remediate the fault within this window.
-
-    - name: wait-fault
-      container:
-        image: alpine:3.20
-        command: [sh, -c]
-        args: ["sleep {{workflow.parameters.faultDuration}}"]
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Optional teardown ────────────────────────────────────────────────────
     - name: delete-application

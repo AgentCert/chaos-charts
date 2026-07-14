@@ -1,0 +1,31 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: nonexistent-pvc-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: nonexistent-kubernetes-workload-persistent-volume-claim-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: nonexistent-kubernetes-workload-persistent-volume-claim
+      spec:
+        components:
+          env:
+            # container name to add the volumeMount to; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # StorageClass that does not exist in the cluster
+            - name: INVALID_STORAGE_CLASS
+              value: 'invalid-class-name'
+            # mount path for the fault volume inside the container
+            - name: PVC_MOUNT_PATH
+              value: '/data/fault'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

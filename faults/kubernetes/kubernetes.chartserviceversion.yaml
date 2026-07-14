@@ -118,6 +118,24 @@ spec:
     - name: uninstall-agent
       description: Uninstalls/removes an AI agent from the Kubernetes cluster after chaos testing.
       displayName: "Uninstall Agent"
+    - name: scaled-to-zero-kubernetes-workload
+      description: Scales a workload to zero replicas, then restores it. Mirrors ITBench SRE scenario "scaled-to-zero-kubernetes-workload".
+      displayName: "Scaled To Zero Kubernetes Workload"
+    - name: nonexistent-kubernetes-workload-container-image
+      description: Sets a container image to a nonexistent tag causing ImagePullBackOff, then restores the original. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-container-image".
+      displayName: "Nonexistent Kubernetes Workload Container Image"
+    - name: misconfigured-kubernetes-workload-container-readiness-probe
+      description: Patches a container readinessProbe to an unreachable port causing NotReady, then restores. Mirrors ITBench SRE scenario "misconfigured-kubernetes-workload-container-readiness-probe".
+      displayName: "Misconfigured Kubernetes Workload Container Readiness Probe"
+    - name: modified-target-port-kubernetes-service
+      description: Changes a Service targetPort to a broken value causing traffic failure, then restores. Mirrors ITBench SRE scenario "modified-target-port-kubernetes-service".
+      displayName: "Modified Target Port Kubernetes Service"
+    - name: invalid-kubernetes-service-selector
+      description: Replaces a Service selector with an invalid value so no pods match, then restores. Mirrors ITBench SRE scenario "invalid-kubernetes-service-selector".
+      displayName: "Invalid Kubernetes Service Selector"
+    - name: nonexistent-kubernetes-workload-persistent-volume-claim
+      description: Creates a PVC with an invalid StorageClass and mounts it into a workload causing Pending/Init, then reverts. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-persistent-volume-claim".
+      displayName: "Nonexistent Kubernetes Workload Persistent Volume Claim"
   keywords:
     - Kubernetes
   maintainers:

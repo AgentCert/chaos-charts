@@ -1,0 +1,31 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: misconfigured-readiness-probe-chaos
+  namespace: default
+spec:
+  engineState: 'active'
+  appinfo:
+    appns: ''
+    applabel: ''
+    appkind: 'deployment'
+  chaosServiceAccount: misconfigured-kubernetes-workload-container-readiness-probe-sa
+  jobCleanUpPolicy: 'retain'
+  experiments:
+    - name: misconfigured-kubernetes-workload-container-readiness-probe
+      spec:
+        components:
+          env:
+            # container whose readinessProbe is broken; defaults to the workload name
+            - name: TARGET_CONTAINER
+              value: ''
+            # broken probe port (deliberately unreachable)
+            - name: PROBE_PORT
+              value: '40'
+            # broken probe path
+            - name: PROBE_PATH
+              value: '/ready'
+            # seconds to hold the fault before reverting
+            - name: TOTAL_CHAOS_DURATION
+              value: '300'

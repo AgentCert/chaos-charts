@@ -1,0 +1,123 @@
+fault: misconfigured-kubernetes-workload-container-readiness-probe
+version: 0.1.0
+description: >-
+  Patches a container's readinessProbe to probe an unreachable port (default
+  40), making the pod permanently NotReady. Mirrors ITBench SRE scenario 49
+  (misconfigured-kubernetes-workload-container-readiness-probe).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod shows 0/1 READY — readiness probe is failing on an unreachable port"
+      - "KubePodNotReady alert fires for the affected workload"
+      - "HighRequestErrorRate on callers of this service (load-balancer stops routing to the pod)"
+      - "kubectl describe pod shows 'Readiness probe failed: Get http://...:40/ready'"
+
+    goal: >
+      Patch a container's readinessProbe to a deliberately invalid port to
+      validate whether an agent detects the resulting KubePodNotReady alert,
+      identifies the malformed probe configuration, and restores the workload
+      to a Ready state.
+
+    remediation: >
+      Correct or remove the faulty readinessProbe (e.g. via
+      `kubectl rollout undo` or `kubectl edit deployment`) so the pod becomes
+      Ready and traffic resumes routing to it.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List deployments in target namespace"
+      detail: "Find the Deployment whose pod is NotReady."
+
+    - step: 3
+      action: "Get pod details"
+      detail: "Retrieve pod status to confirm readiness probe is failing; note the probe path and port."
+
+    - step: 4
+      action: "Check Kubernetes events"
+      detail: "List events in the namespace; look for 'Readiness probe failed' events on the affected pod."
+
+    - step: 5
+      action: "Inspect deployment spec"
+      detail: "Read the Deployment spec to see the misconfigured readinessProbe (port 40, path /ready)."
+
+    - step: 6
+      action: "Check Prometheus alerts"
+      detail: "Query for KubePodNotReady and HighRequestErrorRate correlated with this service."
+
+    - step: 7
+      action: "Rollback or fix the deployment"
+      detail: "Either rollout undo the Deployment or patch the readinessProbe to the correct port/path."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Confirm the pod transitions to Running/Ready and traffic resumes."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=apps/v1 kind=Deployment namespace=<target-namespace>"
+      purpose: "Find the Deployment with a NotReady pod."
+      tool_available: true
+
+    - step: 3
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Identify the pod showing 0/1 READY."
+      tool_available: true
+
+    - step: 4
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Find 'Readiness probe failed' events for the affected pod."
+      tool_available: true
+
+    - step: 5
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=apps/v1 kind=Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Read the Deployment spec and confirm the faulty readinessProbe configuration."
+      tool_available: true
+
+    - step: 6
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_status_ready{namespace=\"<target-namespace>\",condition=\"true\"}'"
+      purpose: "Confirm the pod is not ready via Prometheus."
+      tool_available: true
+
+    - step: 7
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Restore the previous revision to remove the faulty readinessProbe."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify pod reaches Running/Ready after rollback."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 14
+      unit: "count"

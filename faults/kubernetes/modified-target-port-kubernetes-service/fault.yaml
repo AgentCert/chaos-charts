@@ -1,0 +1,76 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Replaces a Service's first port targetPort with a broken value (default
+    9999), causing traffic to be routed to a closed port, then restores the
+    original targetPort. Mirrors ITBench SRE scenario
+    "modified-target-port-kubernetes-service" (index 30).
+kind: ChaosExperiment
+metadata:
+  name: modified-target-port-kubernetes-service
+  labels:
+    name: modified-target-port-kubernetes-service
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: ci
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods", "events", "services"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["litmuschaos.io"]
+        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+        verbs: ["create", "list", "get", "patch", "update", "delete"]
+    image: "litmuschaos/k8s:latest"
+    imagePullPolicy: Always
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - |
+        set -eu
+        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$TARGET" ]; then
+          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+          exit 1
+        fi
+        echo "Target=${TARGET}"
+
+        ORIG_PORT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.ports[0].targetPort}')
+        echo "Original targetPort: ${ORIG_PORT}"
+
+        echo "Injecting: setting targetPort to ${BROKEN_TARGET_PORT}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
+          -p "[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":${BROKEN_TARGET_PORT}}]"
+
+        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+        sleep "${TOTAL_CHAOS_DURATION}"
+
+        echo "Reverting: restoring targetPort to ${ORIG_PORT}"
+        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
+          -p "[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":${ORIG_PORT}}]"
+    env:
+      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
+      - name: APP_NAMESPACE
+        value: ""
+      - name: APP_LABEL
+        value: ""
+      - name: APP_KIND
+        value: "service"
+
+      # broken targetPort value; must not be in use by the target pod
+      - name: BROKEN_TARGET_PORT
+        value: "9999"
+
+      - name: TOTAL_CHAOS_DURATION
+        value: "300"
+
+    labels:
+      name: modified-target-port-kubernetes-service
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: ci

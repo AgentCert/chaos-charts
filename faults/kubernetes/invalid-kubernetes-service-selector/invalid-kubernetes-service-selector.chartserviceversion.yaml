@@ -1,0 +1,44 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: invalid-kubernetes-service-selector
+  version: 0.1.0
+  annotations:
+    categories: Kubernetes
+    vendor: ITBench
+    chartDescription: >-
+      Replaces a Service's selector with an invalid label value so the Service
+      matches no pods, then restores the original selector. Mirrors ITBench SRE
+      scenario "invalid-kubernetes-service-selector".
+spec:
+  displayName: Invalid Kubernetes Service Selector
+  categoryDescription: |
+    Invalid service selector fault disrupts traffic to a Kubernetes workload by
+    replacing the target Service's label selector with a value that matches no
+    running pods, causing the Service's Endpoints to become empty.
+    - Simulates an operator mistake that silently drops all inbound traffic.
+    - Tests whether an agent detects HighRequestErrorRate, identifies the
+      misconfigured selector, and restores it.
+  keywords:
+    - Kubernetes
+    - ITBench
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  maintainers:
+    - name: AgentCert Team
+      email: agentcert@microsoft.com
+  minKubeVersion: 1.12.0
+  labels:
+    app.kubernetes.io/component: chartserviceversion
+    app.kubernetes.io/version: ci
+  links:
+    - name: ITBench
+      url: https://github.com/itbench-hub/ITBench
+  icon:
+    - url: ""
+      mediatype: ""

@@ -1,0 +1,126 @@
+fault: nonexistent-kubernetes-workload-persistent-volume-claim
+version: 0.1.0
+description: >-
+  Creates a PVC referencing an invalid StorageClass and patches a workload to
+  mount it, causing its pods to be stuck in Pending/Init with a FailedMount
+  event, then reverts via rollout undo and deletes the PVC. Mirrors ITBench SRE
+  scenario 53 (nonexistent-kubernetes-workload-persistent-volume-claim).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "Target pod is stuck in Pending or Init — unable to start due to FailedMount"
+      - "KubePodNotReady alert fires for the affected workload"
+      - "kubectl describe pod shows 'unable to mount volumes: persistentvolumeclaim not found' or 'no volume plugin matched'"
+      - "kubectl get pvc shows a PVC in Pending state with StorageClass that does not exist"
+
+    goal: >
+      Inject a PVC with an invalid StorageClass and mount it into a workload to
+      validate whether an agent detects the resulting KubePodNotReady /
+      FailedMount event, identifies the misconfigured storage, and restores the
+      workload to a Running/Ready state.
+
+    remediation: >
+      Perform a rollout undo to restore the previous Deployment revision
+      (removing the bad volume reference), then delete the broken PVC
+      (`kubectl delete pvc`). Alternatively, edit the Deployment to remove the
+      invalid volumeMount/volume entries and delete the bad StorageClass
+      reference.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "List pods in namespace"
+      detail: "Identify which pod is stuck in Pending or Init state."
+
+    - step: 3
+      action: "Describe the stuck pod"
+      detail: "Read pod events to find 'unable to mount volumes' or 'FailedMount' indicating a PVC issue."
+
+    - step: 4
+      action: "List PVCs in namespace"
+      detail: "Find the PVC that is stuck in Pending state and note its StorageClass."
+
+    - step: 5
+      action: "Check Prometheus alerts"
+      detail: "Query for KubePodNotReady correlated with the affected workload."
+
+    - step: 6
+      action: "Rollback the deployment"
+      detail: "Run rollout undo to restore the previous revision without the bad volume reference."
+
+    - step: 7
+      action: "Delete the broken PVC"
+      detail: "Remove the fault PVC so it does not re-attach if the workload is redeployed."
+
+    - step: 8
+      action: "Verify pod recovery"
+      detail: "Confirm the pod transitions to Running/Ready and traffic resumes."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Identify the pod stuck in Pending or Init."
+      tool_available: true
+
+    - step: 3
+      tool: "Events: List"
+      command: "Events: List namespace=<target-namespace>"
+      purpose: "Find FailedMount or 'unable to mount volumes' events for the affected pod."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: List"
+      command: "Resources: List apiVersion=v1 kind=PersistentVolumeClaim namespace=<target-namespace>"
+      purpose: "Find the PVC stuck in Pending state and identify the invalid StorageClass."
+      tool_available: true
+
+    - step: 5
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='kube_pod_status_phase{namespace=\"<target-namespace>\",phase=\"Pending\"}'"
+      purpose: "Confirm pod is stuck in Pending via Prometheus."
+      tool_available: true
+
+    - step: 6
+      tool: "Rollback Deployment"
+      command: "Rollback Deployment namespace=<target-namespace> name=<deployment-name>"
+      purpose: "Restore the previous revision to remove the bad volumeMount/volume reference."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Delete"
+      command: "Resources: Delete apiVersion=v1 kind=PersistentVolumeClaim namespace=<target-namespace> name=<pvc-name>"
+      purpose: "Remove the broken PVC created by the fault."
+      tool_available: true
+
+    - step: 8
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify pod reaches Running/Ready after rollback and PVC deletion."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 180
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 16
+      unit: "count"

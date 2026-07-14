@@ -1,0 +1,114 @@
+fault: invalid-kubernetes-service-selector
+version: 0.1.0
+description: >-
+  Replaces a Service's selector with an invalid label value so the Service
+  has zero matching Endpoints, dropping all inbound traffic, then restores
+  the original selector. Mirrors ITBench SRE scenario 36
+  (invalid-kubernetes-service-selector).
+
+ground_truth:
+  fault_description_goal_remediation:
+    symptoms:
+      - "HighRequestErrorRate alert for the affected service"
+      - "kubectl get endpoints shows the Service has no subsets (0 endpoints)"
+      - "All pods for the affected workload are Running/Ready but the Service routes to none of them"
+      - "Upstream callers receive connection refused or HTTP 503"
+
+    goal: >
+      Replace a Service's label selector with an invalid value to validate
+      whether an agent detects the resulting HighRequestErrorRate, identifies
+      the misconfigured selector, and restores the correct selector so traffic
+      resumes flowing to healthy pods.
+
+    remediation: >
+      Restore the Service's original label selector via `kubectl edit service`
+      or `kubectl patch service` so pods are re-matched and endpoints are
+      re-populated.
+
+  ideal_course_of_action:
+    - step: 1
+      action: "List namespaces"
+      detail: "Enumerate cluster namespaces to identify where the affected application is deployed."
+
+    - step: 2
+      action: "Check Prometheus alerts"
+      detail: "Query for HighRequestErrorRate correlated with the affected service."
+
+    - step: 3
+      action: "Get service details"
+      detail: "Retrieve the Service spec and note the selector; compare with pod labels."
+
+    - step: 4
+      action: "List endpoints"
+      detail: "Confirm the Endpoints object has zero subsets despite pods being Ready."
+
+    - step: 5
+      action: "List pods in namespace"
+      detail: "Verify target pods are Running/Ready to rule out a pod-level failure."
+
+    - step: 6
+      action: "Patch the Service selector"
+      detail: "Restore the correct label selector so pods are matched and endpoints are populated."
+
+    - step: 7
+      action: "Validate application health"
+      detail: "Confirm endpoints are re-populated and traffic is flowing again."
+
+  ideal_tool_usage_trajectory:
+    - step: 1
+      tool: "Namespaces: List"
+      command: "Namespaces: List"
+      purpose: "Locate the namespace hosting the affected application."
+      tool_available: true
+
+    - step: 2
+      tool: "Execute PromQL Query"
+      command: "Execute PromQL Query query='rate(http_requests_total{namespace=\"<target-namespace>\",status=~\"5..\"}[1m])'"
+      purpose: "Confirm elevated error rate on the affected service."
+      tool_available: true
+
+    - step: 3
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Service namespace=<target-namespace> name=<service-name>"
+      purpose: "Read the Service spec and identify the invalid selector."
+      tool_available: true
+
+    - step: 4
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Endpoints namespace=<target-namespace> name=<service-name>"
+      purpose: "Confirm the Endpoints object has zero subsets."
+      tool_available: true
+
+    - step: 5
+      tool: "Pods: List in Namespace"
+      command: "Pods: List in Namespace namespace=<target-namespace>"
+      purpose: "Verify pods are Running/Ready to confirm the issue is in the Service selector, not the pods."
+      tool_available: true
+
+    - step: 6
+      tool: "Resources: Patch"
+      command: "Resources: Patch apiVersion=v1 kind=Service namespace=<target-namespace> name=<service-name> patch={spec:{selector:<original-selector>}}"
+      purpose: "Restore the correct selector so the Service matches the running pods."
+      tool_available: true
+
+    - step: 7
+      tool: "Resources: Get"
+      command: "Resources: Get apiVersion=v1 kind=Endpoints namespace=<target-namespace> name=<service-name>"
+      purpose: "Confirm endpoints are re-populated after the selector fix."
+      tool_available: true
+
+  sla:
+    time_to_detect:
+      description: "Max time from fault injection to first correct symptom identification"
+      threshold: 60
+      unit: "seconds"
+
+    time_to_mitigate:
+      description: "Max time from fault injection to successful remediation"
+      threshold: 120
+      unit: "seconds"
+
+    max_tool_calls:
+      description: "Max total tool invocations allowed (including retries)"
+      threshold: 12
+      unit: "count"
