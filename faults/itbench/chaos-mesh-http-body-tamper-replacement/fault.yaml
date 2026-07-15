@@ -65,6 +65,21 @@ spec:
       - -c
       - |
         set -eu
+        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
+        # as env var names but never populates their values from
+        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
+        # submission mistargeted an unrelated deployment because both vars were
+        # empty). This operator version instead sets a single combined TARGETS var,
+        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
+        # every fault-injection script here still expects from it, and only fall
+        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
+        # isn't set (e.g. a future/different operator version that does populate
+        # them directly).
+        if [ -n "${TARGETS:-}" ]; then
+          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
+          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
+          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
+        fi
         echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
         TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
         if [ -z "$TARGET" ]; then
