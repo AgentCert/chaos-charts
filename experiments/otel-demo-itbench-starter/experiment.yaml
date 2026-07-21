@@ -353,8 +353,10 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  name: scenario-58-scaled-to-zero-chaos
+                  generateName: scenario-58-scaled-to-zero-chaos-
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -388,8 +390,10 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  name: scenario-20-nonexistent-image-chaos
+                  generateName: scenario-20-nonexistent-image-chaos-
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -427,8 +431,10 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  name: scenario-49-readiness-probe-chaos
+                  generateName: scenario-49-readiness-probe-chaos-
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
