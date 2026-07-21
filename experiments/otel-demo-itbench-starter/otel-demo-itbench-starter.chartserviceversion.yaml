@@ -1,0 +1,46 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: otel-demo-itbench-starter
+  version: 0.1.0
+  annotations:
+    categories: otel-demo
+    chartDescription: >-
+      Starter ITBench SRE scenario against the OpenTelemetry Demo (Astronomy Shop):
+      single scaled-to-zero fault injection to validate agent certification.
+spec:
+  displayName: OpenTelemetry Demo — ITBench Starter
+  categoryDescription: >
+    Single-fault evaluation workflow targeting the OpenTelemetry Demo
+    (opentelemetry-demo) application. Injects one ITBench SRE fault
+    (scaled-to-zero-kubernetes-workload on the accounting service) and holds it
+    for a configurable window (default 300 s) while the flash-agent observes,
+    diagnoses, and remediates. The fault is reverted automatically after the
+    window expires.
+
+    Scenario: #58 scaled-to-zero-kubernetes-workload (accounting)
+
+    ITBench reference: https://github.com/itbench-hub/ITBench
+    Applications required: otel-demo (app-charts/charts/otel-demo)
+  faults:
+    - name: otel-demo-itbench-starter
+      description: >-
+        Single ITBench SRE fault scenario (scaled-to-zero) against the
+        OpenTelemetry Demo application for agent certification.
+  keywords:
+    - Kubernetes
+    - ITBench
+    - SRE
+    - otel-demo
+    - misconfiguration
+    - starter
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  icon:
+    - url: ""
+      mediatype: ""
