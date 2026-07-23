@@ -1,47 +1,68 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: argowf-itbench-otel-demo-starter
+  # generateName allows multiple independent runs from the same definition.
+  # LitmusChaos UI stores this via "Upload Experiment" and triggers via "Run".
+  generateName: argowf-itbench-2s5r-
   namespace: litmus
   labels:
-    subject: "otel-demo-itbench-starter"
+    subject: "itbench-2scenario-5run-benchmark"
 spec:
   entrypoint: argowf-chaos
   serviceAccountName: argo-chaos
   securityContext:
     runAsUser: 1000
     runAsNonRoot: true
+
   arguments:
     parameters:
       - name: adminModeNamespace
         value: "litmus"
       - name: appNamespace
         value: "otel-demo"
-      # Agent installation
+
+      # ── Agent selection ──────────────────────────────────────────────────
+      # Change agentFolder to select a different agent:
+      #   sre-agent-comprehensive  (default — live K8s + MCP remediation)
+      #   sre-agent                (offline ITBench snapshot mode)
+      #   sre-agent-crewai         (CrewAI multi-agent SRE)
+      #   ciso-agent               (CISO compliance agent)
+      #   flash-agent              (FLASH-methodology ITOps)
       - name: agentFolder
-        value: "flash-agent"
+        value: "sre-agent-comprehensive"
+
       - name: installTimeout
         value: "30m"
-      # Flash Agent / LLM configuration
+
+      # ── LLM / sidecar configuration ─────────────────────────────────────
       - name: openaiApiKey
         value: ""
       - name: openaiModel
         value: "gpt-4o"
       - name: openaiBaseUrl
-        value: "http://litellm.ace.svc.cluster.local:14000/v1"
+        value: "http://litellm.litellm.svc.cluster.local:4000/v1"
       - name: litellmUpstream
         value: "http://172.26.0.1:14000"
       - name: scanInterval
         value: "60"
-      - name: logLines
-        value: "100"
-      # ITBench: seconds to hold each fault before reverting
+
+      # ── Fault parameters ────────────────────────────────────────────────
+      # How many seconds the fault is held before auto-revert.
+      # Give the agent enough time to detect + remediate.
       - name: faultDuration
         value: "300"
 
+      # Pause between consecutive runs of the same scenario (seconds).
+      # Allows the cluster to stabilise before the next fault injection.
+      - name: interRunPause
+        value: "60"
+
   templates:
+
+    # ── Entrypoint ─────────────────────────────────────────────────────────
     - name: argowf-chaos
       steps:
+
         # ── Setup ──────────────────────────────────────────────────────────
         - - name: install-application
             template: install-application
@@ -50,30 +71,110 @@ spec:
         - - name: install-chaos-experiments
             template: install-chaos-experiments
 
-        # ── Scenario #58 ── accounting scaled to zero ──────────────────────
+        # ── Scenario #58 × 5 sequential runs ───────────────────────────────
         # ITBench: scaled-to-zero-kubernetes-workload
-        # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting
-        - - name: scenario-58-scaled-to-zero
-            template: scenario-58-scaled-to-zero
+        # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting.
+        # Agent must detect that the accounting Deployment has 0 replicas
+        # and scale it back up.
 
-        # ── Scenario #20 ── product-catalog nonexistent container image ────
+        - - name: s58-run-1
+            template: scenario-58-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "1"
+        - - name: s58-wait-1
+            template: inter-run-wait
+        - - name: s58-run-2
+            template: scenario-58-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "2"
+        - - name: s58-wait-2
+            template: inter-run-wait
+        - - name: s58-run-3
+            template: scenario-58-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "3"
+        - - name: s58-wait-3
+            template: inter-run-wait
+        - - name: s58-run-4
+            template: scenario-58-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "4"
+        - - name: s58-wait-4
+            template: inter-run-wait
+        - - name: s58-run-5
+            template: scenario-58-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "5"
+
+        # ── Inter-scenario pause ────────────────────────────────────────────
+        - - name: inter-scenario-wait
+            template: inter-run-wait
+
+        # ── Scenario #20 × 5 sequential runs ───────────────────────────────
         # ITBench: nonexistent-kubernetes-workload-container-image
-        # Symptom: KubePodNotReady on product-catalog
-        - - name: scenario-20-nonexistent-image
-            template: scenario-20-nonexistent-image
+        # Symptom: KubePodNotReady on product-catalog (ImagePullBackOff).
+        # Agent must detect the invalid image tag and run kubectl rollout undo.
 
-        # ── Scenario #49 ── frontend misconfigured readiness probe ─────────
-        # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
-        # Symptom: KubePodNotReady on frontend
-        - - name: scenario-49-readiness-probe
-            template: scenario-49-readiness-probe
+        - - name: s20-run-1
+            template: scenario-20-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "1"
+        - - name: s20-wait-1
+            template: inter-run-wait
+        - - name: s20-run-2
+            template: scenario-20-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "2"
+        - - name: s20-wait-2
+            template: inter-run-wait
+        - - name: s20-run-3
+            template: scenario-20-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "3"
+        - - name: s20-wait-3
+            template: inter-run-wait
+        - - name: s20-run-4
+            template: scenario-20-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "4"
+        - - name: s20-wait-4
+            template: inter-run-wait
+        - - name: s20-run-5
+            template: scenario-20-run
+            arguments:
+              parameters:
+                - name: runIndex
+                  value: "5"
+
+        # ── Optional cleanup ────────────────────────────────────────────────
+        # Uncomment to uninstall the agent after the last run:
+        #- - name: delete-agent
+        #    template: delete-agent
 
     # ── Setup templates ─────────────────────────────────────────────────────
 
     - name: install-application
       container:
         image: agentcert/agentcert-install-app:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         args:
           - "-folder=otel-demo"
           - "-namespace=otel-demo"
@@ -84,7 +185,7 @@ spec:
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
           - "-namespace={{workflow.parameters.appNamespace}}"
@@ -97,12 +198,10 @@ spec:
           - "--set=agent.notifyId={{workflow.name}}"
           - "--set=agent.workflowUid={{workflow.uid}}"
           - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
-          - "--set=agent.config.MCP_URLS=http://kubernetes-mcp-server.otel-demo.svc.cluster.local:8081/mcp\\,http://prometheus-mcp-server.otel-demo.svc.cluster.local:9090/mcp"
-          - "--set=agent.config.AGENT_SCOPE_NAMESPACE=otel-demo"
 
     # ── Install ChaosExperiment CRs ─────────────────────────────────────────
-    # Applies only the 3 ITBench ChaosExperiment definitions needed for this
-    # starter run (scenarios 58, 20, 49).
+    # Both ITBench experiment definitions are applied into the admin namespace
+    # before any ChaosEngine is created; the chaos-operator needs them present.
 
     - name: install-chaos-experiments
       inputs:
@@ -114,9 +213,8 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 description:
                   message: |
-                    Scales a Deployment/StatefulSet identified by label to zero replicas, then
-                    restores its original replica count. Mirrors ITBench SRE scenario
-                    "scaled-to-zero-kubernetes-workload" (fault library index 20).
+                    Scales the target Deployment to 0 replicas then restores it.
+                    Mirrors ITBench SRE scenario "scaled-to-zero-kubernetes-workload".
                 kind: ChaosExperiment
                 metadata:
                   name: scaled-to-zero-kubernetes-workload
@@ -182,8 +280,9 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 description:
                   message: |
-                    Sets a container's image to a nonexistent tag, causing ImagePullBackOff /
-                    ErrImagePull, then restores the original image.
+                    Sets a container image to a nonexistent tag causing ImagePullBackOff,
+                    then restores the original image.
+                    Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-container-image".
                 kind: ChaosExperiment
                 metadata:
                   name: nonexistent-kubernetes-workload-container-image
@@ -250,115 +349,33 @@ spec:
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
-          - name: misconfigured-kubernetes-workload-container-readiness-probe
-            path: /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml
-            raw:
-              data: |
-                apiVersion: litmuschaos.io/v1alpha1
-                description:
-                  message: |
-                    Patches a container's readinessProbe to probe an unreachable port,
-                    causing the pod to stay NotReady, then restores the original probe.
-                kind: ChaosExperiment
-                metadata:
-                  name: misconfigured-kubernetes-workload-container-readiness-probe
-                  labels:
-                    name: misconfigured-kubernetes-workload-container-readiness-probe
-                    app.kubernetes.io/part-of: litmus
-                    app.kubernetes.io/component: chaosexperiment
-                    app.kubernetes.io/version: ci
-                spec:
-                  definition:
-                    scope: Namespaced
-                    permissions:
-                      - apiGroups: [""]
-                        resources: ["pods", "events"]
-                        verbs: ["create", "get", "list", "patch", "update"]
-                      - apiGroups: ["apps"]
-                        resources: ["deployments", "statefulsets"]
-                        verbs: ["get", "list", "patch", "update"]
-                      - apiGroups: ["litmuschaos.io"]
-                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
-                        verbs: ["create", "list", "get", "patch", "update", "delete"]
-                    image: "litmuschaos/k8s:latest"
-                    imagePullPolicy: Always
-                    command:
-                      - /bin/sh
-                    args:
-                      - -c
-                      - |
-                        set -eu
-                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-                        if [ -z "$TARGET" ]; then
-                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-                          exit 1
-                        fi
-                        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
-                        echo "Target=${TARGET} container=${CONTAINER}"
-                        ORIG_PROBE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-                          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].readinessProbe}")
-                        echo "Original readinessProbe: ${ORIG_PROBE:-<none>}"
-                        BROKEN_PROBE="{\"failureThreshold\":3,\"httpGet\":{\"path\":\"${PROBE_PATH}\",\"port\":${PROBE_PORT},\"scheme\":\"HTTP\"},\"periodSeconds\":5,\"successThreshold\":1,\"timeoutSeconds\":3}"
-                        echo "Injecting: setting broken readinessProbe on ${CONTAINER} (port=${PROBE_PORT} path=${PROBE_PATH})"
-                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-                          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"readinessProbe\":${BROKEN_PROBE}}]}}}}"
-                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-                        sleep "${TOTAL_CHAOS_DURATION}"
-                        if [ -z "$ORIG_PROBE" ]; then PROBE_JSON="null"; else PROBE_JSON="$ORIG_PROBE"; fi
-                        echo "Reverting readinessProbe to original"
-                        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-                          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"readinessProbe\":${PROBE_JSON}}]}}}}"
-                    env:
-                      - name: APP_NAMESPACE
-                        value: ""
-                      - name: APP_LABEL
-                        value: ""
-                      - name: APP_KIND
-                        value: "deployment"
-                      - name: TARGET_CONTAINER
-                        value: ""
-                      - name: PROBE_PATH
-                        value: "/ready"
-                      - name: PROBE_PORT
-                        value: "40"
-                      - name: TOTAL_CHAOS_DURATION
-                        value: "300"
-                    labels:
-                      name: misconfigured-kubernetes-workload-container-readiness-probe
-                      app.kubernetes.io/part-of: litmus
-                      app.kubernetes.io/component: experiment-job
-                      app.kubernetes.io/version: ci
       container:
         image: litmuschaos/k8s:latest
-        imagePullPolicy: Always
-        command: [sh, -c]
+        command:
+          - sh
+          - "-c"
         args:
-          - |
-            kubectl apply -f /tmp/scaled-to-zero-kubernetes-workload.yaml -n "{{workflow.parameters.adminModeNamespace}}"
-            kubectl apply -f /tmp/nonexistent-kubernetes-workload-container-image.yaml -n "{{workflow.parameters.adminModeNamespace}}"
-            kubectl apply -f /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml -n "{{workflow.parameters.adminModeNamespace}}"
+          - kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 10
 
-    # ── Scenario templates ─────────────────────────────────────────────────────
+    # ── Scenario templates ──────────────────────────────────────────────────
 
-    # ── Scenario #58: accounting scaled to zero ──────────────────────────────
-    # ITBench: scaled-to-zero-kubernetes-workload
-    # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting service
-
-    - name: scenario-58-scaled-to-zero
+    # Scenario #58 — accounting scaled to zero
+    # ChaosEngine name includes {{workflow.name}} to avoid collisions across
+    # workflow runs and {{inputs.parameters.runIndex}} for per-run uniqueness.
+    - name: scenario-58-run
       inputs:
+        parameters:
+          - name: runIndex
         artifacts:
-          - name: scenario-58-scaled-to-zero
+          - name: scenario-58-run
             path: /tmp/chaosengine.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  generateName: scenario-58-scaled-to-zero-chaos-
+                  name: "{{workflow.name}}-s58r{{inputs.parameters.runIndex}}-chaos"
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  annotations:
-                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -376,26 +393,23 @@ spec:
                               value: '{{workflow.parameters.faultDuration}}'
       container:
         image: litmuschaos/litmus-checker:latest
-        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
+        args: ["-file=/tmp/chaosengine.yaml", "-saveName=/tmp/engine-name"]
 
-    # ── Scenario #20: product-catalog nonexistent container image ────────────
-    # ITBench: nonexistent-kubernetes-workload-container-image
-    # Symptom: KubePodNotReady on product-catalog
-
-    - name: scenario-20-nonexistent-image
+    # Scenario #20 — product-catalog nonexistent container image
+    - name: scenario-20-run
       inputs:
+        parameters:
+          - name: runIndex
         artifacts:
-          - name: scenario-20-nonexistent-image
+          - name: scenario-20-run
             path: /tmp/chaosengine.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  generateName: scenario-20-nonexistent-image-chaos-
+                  name: "{{workflow.name}}-s20r{{inputs.parameters.runIndex}}-chaos"
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  annotations:
-                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -417,47 +431,25 @@ spec:
                               value: '{{workflow.parameters.faultDuration}}'
       container:
         image: litmuschaos/litmus-checker:latest
-        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
+        args: ["-file=/tmp/chaosengine.yaml", "-saveName=/tmp/engine-name"]
 
-    # ── Scenario #49: frontend misconfigured readiness probe ────────────────
-    # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
-    # Symptom: KubePodNotReady on frontend
+    # ── Utility templates ───────────────────────────────────────────────────
 
-    - name: scenario-49-readiness-probe
-      inputs:
-        artifacts:
-          - name: scenario-49-readiness-probe
-            path: /tmp/chaosengine.yaml
-            raw:
-              data: |
-                apiVersion: litmuschaos.io/v1alpha1
-                kind: ChaosEngine
-                metadata:
-                  generateName: scenario-49-readiness-probe-chaos-
-                  namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  annotations:
-                    probeRef: "[]"
-                spec:
-                  appinfo:
-                    appns: 'otel-demo'
-                    applabel: 'opentelemetry.io/name=frontend'
-                    appkind: 'deployment'
-                  engineState: 'active'
-                  chaosServiceAccount: litmus-admin
-                  jobCleanUpPolicy: 'retain'
-                  experiments:
-                    - name: misconfigured-kubernetes-workload-container-readiness-probe
-                      spec:
-                        components:
-                          env:
-                            - name: TARGET_CONTAINER
-                              value: 'frontend'
-                            - name: PROBE_PATH
-                              value: '/ready'
-                            - name: PROBE_PORT
-                              value: '40'
-                            - name: TOTAL_CHAOS_DURATION
-                              value: '{{workflow.parameters.faultDuration}}'
+    # Brief cluster-stabilisation pause between runs
+    - name: inter-run-wait
       container:
-        image: litmuschaos/litmus-checker:latest
-        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
+        image: alpine:3.19
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        command: [sh, -c, "sleep {{workflow.parameters.interRunPause}}"]
+
+    # Optional: uninstall the agent Helm release after the last run
+    - name: delete-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: Always
+        args:
+          - "-folder={{workflow.parameters.agentFolder}}"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-delete"
