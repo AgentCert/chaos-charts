@@ -62,7 +62,7 @@ spec:
           template: delete-loadtest
     - name: install-application
       container:
-        image: agentcert/agentcert-install-app:latest
+        image: localhost:5000/agentcert/agentcert-install-app:latest
         imagePullPolicy: IfNotPresent
         args:
         - -folder=sock-shop

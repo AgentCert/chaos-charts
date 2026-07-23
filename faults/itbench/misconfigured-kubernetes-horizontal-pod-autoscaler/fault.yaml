@@ -55,10 +55,17 @@ spec:
         # isn't set (e.g. a future/different operator version that does populate
         # them directly).
         if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
           APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
           APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
         fi
+        # ChaosEngine.spec.appinfo.appkind is CRD-validated to a fixed enum
+        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job) --
+        # "horizontalpodautoscaler" is rejected outright at admission time. This fault always
+        # targets a horizontalpodautoscaler, never any other kind, so hardcode it here instead
+        # of trusting TARGETS' kind component (the ChaosEngine submission uses
+        # a dummy CRD-valid appkind like "deployment" purely to satisfy the
+        # schema; only appns/applabel need to vary per submission).
+        APP_KIND="horizontalpodautoscaler"
         echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
         TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
         if [ -z "$TARGET" ]; then

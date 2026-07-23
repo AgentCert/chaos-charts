@@ -72,8 +72,8 @@ spec:
 
     - name: install-application
       container:
-        image: agentcert/agentcert-install-app:latest
-        imagePullPolicy: IfNotPresent
+        image: 172.17.0.1:5000/agentcert-install-app:local-otel-v2
+        imagePullPolicy: Always
         args:
           - "-folder=otel-demo"
           - "-namespace=otel-demo"
@@ -97,6 +97,8 @@ spec:
           - "--set=agent.notifyId={{workflow.name}}"
           - "--set=agent.workflowUid={{workflow.uid}}"
           - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
+          - "--set=agent.config.MCP_URLS=http://kubernetes-mcp-server.otel-demo.svc.cluster.local:8081/mcp\\,http://prometheus-mcp-server.otel-demo.svc.cluster.local:9090/mcp"
+          - "--set=agent.config.AGENT_SCOPE_NAMESPACE=otel-demo"
 
     # ── Install ChaosExperiment CRs ─────────────────────────────────────────
     # Applies only the 3 ITBench ChaosExperiment definitions needed for this

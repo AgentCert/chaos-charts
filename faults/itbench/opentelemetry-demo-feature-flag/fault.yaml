@@ -43,10 +43,17 @@ spec:
         # isn't set (e.g. a future/different operator version that does populate
         # them directly).
         if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
           APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
           APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
         fi
+        # ChaosEngine.spec.appinfo.appkind is CRD-validated to a fixed enum
+        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job) --
+        # "configmap" is rejected outright at admission time. This fault always
+        # targets a configmap, never any other kind, so hardcode it here instead
+        # of trusting TARGETS' kind component (the ChaosEngine submission uses
+        # a dummy CRD-valid appkind like "deployment" purely to satisfy the
+        # schema; only appns/applabel need to vary per submission).
+        APP_KIND="configmap"
         echo "Resolving target ${APP_KIND}/flagd-config in ns=${APP_NAMESPACE}"
         CURRENT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" flagd-config -o jsonpath='{.data.demo\.flagd\.json}')
         if [ -z "$CURRENT" ]; then
