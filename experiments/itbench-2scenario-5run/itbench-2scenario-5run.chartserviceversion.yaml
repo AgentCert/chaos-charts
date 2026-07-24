@@ -1,0 +1,49 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: itbench-2scenario-5run
+  version: 0.1.0
+  annotations:
+    categories: otel-demo
+    chartDescription: >-
+      Runs two ITBench SRE scenarios (Chaos Mesh HTTP fault variants) sequentially
+      against the OpenTelemetry Demo application, repeating each scenario 5 times
+      to build a statistically meaningful sample.
+spec:
+  displayName: ITBench 2-Scenario 5-Run Benchmark
+  categoryDescription: >
+    Sequential evaluation workflow targeting the OpenTelemetry Demo
+    (opentelemetry-demo) application. Two ITBench SRE fault scenarios are each
+    run 5 times (10 runs total), with configurable inter-run pauses. An AI agent
+    observes, diagnoses, and remediates each fault while the agent sidecar records
+    all LLM traces to Langfuse.
+
+    Scenarios covered:
+      #27  chaos-mesh-http-abort-replacement   (quote service)
+      #26  chaos-mesh-http-body-tamper-replacement (email service)
+
+    ITBench reference: https://github.com/itbench-hub/ITBench
+    Applications required: otel-demo (app-charts/charts/otel-demo)
+  faults:
+    - name: itbench-2scenario-5run
+      description: >-
+        Two ITBench Chaos Mesh HTTP fault scenarios run 5 times each against
+        the OpenTelemetry Demo application.
+  keywords:
+    - Kubernetes
+    - ITBench
+    - SRE
+    - otel-demo
+    - chaos-mesh
+    - http-abort
+    - http-body-tamper
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  icon:
+    - url: ""
+      mediatype: ""

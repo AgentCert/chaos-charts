@@ -184,7 +184,7 @@ spec:
 
     - name: install-agent
       container:
-        image: agentcert/agentcert-install-agent:latest
+        image: localhost:5000/agentcert/agentcert-install-agent:latest
         imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
@@ -374,8 +374,10 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  name: "{{workflow.name}}-s58r{{inputs.parameters.runIndex}}-chaos"
+                  generateName: "{{workflow.name}}-s58r{{inputs.parameters.runIndex}}-"
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -408,8 +410,10 @@ spec:
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
-                  name: "{{workflow.name}}-s20r{{inputs.parameters.runIndex}}-chaos"
+                  generateName: "{{workflow.name}}-s20r{{inputs.parameters.runIndex}}-"
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
                 spec:
                   appinfo:
                     appns: 'otel-demo'
@@ -447,7 +451,7 @@ spec:
     # Optional: uninstall the agent Helm release after the last run
     - name: delete-agent
       container:
-        image: agentcert/agentcert-install-agent:latest
+        image: localhost:5000/agentcert/agentcert-install-agent:latest
         imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"

@@ -1,0 +1,681 @@
+kind: Workflow
+apiVersion: argoproj.io/v1alpha1
+metadata:
+  labels:
+    experiment_name: itbench-adapted-scenarios
+    subject: itbench-adapted-scenarios
+  namespace: litmus
+  generateName: argowf-itbench-adapted-
+spec:
+  templates:
+  - name: argowf-chaos
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    steps:
+    - - name: install-application
+        template: install-application
+        arguments: {}
+    - - name: normalize-readiness
+        template: normalize-install-application-readiness
+        arguments: {}
+    - - name: install-agent
+        template: install-agent
+        arguments: {}
+    - - name: install-chaos-experiments
+        template: install-chaos-experiments
+        arguments: {}
+    - - name: s27-run-1
+        template: scenario-27-run
+        arguments:
+          parameters:
+          - name: runIndex
+            value: '1'
+    - - name: s27-wait-1
+        template: inter-run-wait
+        arguments: {}
+    - - name: s26-run-1
+        template: scenario-26-run
+        arguments:
+          parameters:
+          - name: runIndex
+            value: '1'
+    - - name: s26-wait-1
+        template: inter-run-wait
+        arguments: {}
+    - - name: s18-run-1
+        template: scenario-18-run
+        arguments:
+          parameters:
+          - name: runIndex
+            value: '1'
+    - - name: s18-wait-1
+        template: inter-run-wait
+        arguments: {}
+    - - name: delete-agent
+        template: delete-agent
+        arguments: {}
+    - - name: normalize-post-chaos
+        template: normalize-install-application-readiness
+        arguments: {}
+    - - name: dynamic-pre-cleanup-wait
+        template: dynamic-pre-cleanup-wait
+        arguments: {}
+    - - name: uninstall-all
+        template: uninstall-all
+        arguments: {}
+  - name: install-application
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: localhost:5000/agentcert/agentcert-install-app:latest
+      args:
+      - -folder=otel-demo
+      - -namespace=otel-demo
+      - -create-namespace
+      - -wait
+      - -timeout={{workflow.parameters.installTimeout}}
+      resources: {}
+      imagePullPolicy: Always
+  - name: normalize-install-application-readiness
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: litmuschaos/k8s:latest
+      command:
+      - sh
+      - -c
+      args:
+      - "set -eu\nNS=\"{{workflow.parameters.appNamespace}}\"\nDEADLINE=$(($(date +%s) + ${READINESS_WAIT_SECONDS:-900}))\n\
+        echo \"[readiness-check] Waiting for all pods in namespace $NS to reach Running/Succeeded...\"\nwhile [ \"$(date +%s)\"\
+        \ -lt \"$DEADLINE\" ]; do\n\tif ! kubectl get ns \"$NS\" >/dev/null 2>&1; then\n\t\techo \"[readiness-check] Namespace\
+        \ $NS not found yet; retrying...\"\n\t\tsleep 5\n\t\tcontinue\n\tfi\n\n\tTOTAL=$(kubectl get pods -n \"$NS\" --no-headers\
+        \ 2>/dev/null | wc -l | tr -d ' ')\n\tif [ -z \"$TOTAL\" ] || [ \"$TOTAL\" -eq 0 ]; then\n\t\techo \"[readiness-check]\
+        \ No pods created yet in $NS; retrying...\"\n\t\tsleep 5\n\t\tcontinue\n\tfi\n\n\tNOT_READY=$(kubectl get pods -n\
+        \ \"$NS\" --no-headers 2>/dev/null | awk '$3!=\"Running\" && $3!=\"Succeeded\" && $3!=\"Completed\" {c++} END {print\
+        \ c+0}')\n\tRUNNING=$(kubectl get pods -n \"$NS\" --no-headers 2>/dev/null | awk '$3==\"Running\" || $3==\"Succeeded\"\
+        \ || $3==\"Completed\" {c++} END {print c+0}')\n\n\techo \"[readiness-check] Pods status: $RUNNING/$TOTAL in Running/Succeeded\"\
+        \n\tif [ \"$NOT_READY\" -eq 0 ]; then\n\t\techo \"[readiness-check] ✓ All pods in namespace $NS are Running/Succeeded\"\
+        \n\t\texit 0\n\tfi\n\n\tkubectl get pods -n \"$NS\" --no-headers 2>/dev/null | awk '$3!=\"Running\" && $3!=\"Succeeded\"\
+        \ && $3!=\"Completed\" {print \"[readiness-check] waiting:\", $1, $3, $2}' | head -n 6 || true\n  sleep 5\ndone\n\
+        echo \"[readiness-check] ⚠ Timeout waiting for all pods; continuing workflow to avoid deadlock\"\nexit 0"
+      resources: {}
+  - name: install-agent
+    inputs: {}
+    outputs: {}
+    metadata:
+      annotations:
+        agentcert.io/install-type: agent
+    container:
+      name: ''
+      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      args:
+      - -folder={{workflow.parameters.agentFolder}}
+      - -namespace={{workflow.parameters.appNamespace}}
+      - -create-namespace
+      - -timeout={{workflow.parameters.installTimeout}}
+      - --set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}
+      - --set=agent.config.SCAN_INTERVAL={{workflow.parameters.scanInterval}}
+      - --set=agent.notifyId={{workflow.name}}
+      - --set=agent.workflowUid={{workflow.uid}}
+      - --server-addr
+      - http://graphql.ace.svc.cluster.local:8081/query
+      - --project-id
+      - admin-project
+      - --set
+      - agentId={{workflow.parameters.agentId}}
+      - --set
+      - agent.config.AGENT_ID={{workflow.parameters.agentId}}
+      - --set
+      - agent.config.NOTIFY_ID={{workflow.labels.notify_id}}
+      - --set
+      - agent.config.EXPERIMENT_ID={{workflow.labels.workflow_id}}
+      - --set
+      - agent.config.EXPERIMENT_RUN_ID={{workflow.uid}}
+      - --set
+      - agent.config.WORKFLOW_NAME={{workflow.labels.experiment_name}}
+      - --set
+      - agent.config.MCP_INCLUDE_CHAOS_TOOLS=false
+      - --set
+      - agent.config.OPENAI_API_KEY=sk-agentcert-2026
+      - --set
+      - agent.secret.LITELLM_MASTER_KEY=sk-agentcert-2026
+      - --set
+      - agent.config.OPENAI_BASE_URL=http://litellm:14000/v1
+      - --set
+      - agent.config.MODEL_ALIAS=gpt-4o
+      - --set
+      - agent.config.MCP_URLS=http://kubernetes-mcp-server.sock-shop.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.sock-shop.svc.cluster.local:8083/mcp
+      - --set
+      - agent.config.CHAOS_NAMESPACE=litmus
+      - --set
+      - agent.config.AGENT_MODE=observe
+      - --set
+      - agent.config.AGENT_SCOPE_NAMESPACE=
+      - --set
+      - agent.config.MITIGATION_ALLOW_DISCOVERED_SCOPE=
+      - --set
+      - agent.config.MITIGATION_REVIEW_ITERS=
+      - --set
+      - agent.config.MITIGATION_AUDIT_PATH=
+      - --set
+      - agent.config.AGENT_MEMORY_PATH=
+      - --set
+      - agent.config.MEMORY_TTL_DAYS=
+      - --set
+      - agent.config.REVIEWER_MODEL_ALIAS=
+      - --set
+      - sidecar.enabled=true
+      - --set
+      - sidecar.injectionMode=openai-metadata
+      - --set
+      - sidecar.upstream=http://litellm:14000
+      - --set
+      - sidecar.image.repository=agentcert/agent-sidecar
+      - --set
+      - sidecar.image.tag=latest
+      - --set
+      - sidecar.image.pullPolicy=Always
+      resources: {}
+      imagePullPolicy: Always
+  - name: install-chaos-experiments
+    inputs:
+      artifacts:
+      - name: chaos-mesh-http-abort-replacement
+        path: /tmp/chaos-mesh-http-abort-replacement.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    LitmusChaos-native approximation of\
+            \ Chaos Mesh's HTTPChaos \"abort\" action\n    (ITBench SRE scenario 27: aborted POST requests to OpenTelemetry\
+            \ Demo's\n    `quote` service, port 8080). Chaos Mesh intercepts traffic at L7 inside\n    the pod's network namespace\
+            \ and aborts only requests matching a method/\n    path; LitmusChaos has no equivalent HTTP-proxy primitive, so\
+            \ this fault\n    instead creates a NetworkPolicy that denies L3/L4 ingress on the target\n    port only (leaving\
+            \ any other ports the workload exposes reachable), then\n    deletes it to restore connectivity. This is a coarser\
+            \ approximation: it\n    drops ALL traffic to the port (not just POST requests) -- see the\n    ground_truth.yaml\
+            \ goal/remediation for the documented deviation.\nkind: ChaosExperiment\nmetadata:\n  name: chaos-mesh-http-abort-replacement\n\
+            \  labels:\n    name: chaos-mesh-http-abort-replacement\n    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component:\
+            \ chaosexperiment\n    app.kubernetes.io/version: ci\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n\
+            \      - apiGroups: [\"\"]\n        resources: [\"pods\", \"events\"]\n        verbs: [\"create\", \"get\", \"\
+            list\", \"patch\", \"update\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\", \"statefulsets\"\
+            ]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"networking.k8s.io\"]\n        resources: [\"networkpolicies\"\
+            ]\n        verbs: [\"create\", \"get\", \"list\", \"delete\"]\n      - apiGroups: [\"litmuschaos.io\"]\n     \
+            \   resources: [\"chaosengines\", \"chaosexperiments\", \"chaosresults\"]\n        verbs: [\"create\", \"list\"\
+            , \"get\", \"patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n\
+            \    command:\n      - /bin/sh\n    args:\n      - -c\n      - |\n        set -eu\n        # The chaos-operator\
+            \ on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND\n        # as env var names but never populates their\
+            \ values from\n        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine\n        # submission\
+            \ mistargeted an unrelated deployment because both vars were\n        # empty). This operator version instead\
+            \ sets a single combined TARGETS var,\n        # format \"<kind>:<namespace>:[<label-selector>]:<mode>\". Derive\
+            \ the vars\n        # every fault-injection script here still expects from it, and only fall\n        # back to\
+            \ whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS\n        # isn't set (e.g. a future/different\
+            \ operator version that does populate\n        # them directly).\n        if [ -n \"${TARGETS:-}\" ]; then\n \
+            \         APP_KIND=$(echo \"$TARGETS\" | cut -d: -f1)\n          APP_NAMESPACE=$(echo \"$TARGETS\" | cut -d: -f2)\n\
+            \          APP_LABEL=$(echo \"$TARGETS\" | cut -d: -f3 | tr -d '[]')\n        fi\n        echo \"Resolving target\
+            \ ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}\"\n        TARGET=$(kubectl get \"${APP_KIND}\" -n \"\
+            ${APP_NAMESPACE}\" -l \"${APP_LABEL}\" -o jsonpath='{.items[0].metadata.name}')\n        if [ -z \"$TARGET\" ];\
+            \ then\n          echo \"no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}\" >&2\n        \
+            \  exit 1\n        fi\n        echo \"Target=${TARGET}\"\n\n        # APP_LABEL is a single \"key=value\" selector\
+            \ (the otel-demo convention\n        # is 'opentelemetry.io/name=<component>') -- split it to build the\n    \
+            \    # NetworkPolicy's podSelector so it targets exactly the pods backing\n        # ${TARGET}, same pattern as\
+            \ ingress-port-blocking-network-policy.\n        LABEL_KEY=${APP_LABEL%%=*}\n        LABEL_VALUE=${APP_LABEL#*=}\n\
+            \        NETPOL_NAME=${NETPOL_NAME:-${TARGET}-http-abort-fault}\n\n        # Discover every containerPort the\
+            \ target pod(s) expose so we deny\n        # ingress on TARGET_PORT only and re-allow every other port -- this\n\
+            \        # keeps the fault genuinely \"port-scoped\" (mirroring Chaos Mesh\n        # HTTPChaos's port-specific\
+            \ abort) rather than a blanket deny-all.\n        ALL_PORTS=$(kubectl get pods -n \"${APP_NAMESPACE}\" -l \"${APP_LABEL}\"\
+            \ \\\n          -o jsonpath='{.items[0].spec.containers[*].ports[*].containerPort}' 2>/dev/null || true)\n   \
+            \     OTHER_PORTS=\"\"\n        for p in $ALL_PORTS; do\n          if [ \"$p\" != \"${TARGET_PORT}\" ]; then\n\
+            \            OTHER_PORTS=\"${OTHER_PORTS} ${p}\"\n          fi\n        done\n        echo \"Discovered container\
+            \ ports=[${ALL_PORTS:-none}] keeping-open=[${OTHER_PORTS:-none}] blocking=${TARGET_PORT}/${TARGET_PROTOCOL}\"\n\
+            \n        # NOTE: the embedded newlines below are indented as (8-space YAML\n        # block-scalar baseline +\
+            \ desired script indentation), because this\n        # whole args script is itself a YAML block literal: every\
+            \ physical\n        # line -- including continuation lines inside this quoted string --\n        # must keep at\
+            \ least the block's 8-space baseline or YAML will\n        # think the literal block has ended. Only the 8 baseline\
+            \ spaces are\n        # stripped when the script is extracted, so what's left is exactly\n        # 2/4/6/8 spaces\
+            \ of real indentation, making \"ingress:\" a sibling of\n        # policyTypes: in the final NetworkPolicy manifest\
+            \ below.\n        if [ -z \"$(echo \"$OTHER_PORTS\" | tr -d '[:space:]')\" ]; then\n          INGRESS_BLOCK=\"\
+            \  ingress: []\"\n        else\n          PORTS_LIST=\"\"\n          for p in $OTHER_PORTS; do\n            PORTS_LIST=\"\
+            ${PORTS_LIST}\n              - protocol: TCP\n                port: ${p}\"\n          done\n          INGRESS_BLOCK=\"\
+            \  ingress:\n            - ports:${PORTS_LIST}\"\n        fi\n\n        echo \"Injecting: NetworkPolicy ${NETPOL_NAME}\
+            \ denies ingress on port ${TARGET_PORT}/${TARGET_PROTOCOL} to ${LABEL_KEY}=${LABEL_VALUE} in ${APP_NAMESPACE}\
+            \ (approximates Chaos Mesh HTTPChaos abort=true on the same port)\"\n        cat <<EOF | kubectl apply -f -\n\
+            \        apiVersion: networking.k8s.io/v1\n        kind: NetworkPolicy\n        metadata:\n          name: ${NETPOL_NAME}\n\
+            \          namespace: ${APP_NAMESPACE}\n          labels:\n            litmuschaos.io/fault: chaos-mesh-http-abort-replacement\n\
+            \        spec:\n          podSelector:\n            matchLabels:\n              ${LABEL_KEY}: \"${LABEL_VALUE}\"\
+            \n          policyTypes:\n            - Ingress\n        ${INGRESS_BLOCK}\n        EOF\n\n        echo \"Holding\
+            \ fault for ${TOTAL_CHAOS_DURATION}s\"\n        sleep \"${TOTAL_CHAOS_DURATION}\"\n\n        echo \"Reverting:\
+            \ deleting NetworkPolicy ${NETPOL_NAME}\"\n        kubectl delete networkpolicy -n \"${APP_NAMESPACE}\" \"${NETPOL_NAME}\"\
+            \ --ignore-not-found\n    env:\n      # Injected by the chaos-operator from ChaosEngine.spec.appinfo\n      -\
+            \ name: APP_NAMESPACE\n        value: \"otel-demo\"\n      - name: APP_LABEL\n        value: \"opentelemetry.io/name=quote\"\
+            \n      - name: APP_KIND\n        value: \"deployment\"\n\n      # port to deny ingress on -- matches ITBench\
+            \ scenario 27's Chaos Mesh\n      # HTTPChaos target (otel-demo `quote` service, port 8080)\n      - name: TARGET_PORT\n\
+            \        value: \"8080\"\n      - name: TARGET_PROTOCOL\n        value: \"TCP\"\n\n      # name of the NetworkPolicy\
+            \ this fault creates; defaults to\n      # \"<target>-http-abort-fault\" if left blank, so it never collides\n\
+            \      # with a pre-existing, legitimately-owned NetworkPolicy\n      - name: NETPOL_NAME\n        value: \"\"\
+            \n\n      - name: TOTAL_CHAOS_DURATION\n        value: \"300\"\n\n    labels:\n      name: chaos-mesh-http-abort-replacement\n\
+            \      app.kubernetes.io/part-of: litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/version:\
+            \ ci\n"
+      - name: chaos-mesh-http-body-tamper-replacement
+        path: /tmp/chaos-mesh-http-body-tamper-replacement.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    Mirrors ITBench SRE scenario 26 (fault\
+            \ library index 26), which uses Chaos\n    Mesh's HTTPChaos to transparently proxy traffic through the chaos-daemon\n\
+            \    and rewrite the POST body of real checkout->email requests in the\n    OpenTelemetry Demo app to `{'email':\
+            \ '12345', 'order': 'error body'}`.\n\n    HONEST LIMITATION: ACE's cluster provisions no service mesh and no\
+            \ Chaos\n    Mesh chaos-daemon (see the bookinfo chart's README: this cluster stack\n    does not provision Istio,\
+            \ and otel-demo is likewise not under any mesh),\n    so there is no transparent-proxy layer available to intercept\
+            \ and rewrite\n    HTTP bodies in flight. Genuinely faithful HTTP body tampering of real\n    application traffic\
+            \ is NOT achievable via plain kubectl/exec scripting,\n    and the OpenTelemetry Demo email service (a Ruby/Sinatra\
+            \ app) exposes no\n    config/env knob that would make it reject or mishandle a specific\n    previously-valid\
+            \ input shape on demand -- no such faithful config-based\n    approximation exists.\n\n    APPROXIMATION IMPLEMENTED:\
+            \ this experiment launches a short-lived pod that\n    directly sends synthetic HTTP requests, carrying ITBench's\
+            \ exact tampered\n    payload, straight at the target email Service on an interval. This\n    reproduces the same\
+            \ malformed-body handling failure signature (the\n    service receiving and choking on `{'email': '12345', 'order':\
+            \ 'error\n    body'}`) without needing a mesh/proxy layer -- but it does NOT intercept\n    or rewrite genuine\
+            \ in-flight checkout->email traffic the way Chaos Mesh's\n    HTTPChaos does; it only adds new synthetic malformed\
+            \ traffic alongside\n    the real traffic. Detection/remediation is designed around finding and\n    removing\
+            \ the rogue traffic-generator pod, which parallels ITBench's own\n    documented remediation for this scenario\
+            \ (pause/delete the Chaos Mesh\n    Schedule/HTTPChaos object) rather than changing the target application.\n\
+            kind: ChaosExperiment\nmetadata:\n  name: chaos-mesh-http-body-tamper-replacement\n  labels:\n    name: chaos-mesh-http-body-tamper-replacement\n\
+            \    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component: chaosexperiment\n    app.kubernetes.io/version:\
+            \ ci\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n      - apiGroups: [\"\"]\n        resources:\
+            \ [\"pods\"]\n        verbs: [\"get\", \"list\", \"watch\", \"create\", \"delete\"]\n      - apiGroups: [\"\"\
+            ]\n        resources: [\"pods/log\"]\n        verbs: [\"get\"]\n      - apiGroups: [\"\"]\n        resources:\
+            \ [\"services\"]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\"\
+            , \"statefulsets\"]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources:\
+            \ [\"chaosengines\", \"chaosexperiments\", \"chaosresults\"]\n        verbs: [\"create\", \"list\", \"get\", \"\
+            patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n    command:\n\
+            \      - /bin/sh\n    args:\n      - -c\n      - |\n        set -eu\n        # The chaos-operator on this cluster\
+            \ declares APP_NAMESPACE/APP_LABEL/APP_KIND\n        # as env var names but never populates their values from\n\
+            \        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine\n        # submission mistargeted\
+            \ an unrelated deployment because both vars were\n        # empty). This operator version instead sets a single\
+            \ combined TARGETS var,\n        # format \"<kind>:<namespace>:[<label-selector>]:<mode>\". Derive the vars\n\
+            \        # every fault-injection script here still expects from it, and only fall\n        # back to whatever\
+            \ APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS\n        # isn't set (e.g. a future/different operator\
+            \ version that does populate\n        # them directly).\n        if [ -n \"${TARGETS:-}\" ]; then\n          APP_KIND=$(echo\
+            \ \"$TARGETS\" | cut -d: -f1)\n          APP_NAMESPACE=$(echo \"$TARGETS\" | cut -d: -f2)\n          APP_LABEL=$(echo\
+            \ \"$TARGETS\" | cut -d: -f3 | tr -d '[]')\n        fi\n        echo \"Resolving target ${APP_KIND} in ns=${APP_NAMESPACE}\
+            \ label=${APP_LABEL}\"\n        TARGET=$(kubectl get \"${APP_KIND}\" -n \"${APP_NAMESPACE}\" -l \"${APP_LABEL}\"\
+            \ -o jsonpath='{.items[0].metadata.name}')\n        if [ -z \"$TARGET\" ]; then\n          echo \"no ${APP_KIND}\
+            \ found matching label ${APP_LABEL} in ${APP_NAMESPACE}\" >&2\n          exit 1\n        fi\n        echo \"Target\
+            \ workload=${TARGET}\"\n\n        if [ -n \"${SERVICE_NAME:-}\" ]; then\n          SVC=\"$SERVICE_NAME\"\n   \
+            \     else\n          SVC=$(kubectl get service -n \"${APP_NAMESPACE}\" -l \"${APP_LABEL}\" -o jsonpath='{.items[0].metadata.name}')\n\
+            \        fi\n        if [ -z \"$SVC\" ]; then\n          echo \"no Service found matching label ${APP_LABEL} in\
+            \ ${APP_NAMESPACE} (set SERVICE_NAME to override)\" >&2\n          exit 1\n        fi\n        echo \"Target service=${SVC}\
+            \ port=${SERVICE_PORT} path=${REQUEST_PATH}\"\n\n        URL=\"http://${SVC}.${APP_NAMESPACE}.svc.cluster.local:${SERVICE_PORT}${REQUEST_PATH}\"\
+            \n        GEN_POD=\"chaos-http-body-tamper-$(date +%s)\"\n\n        echo \"NOTE: ACE has no service mesh / Chaos\
+            \ Mesh transparent proxy, so\"\n        echo \"genuine in-flight tampering of real checkout->email traffic is\
+            \ not\"\n        echo \"reproducible via kubectl alone. Approximating by firing synthetic\"\n        echo \"requests\
+            \ carrying ITBench's exact tampered body directly at the\"\n        echo \"target service instead of intercepting\
+            \ real traffic in flight.\"\n\n        echo \"Injecting: launching request-generator pod ${GEN_POD} -> ${URL}\"\
+            \n        kubectl run \"${GEN_POD}\" -n \"${APP_NAMESPACE}\" \\\n          --image=\"${GENERATOR_IMAGE}\" \\\n\
+            \          --restart=Never \\\n          --labels=\"chaos-injector=chaos-mesh-http-body-tamper-replacement\" \\\
+            \n          --env=\"TAMPER_URL=${URL}\" \\\n          --env=\"TAMPER_BODY=${TAMPERED_BODY}\" \\\n          --env=\"\
+            TAMPER_METHOD=${REQUEST_METHOD}\" \\\n          --env=\"TAMPER_INTERVAL=${REQUEST_INTERVAL_SECONDS}\" \\\n   \
+            \       --command -- /bin/sh -c 'while true; do curl -s -o /dev/null -w \"%{http_code} \" -X \"$TAMPER_METHOD\"\
+            \ -H \"Content-Type: application/json\" -d \"$TAMPER_BODY\" \"$TAMPER_URL\"; sleep \"$TAMPER_INTERVAL\"; done'\n\
+            \n        echo \"Waiting for generator pod to become Ready\"\n        kubectl wait -n \"${APP_NAMESPACE}\" \"\
+            pod/${GEN_POD}\" --for=condition=Ready --timeout=60s || true\n\n        echo \"Holding fault for ${TOTAL_CHAOS_DURATION}s\
+            \ (tampered POST every ${REQUEST_INTERVAL_SECONDS}s)\"\n        sleep \"${TOTAL_CHAOS_DURATION}\"\n\n        echo\
+            \ \"Recent generator log (HTTP status codes observed against ${SVC}):\"\n        kubectl logs -n \"${APP_NAMESPACE}\"\
+            \ \"${GEN_POD}\" --tail=20 || true\n\n        echo \"Reverting: no application state was ever modified (unlike\
+            \ a\"\n        echo \"config/patch fault) -- reverting simply means stopping the\"\n        echo \"synthetic tampered\
+            \ traffic by removing the generator pod.\"\n        kubectl delete pod \"${GEN_POD}\" -n \"${APP_NAMESPACE}\"\
+            \ --ignore-not-found --wait=false\n    env:\n      # Injected by the chaos-operator from ChaosEngine.spec.appinfo\n\
+            \      - name: APP_NAMESPACE\n        value: \"\"\n      - name: APP_LABEL\n        value: \"\"\n      - name:\
+            \ APP_KIND\n        value: \"deployment\"\n\n      # Service fronting the target workload; if unset, resolved\
+            \ via APP_LABEL\n      - name: SERVICE_NAME\n        value: \"\"\n      # Matches ITBench's HTTPChaos selector\
+            \ (port: 8080)\n      - name: SERVICE_PORT\n        value: \"8080\"\n      # Best-effort guess at the email service's\
+            \ real HTTP endpoint (Ruby/Sinatra\n      # POST /send_order_confirmation); ITBench's HTTPChaos used path \"*\"\
+            \ since a\n      # transparent proxy matches any path -- override if the deployed chart's\n      # endpoint differs.\n\
+            \      - name: REQUEST_PATH\n        value: \"/send_order_confirmation\"\n      - name: REQUEST_METHOD\n     \
+            \   value: \"POST\"\n      # Exact tampered payload from ITBench scenario 26's httpChaos patch.body.value\n  \
+            \    - name: TAMPERED_BODY\n        value: \"{'email': '12345', 'order': 'error body'}\"\n      - name: REQUEST_INTERVAL_SECONDS\n\
+            \        value: \"5\"\n      - name: GENERATOR_IMAGE\n        value: \"curlimages/curl:8.10.1\"\n\n      # Matches\
+            \ ITBench scenario 26's own httpChaos duration fixture (55s)\n      - name: TOTAL_CHAOS_DURATION\n        value:\
+            \ \"55\"\n\n    labels:\n      name: chaos-mesh-http-body-tamper-replacement\n      app.kubernetes.io/part-of:\
+            \ litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/version: ci\n"
+      - name: chaos-mesh-pod-failure-replacement
+        path: /tmp/chaos-mesh-pod-failure-replacement.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    LitmusChaos-native replacement for Chaos\
+            \ Mesh's PodChaos \"pod-failure\"\n    action. Mirrors ITBench SRE scenario 18, whose disruption is a Chaos Mesh\n\
+            \    Schedule (\"otel-demo-product-catalog-network-delay\") wrapping a PodChaos\n    with action=pod-failure,\
+            \ mode=all, selector\n    app.kubernetes.io/component=checkout in namespace otel-demo -- i.e. it\n    makes the\
+            \ otel-demo `checkout` service fail. This ACE deployment runs\n    LitmusChaos only (no Chaos Mesh), so this fault\
+            \ reproduces the *effect*\n    (target container becomes temporarily unresponsive without the pod being\n    deleted\
+            \ or the container being killed/restarted) using LitmusChaos-native\n    primitives.\n\n    MECHANISM: for each\
+            \ Running pod matched by APP_LABEL, this fault attaches\n    an ephemeral debug container to the pod (`kubectl\
+            \ debug ... --target`)\n    that shares the target container's PID namespace, then sends SIGSTOP to\n    PID 1\
+            \ (the target process) to freeze it in place, holds for\n    TOTAL_CHAOS_DURATION, then sends SIGCONT to resume\
+            \ it -- all from inside\n    that one ephemeral container's own command, so the revert happens even if\n    this\
+            \ experiment job is interrupted mid-run.\n\n    WHY NOT A PLAIN `kubectl exec <pod> -c checkout -- kill -STOP\
+            \ 1`? That is\n    the more obvious signal-based approximation, but it does not work against\n    this specific\
+            \ target: checkout's image\n    (ghcr.io/open-telemetry/demo:<tag>-checkout) is built\n    `FROM gcr.io/distroless/static-debian12:nonroot`\
+            \ (confirmed against the\n    upstream Dockerfile at the same opentelemetry-demo chart version, 0.40.9,\n    that\
+            \ this ACE deployment pins), so the container has neither a shell nor\n    a `kill` binary and `kubectl exec`\
+            \ into it cannot run anything at all.\n    The ephemeral-debug-container approach is the standard, GA-since-1.25\n\
+            \    Kubernetes mechanism documented specifically for signalling/inspecting\n    processes \"in Containers that\
+            \ lack debugging utilities, such as with\n    distroless images\" (see\n    https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container).\n\
+            \    It preserves full fidelity to the intended effect -- process frozen in\n    place, pod/container never deleted\
+            \ or recreated, kubelet's restart\n    machinery never triggered -- so it is not a lower-fidelity fallback, just\n\
+            \    a different delivery mechanism for the same signal.\n\n    KNOWN CAVEATS (documented rather than silently\
+            \ absorbed):\n      1. Requires the Kubernetes Ephemeral Containers feature (stable/default\n         since v1.25)\
+            \ and a container runtime that honors `--target`\n         (containerd/CRI-O do). minKubeVersion is therefore\
+            \ set to 1.25.0 in\n         this fault's ChartServiceVersion, not the repo's usual 1.12.0.\n      2. The ephemeral\
+            \ debug container itself cannot be individually removed\n         once added (a Kubernetes API limitation -- only\
+            \ deleting the whole\n         Pod clears it), so `kubectl describe pod` will keep showing a\n         `Completed`\
+            \ `chaos-freeze-*` ephemeral container after this fault\n         reverts. This is a harmless but visible side\
+            \ effect that differs\n         from Chaos Mesh's own pod-failure (which leaves no such trace).\n      3. checkout\
+            \ has no configured livenessProbe/readinessProbe (neither in\n         ACE's values.yaml nor in the upstream chart's\
+            \ defaults), so\n         `kubectl get pods` continues to show it Running/Ready throughout the\n         freeze.\
+            \ This is not a shortcoming of this fault -- Chaos Mesh's own\n         maintainers document that their pause-image\
+            \ swap \"could work\n         properly well with unconfigured command in the container. So if the\n         container\
+            \ is configured without command, livenessProbe and\n         readinessProbe, the container would be inspected\
+            \ as Running and\n         Ready\" too. The real, detectable symptom for this exact target is\n         therefore\
+            \ in request-level metrics/traces, not pod phase/readiness.\nkind: ChaosExperiment\nmetadata:\n  name: chaos-mesh-pod-failure-replacement\n\
+            \  labels:\n    name: chaos-mesh-pod-failure-replacement\n    app.kubernetes.io/part-of: litmus\n    app.kubernetes.io/component:\
+            \ chaosexperiment\n    app.kubernetes.io/version: ci\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n\
+            \      - apiGroups: [\"\"]\n        resources: [\"pods\"]\n        verbs: [\"get\", \"list\"]\n      - apiGroups:\
+            \ [\"\"]\n        resources: [\"pods/ephemeralcontainers\"]\n        verbs: [\"get\", \"patch\", \"update\"]\n\
+            \      - apiGroups: [\"\"]\n        resources: [\"events\"]\n        verbs: [\"create\", \"get\", \"list\", \"\
+            patch\", \"update\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources: [\"chaosengines\", \"chaosexperiments\"\
+            , \"chaosresults\"]\n        verbs: [\"create\", \"list\", \"get\", \"patch\", \"update\", \"delete\"]\n    image:\
+            \ \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n    command:\n      - /bin/sh\n    args:\n      - -c\n\
+            \      - |\n        set -eu\n        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND\n\
+            \        # as env var names but never populates their values from\n        # ChaosEngine.spec.appinfo -- verified\
+            \ empirically (a real ChaosEngine\n        # submission mistargeted an unrelated deployment because both vars\
+            \ were\n        # empty). This operator version instead sets a single combined TARGETS var,\n        # format\
+            \ \"<kind>:<namespace>:[<label-selector>]:<mode>\". Derive the vars\n        # every fault-injection script here\
+            \ still expects from it, and only fall\n        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say\
+            \ if TARGETS\n        # isn't set (e.g. a future/different operator version that does populate\n        # them\
+            \ directly).\n        if [ -n \"${TARGETS:-}\" ]; then\n          APP_NAMESPACE=$(echo \"$TARGETS\" | cut -d:\
+            \ -f2)\n          APP_LABEL=$(echo \"$TARGETS\" | cut -d: -f3 | tr -d '[]')\n        fi\n        # ChaosEngine.spec.appinfo.appkind\
+            \ is CRD-validated to a fixed enum\n        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job)\
+            \ --\n        # \"pod\" is rejected outright at admission time. This fault always\n        # targets a pod, never\
+            \ any other kind, so hardcode it here instead\n        # of trusting TARGETS' kind component (the ChaosEngine\
+            \ submission uses\n        # a dummy CRD-valid appkind like \"deployment\" purely to satisfy the\n        # schema;\
+            \ only appns/applabel need to vary per submission).\n        APP_KIND=\"pod\"\n        echo \"Resolving target\
+            \ ${APP_KIND}s in ns=${APP_NAMESPACE} label=${APP_LABEL}\"\n        PODS=$(kubectl get \"${APP_KIND}\" -n \"${APP_NAMESPACE}\"\
+            \ -l \"${APP_LABEL}\" \\\n          --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')\n\
+            \        if [ -z \"$PODS\" ]; then\n          echo \"no Running ${APP_KIND} found matching label ${APP_LABEL}\
+            \ in ${APP_NAMESPACE}\" >&2\n          exit 1\n        fi\n        echo \"Target pods: ${PODS}\"\n\n        #\
+            \ See the ChaosExperiment description for the full rationale: a\n        # plain `kubectl exec <pod> -c ${TARGET_CONTAINER}\
+            \ -- kill -STOP 1`\n        # cannot run here because the container image is distroless (no\n        # shell,\
+            \ no kill binary). We instead attach an ephemeral debug\n        # container that shares the target container's\
+            \ PID namespace and\n        # send the signal from there.\n        TS=$(date +%s)\n        for POD in $PODS;\
+            \ do\n          DEBUG_NAME=$(echo \"chaos-freeze-${TS}-${POD}\" | cut -c1-63 | sed 's/-*$//')\n          echo\
+            \ \"Injecting: freezing pod=${POD} container=${TARGET_CONTAINER} via ephemeral debug container=${DEBUG_NAME} (image=${DEBUG_IMAGE})\"\
+            \n          kubectl debug -n \"${APP_NAMESPACE}\" \"${POD}\" \\\n            --image=\"${DEBUG_IMAGE}\" \\\n \
+            \           --container=\"${DEBUG_NAME}\" \\\n            --target=\"${TARGET_CONTAINER}\" \\\n            --attach=false\
+            \ \\\n            -- sh -c \"kill -STOP 1; sleep ${TOTAL_CHAOS_DURATION}; kill -CONT 1\"\n        done\n\n   \
+            \     echo \"Holding fault for ${TOTAL_CHAOS_DURATION}s (each ephemeral debug container independently runs its\
+            \ own STOP -> sleep -> CONT sequence, so the freeze self-reverts even if this experiment job is interrupted)\"\
+            \n        sleep \"${TOTAL_CHAOS_DURATION}\"\n\n        echo \"Fault duration elapsed. Ephemeral debug container\
+            \ state per target pod:\"\n        for POD in $PODS; do\n          DEBUG_NAME=$(echo \"chaos-freeze-${TS}-${POD}\"\
+            \ | cut -c1-63 | sed 's/-*$//')\n          REASON=$(kubectl get pod -n \"${APP_NAMESPACE}\" \"${POD}\" \\\n  \
+            \          -o jsonpath=\"{.status.ephemeralContainerStatuses[?(@.name=='${DEBUG_NAME}')].state.terminated.reason}\"\
+            \ 2>/dev/null || true)\n          echo \"pod=${POD} debugContainer=${DEBUG_NAME} terminated=${REASON:-<not yet\
+            \ reported>}\"\n        done\n        echo \"NOTE: ephemeral debug containers cannot be individually removed (Kubernetes\
+            \ API limitation) -- they remain visible (Completed) under 'kubectl describe pod' until the Pod itself is deleted/recreated.\
+            \ This is an expected, documented side effect of this fault's mechanism, not a bug.\"\n    env:\n      # Injected\
+            \ by the chaos-operator from ChaosEngine.spec.appinfo\n      - name: APP_NAMESPACE\n        value: \"otel-demo\"\
+            \n      - name: APP_LABEL\n        value: \"opentelemetry.io/name=checkout\"\n      - name: APP_KIND\n       \
+            \ value: \"pod\"\n\n      # container (within the matched pod) whose main process gets frozen\n      - name: TARGET_CONTAINER\n\
+            \        value: \"checkout\"\n\n      # image used for the ephemeral debug container; must include a shell\n \
+            \     # and a `kill` binary supporting -STOP/-CONT (busybox does)\n      - name: DEBUG_IMAGE\n        value: \"\
+            busybox:1.36\"\n\n      - name: TOTAL_CHAOS_DURATION\n        value: \"300\"\n\n    labels:\n      name: chaos-mesh-pod-failure-replacement\n\
+            \      app.kubernetes.io/part-of: litmus\n      app.kubernetes.io/component: experiment-job\n      app.kubernetes.io/version:\
+            \ ci\n"
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: litmuschaos/k8s:latest
+      command:
+      - sh
+      - -c
+      args:
+      - kubectl apply -f /tmp/chaos-mesh-http-abort-replacement.yaml -n {{workflow.parameters.adminModeNamespace}} && kubectl
+        apply -f /tmp/chaos-mesh-http-body-tamper-replacement.yaml -n {{workflow.parameters.adminModeNamespace}} && kubectl
+        apply -f /tmp/chaos-mesh-pod-failure-replacement.yaml -n {{workflow.parameters.adminModeNamespace}}
+      resources: {}
+  - name: scenario-27-run
+    inputs:
+      parameters:
+      - name: runIndex
+      artifacts:
+      - name: scenario-27-run
+        path: /tmp/chaosengine.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\
+            \n  generateName: scenario-27-run\n  labels:\n    workflow_run_id: \"{{ workflow.uid }}\"\n    workflow_name:\
+            \ itbench-adapted-scenarios\n  annotations:\n    probeRef: \"[]\"\nspec:\n  appinfo:\n    appns: otel-demo\n \
+            \   applabel: opentelemetry.io/name=quote\n    appkind: deployment\n  engineState: active\n  chaosServiceAccount:\
+            \ litmus-admin\n  jobCleanUpPolicy: retain\n  experiments:\n    - name: chaos-mesh-http-abort-replacement\n  \
+            \    spec:\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value:\
+            \ \"{{workflow.parameters.faultDuration}}\"\n"
+    outputs: {}
+    metadata:
+      labels:
+        weight: '10'
+    container:
+      name: ''
+      image: litmuschaos/litmus-checker:latest
+      args:
+      - -file=/tmp/chaosengine.yaml
+      - -saveName=/tmp/engine-name
+      resources: {}
+  - name: scenario-26-run
+    inputs:
+      parameters:
+      - name: runIndex
+      artifacts:
+      - name: scenario-26-run
+        path: /tmp/chaosengine.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\
+            \n  generateName: scenario-26-run\n  labels:\n    workflow_run_id: \"{{ workflow.uid }}\"\n    workflow_name:\
+            \ itbench-adapted-scenarios\n  annotations:\n    probeRef: \"[]\"\nspec:\n  appinfo:\n    appns: otel-demo\n \
+            \   applabel: opentelemetry.io/name=email\n    appkind: deployment\n  engineState: active\n  chaosServiceAccount:\
+            \ litmus-admin\n  jobCleanUpPolicy: retain\n  experiments:\n    - name: chaos-mesh-http-body-tamper-replacement\n\
+            \      spec:\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value:\
+            \ \"55\"\n"
+    outputs: {}
+    metadata:
+      labels:
+        weight: '10'
+    container:
+      name: ''
+      image: litmuschaos/litmus-checker:latest
+      args:
+      - -file=/tmp/chaosengine.yaml
+      - -saveName=/tmp/engine-name
+      resources: {}
+  - name: scenario-18-run
+    inputs:
+      parameters:
+      - name: runIndex
+      artifacts:
+      - name: scenario-18-run
+        path: /tmp/chaosengine.yaml
+        raw:
+          data: "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  namespace: \"{{workflow.parameters.adminModeNamespace}}\"\
+            \n  generateName: scenario-18-run\n  labels:\n    workflow_run_id: \"{{ workflow.uid }}\"\n    workflow_name:\
+            \ itbench-adapted-scenarios\n  annotations:\n    probeRef: \"[]\"\nspec:\n  appinfo:\n    appns: otel-demo\n \
+            \   applabel: opentelemetry.io/name=checkout\n    appkind: deployment\n  engineState: active\n  chaosServiceAccount:\
+            \ litmus-admin\n  jobCleanUpPolicy: retain\n  experiments:\n    - name: chaos-mesh-pod-failure-replacement\n \
+            \     spec:\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value:\
+            \ \"{{workflow.parameters.faultDuration}}\"\n"
+    outputs: {}
+    metadata:
+      labels:
+        weight: '10'
+    container:
+      name: ''
+      image: litmuschaos/litmus-checker:latest
+      args:
+      - -file=/tmp/chaosengine.yaml
+      - -saveName=/tmp/engine-name
+      resources: {}
+  - name: inter-run-wait
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: alpine:3.19
+      command:
+      - sh
+      - -c
+      - sleep {{workflow.parameters.interRunPause}}
+      resources: {}
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+  - name: delete-agent
+    inputs: {}
+    outputs: {}
+    metadata:
+      annotations:
+        agentcert.io/install-type: agent
+    container:
+      name: ''
+      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      args:
+      - -folder={{workflow.parameters.agentFolder}}
+      - -namespace={{workflow.parameters.appNamespace}}
+      - -delete
+      - --server-addr
+      - http://graphql.ace.svc.cluster.local:8081/query
+      - --project-id
+      - admin-project
+      - --set
+      - agentId={{workflow.parameters.agentId}}
+      - --set
+      - agent.config.AGENT_ID={{workflow.parameters.agentId}}
+      - --set
+      - agent.config.NOTIFY_ID={{workflow.labels.notify_id}}
+      - --set
+      - agent.config.EXPERIMENT_ID={{workflow.labels.workflow_id}}
+      - --set
+      - agent.config.EXPERIMENT_RUN_ID={{workflow.uid}}
+      - --set
+      - agent.config.WORKFLOW_NAME={{workflow.labels.experiment_name}}
+      - --set
+      - agent.config.MCP_INCLUDE_CHAOS_TOOLS=false
+      - --set
+      - agent.config.OPENAI_API_KEY=sk-agentcert-2026
+      - --set
+      - agent.secret.LITELLM_MASTER_KEY=sk-agentcert-2026
+      - --set
+      - agent.config.OPENAI_BASE_URL=http://litellm:14000/v1
+      - --set
+      - agent.config.MODEL_ALIAS=gpt-4o
+      - --set
+      - agent.config.MCP_URLS=http://kubernetes-mcp-server.sock-shop.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.sock-shop.svc.cluster.local:8083/mcp
+      - --set
+      - agent.config.CHAOS_NAMESPACE=litmus
+      - --set
+      - agent.config.AGENT_MODE=observe
+      - --set
+      - agent.config.AGENT_SCOPE_NAMESPACE=
+      - --set
+      - agent.config.MITIGATION_ALLOW_DISCOVERED_SCOPE=
+      - --set
+      - agent.config.MITIGATION_REVIEW_ITERS=
+      - --set
+      - agent.config.MITIGATION_AUDIT_PATH=
+      - --set
+      - agent.config.AGENT_MEMORY_PATH=
+      - --set
+      - agent.config.MEMORY_TTL_DAYS=
+      - --set
+      - agent.config.REVIEWER_MODEL_ALIAS=
+      - --set
+      - sidecar.enabled=true
+      - --set
+      - sidecar.injectionMode=openai-metadata
+      - --set
+      - sidecar.upstream=http://litellm:14000
+      - --set
+      - sidecar.image.repository=agentcert/agent-sidecar
+      - --set
+      - sidecar.image.tag=latest
+      - --set
+      - sidecar.image.pullPolicy=Always
+      resources: {}
+      imagePullPolicy: Always
+  - name: dynamic-pre-cleanup-wait
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: busybox:1.36
+      command:
+      - sh
+      - -c
+      args:
+      - echo '[pre-cleanup-wait] sleeping for 0 seconds'; sleep 0; echo '[pre-cleanup-wait] done'
+      resources: {}
+  - name: uninstall-all
+    inputs: {}
+    outputs: {}
+    metadata: {}
+    container:
+      name: ''
+      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      command:
+      - sh
+      - -c
+      args:
+      - "NAMESPACE=\"{{workflow.parameters.appNamespace}}\"\nAGENT_INSTALL_NS=\"\"\nAGENT_RELEASE=\"{{workflow.parameters.agentFolder}}\"\
+        \nAPP_RELEASE=\"${NAMESPACE}\"\nif [ -z \"${AGENT_INSTALL_NS}\" ]; then AGENT_INSTALL_NS=\"${NAMESPACE}\"; fi\necho\
+        \ \"[uninstall-all] Cleaning ChaosEngine and ChaosResult resources in ${NAMESPACE}\"\nkubectl delete chaosengines.litmuschaos.io\
+        \ --all -n \"${NAMESPACE}\" --ignore-not-found 2>&1 || true\nkubectl delete chaosresults.litmuschaos.io --all -n \"\
+        ${NAMESPACE}\" --ignore-not-found 2>&1 || true\necho \"[uninstall-all] Uninstalling agent release: ${AGENT_RELEASE}\
+        \ (ns: ${AGENT_INSTALL_NS})\"\nhelm uninstall \"${AGENT_RELEASE}\" -n \"${AGENT_INSTALL_NS}\" --ignore-not-found 2>&1\
+        \ || true\nif [ \"${AGENT_INSTALL_NS}\" != \"${NAMESPACE}\" ]; then\n  echo \"[uninstall-all] Fallback agent uninstall\
+        \ in app ns: ${NAMESPACE}\"\n  helm uninstall \"${AGENT_RELEASE}\" -n \"${NAMESPACE}\" --ignore-not-found 2>&1 ||\
+        \ true\n  # Drop the agent install namespace itself so the next experiment starts clean.\n  # We only do this when\
+        \ it's distinct from the app ns AND not a system ns\n  # (kube-*, default, litmus, monitoring) to avoid catastrophic\
+        \ deletes.\n  case \"${AGENT_INSTALL_NS}\" in\n    kube-*|default|litmus|monitoring|argo|ingress-*|cert-manager) ;;\n\
+        \    *)\n      echo \"[uninstall-all] Deleting agent install namespace: ${AGENT_INSTALL_NS}\"\n      kubectl delete\
+        \ namespace \"${AGENT_INSTALL_NS}\" --ignore-not-found --wait=false 2>&1 || true\n      ;;\n  esac\nfi\necho \"[uninstall-all]\
+        \ Uninstalling app release: ${APP_RELEASE} (ns: ${NAMESPACE})\"\nhelm uninstall \"${APP_RELEASE}\" -n \"${NAMESPACE}\"\
+        \ --ignore-not-found 2>&1 || true\necho \"[uninstall-all] Done\""
+      resources: {}
+  entrypoint: argowf-chaos
+  arguments:
+    parameters:
+    - name: adminModeNamespace
+      value: litmus
+    - name: appNamespace
+      value: otel-demo
+    - name: agentFolder
+      value: sre-agent-comprehensive
+    - name: installTimeout
+      value: 30m
+    - name: openaiApiKey
+      value: ''
+    - name: openaiModel
+      value: gpt-4o
+    - name: openaiBaseUrl
+      value: http://litellm.litellm.svc.cluster.local:4000/v1
+    - name: litellmUpstream
+      value: http://172.26.0.1:14000
+    - name: scanInterval
+      value: '60'
+    - name: faultDuration
+      value: '300'
+    - name: interRunPause
+      value: '60'
+    - name: agentId
+      value: ''
+  serviceAccountName: argo-chaos
+  securityContext: {}
+  podGC:
+    strategy: OnWorkflowCompletion

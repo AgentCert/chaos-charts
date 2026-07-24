@@ -1,0 +1,56 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: itbench-adapted-scenarios
+  version: 0.1.0
+  annotations:
+    categories: otel-demo
+    chartDescription: >-
+      Runs three adapted ITBench SRE scenarios against the OpenTelemetry Demo
+      application using LitmusChaos-native approximations of Chaos Mesh faults.
+      Each scenario is run once with a configurable fault duration.
+spec:
+  displayName: ITBench Adapted Scenarios (Chaos Mesh Replacements)
+  categoryDescription: >
+    Sequential evaluation workflow targeting the OpenTelemetry Demo
+    (opentelemetry-demo) application. Three ITBench SRE fault scenarios are
+    run once each using LitmusChaos-native approximations of Chaos Mesh faults
+    (no Chaos Mesh CRDs required). An AI agent observes, diagnoses, and
+    remediates each fault while the agent sidecar records all LLM traces to
+    Langfuse.
+
+    Scenarios covered:
+      #27  chaos-mesh-http-abort-replacement        (quote service, NetworkPolicy ingress block)
+      #26  chaos-mesh-http-body-tamper-replacement  (email service, synthetic malformed-body traffic)
+      #18  chaos-mesh-pod-failure-replacement       (checkout service, SIGSTOP via ephemeral debug container)
+
+    These are adapted (replacement) implementations that reproduce each
+    scenario's observable failure signature without requiring Chaos Mesh.
+
+    ITBench reference: https://github.com/itbench-hub/ITBench
+    Applications required: otel-demo (app-charts/charts/otel-demo)
+  faults:
+    - name: itbench-adapted-scenarios
+      description: >-
+        Three ITBench adapted fault scenarios (Chaos Mesh replacements) run
+        once each against the OpenTelemetry Demo application.
+  keywords:
+    - Kubernetes
+    - ITBench
+    - SRE
+    - otel-demo
+    - chaos-mesh
+    - http-abort
+    - http-body-tamper
+    - pod-failure
+    - adapted
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  icon:
+    - url: ""
+      mediatype: ""
