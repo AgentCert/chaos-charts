@@ -1,0 +1,47 @@
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChartServiceVersion
+metadata:
+  name: sre-agent-comprehensive-itbench-single
+  version: 0.1.0
+  annotations:
+    categories: otel-demo
+    chartDescription: >-
+      Single ITBench SRE fault (scaled-to-zero on accounting) with the
+      sre-agent-comprehensive for live Kubernetes observe-and-remediate evaluation.
+spec:
+  displayName: SRE Agent Comprehensive — ITBench Single Fault
+  categoryDescription: >
+    Single-fault evaluation workflow targeting the OpenTelemetry Demo
+    (opentelemetry-demo) application. Deploys sre-agent-comprehensive (CrewAI,
+    live Kubernetes mode via MCP tools) then injects ITBench SRE scenario #58
+    (scaled-to-zero-kubernetes-workload on the accounting service) and holds it
+    for a configurable window (default 300 s) while the agent observes, diagnoses,
+    and remediates. The fault is reverted automatically after the window expires.
+
+    Scenario: #58 scaled-to-zero-kubernetes-workload (accounting)
+
+    Agent: sre-agent-comprehensive (live K8s, MCP, qwen2.5-32b-instruct)
+    ITBench reference: https://github.com/itbench-hub/ITBench
+    Applications required: otel-demo (app-charts/charts/otel-demo)
+  faults:
+    - name: sre-agent-comprehensive-itbench-single
+      description: >-
+        Single ITBench SRE fault scenario (scaled-to-zero) against the
+        OpenTelemetry Demo application evaluated by sre-agent-comprehensive.
+  keywords:
+    - Kubernetes
+    - ITBench
+    - SRE
+    - otel-demo
+    - sre-agent-comprehensive
+    - misconfiguration
+  platforms:
+    - GKE
+    - AKS
+    - EKS
+    - Kind
+    - Minikube
+  icon:
+    - url: ""
+      mediatype: ""

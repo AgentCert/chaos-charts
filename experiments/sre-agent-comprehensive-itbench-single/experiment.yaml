@@ -1,0 +1,200 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: argowf-sre-comp-itbench-single
+  namespace: itbench
+  labels:
+    subject: "sre-agent-comprehensive-itbench-single"
+spec:
+  entrypoint: argowf-chaos
+  serviceAccountName: argo-chaos
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+  arguments:
+    parameters:
+      - name: adminModeNamespace
+        value: "itbench"
+      - name: appNamespace
+        value: "otel-demo"
+      # Agent
+      - name: agentFolder
+        value: "sre-agent-comprehensive"
+      - name: installTimeout
+        value: "30m"
+      # LLM configuration
+      - name: openaiApiKey
+        value: "sk-agentcert-2026"
+      - name: openaiModel
+        value: "qwen2.5-32b-instruct"
+      - name: openaiBaseUrl
+        value: "http://litellm.ace.svc.cluster.local:14000/v1"
+      - name: litellmUpstream
+        value: "http://litellm.ace.svc.cluster.local:14000"
+      # ITBench: seconds to hold the fault before reverting
+      - name: faultDuration
+        value: "300"
+
+  templates:
+    - name: argowf-chaos
+      steps:
+        - - name: install-application
+            template: install-application
+        - - name: install-agent
+            template: install-agent
+        - - name: install-chaos-experiments
+            template: install-chaos-experiments
+        # ── Scenario #58: accounting scaled to zero ────────────────────────
+        # ITBench: scaled-to-zero-kubernetes-workload
+        # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting
+        - - name: scenario-58-scaled-to-zero
+            template: scenario-58-scaled-to-zero
+
+    # ── Setup templates ──────────────────────────────────────────────────────
+
+    - name: install-application
+      container:
+        image: agentcert/agentcert-install-app:latest
+        imagePullPolicy: Always
+        args:
+          - "-folder=otel-demo"
+          - "-namespace=otel-demo"
+          - "-create-namespace"
+          - "-wait"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+
+    - name: install-agent
+      container:
+        image: agentcert/agentcert-install-agent:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - "-folder={{workflow.parameters.agentFolder}}"
+          - "-namespace={{workflow.parameters.appNamespace}}"
+          - "-create-namespace"
+          - "-timeout={{workflow.parameters.installTimeout}}"
+          - "--set=agent.secret.OPENAI_API_KEY={{workflow.parameters.openaiApiKey}}"
+          - "--set=agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}"
+          - "--set=agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}"
+          - "--set=agent.config.MCP_URLS=http://kubernetes-mcp-server.otel-demo.svc.cluster.local:8081/mcp\\,http://prometheus-mcp-server.otel-demo.svc.cluster.local:8083/mcp"
+          - "--set=agent.config.AGENT_SCOPE_NAMESPACE=otel-demo"
+          - "--set=agent.notifyId={{workflow.name}}"
+          - "--set=agent.workflowUid={{workflow.uid}}"
+          - "--set=sidecar.upstream={{workflow.parameters.litellmUpstream}}"
+
+    # ── Install the single ChaosExperiment CR needed for this run ───────────
+
+    - name: install-chaos-experiments
+      inputs:
+        artifacts:
+          - name: scaled-to-zero-kubernetes-workload
+            path: /tmp/scaled-to-zero-kubernetes-workload.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                description:
+                  message: |
+                    Scales a Deployment/StatefulSet identified by label to zero replicas, then
+                    restores its original replica count. Mirrors ITBench SRE scenario
+                    "scaled-to-zero-kubernetes-workload" (fault library index 20).
+                kind: ChaosExperiment
+                metadata:
+                  name: scaled-to-zero-kubernetes-workload
+                  labels:
+                    name: scaled-to-zero-kubernetes-workload
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: ci
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups: [""]
+                        resources: ["pods", "events"]
+                        verbs: ["create", "get", "list", "patch", "update"]
+                      - apiGroups: ["apps"]
+                        resources: ["deployments", "statefulsets", "deployments/scale", "statefulsets/scale"]
+                        verbs: ["get", "list", "patch", "update"]
+                      - apiGroups: ["litmuschaos.io"]
+                        resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+                        verbs: ["create", "list", "get", "patch", "update", "delete"]
+                    image: "litmuschaos/k8s:latest"
+                    imagePullPolicy: Always
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - |
+                        set -eu
+                        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
+                        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$TARGET" ]; then
+                          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
+                          exit 1
+                        fi
+                        ORIG_REPLICAS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.replicas}')
+                        ORIG_REPLICAS=${ORIG_REPLICAS:-1}
+                        echo "Target=${TARGET} originalReplicas=${ORIG_REPLICAS}"
+                        echo "Injecting: scaling ${TARGET} to 0 replicas"
+                        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas=0
+                        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
+                        sleep "${TOTAL_CHAOS_DURATION}"
+                        echo "Reverting: scaling ${TARGET} back to ${ORIG_REPLICAS} replicas"
+                        kubectl scale -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}" --replicas="${ORIG_REPLICAS}"
+                    env:
+                      - name: APP_NAMESPACE
+                        value: ""
+                      - name: APP_LABEL
+                        value: ""
+                      - name: APP_KIND
+                        value: "deployment"
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "300"
+                    labels:
+                      name: scaled-to-zero-kubernetes-workload
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: ci
+      container:
+        image: litmuschaos/k8s:latest
+        imagePullPolicy: Always
+        command: [sh, -c]
+        args:
+          - |
+            kubectl apply -f /tmp/scaled-to-zero-kubernetes-workload.yaml -n "{{workflow.parameters.adminModeNamespace}}"
+
+    # ── Scenario #58: accounting scaled to zero ──────────────────────────────
+    # ITBench: scaled-to-zero-kubernetes-workload
+    # Symptom: HighRequestErrorRate + NoRequestsReceived on accounting service
+
+    - name: scenario-58-scaled-to-zero
+      inputs:
+        artifacts:
+          - name: scenario-58-scaled-to-zero
+            path: /tmp/chaosengine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  generateName: scenario-58-scaled-to-zero-chaos-
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  annotations:
+                    probeRef: "[]"
+                spec:
+                  appinfo:
+                    appns: 'otel-demo'
+                    applabel: 'opentelemetry.io/name=accounting'
+                    appkind: 'deployment'
+                  engineState: 'active'
+                  chaosServiceAccount: litmus-admin
+                  jobCleanUpPolicy: 'retain'
+                  experiments:
+                    - name: scaled-to-zero-kubernetes-workload
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: '{{workflow.parameters.faultDuration}}'
+      container:
+        image: litmuschaos/litmus-checker:latest
+        args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
