@@ -37,6 +37,11 @@ spec:
         value: "60"
       - name: logLines
         value: "100"
+      - name: socketPath
+        valueFrom:
+          configMapKeyRef:
+            name: chaos-config
+            key: socket-path
   templates:
     - name: argowf-chaos
       steps:
@@ -206,7 +211,7 @@ spec:
 
                       # provide the socket file path
                       - name: SOCKET_PATH
-                        value: "/run/containerd/containerd.sock"
+                        value: "{{workflow.parameters.socketPath}}"
 
                       - name: TARGET_CONTAINER
                         value: ""
@@ -489,7 +494,7 @@ spec:
 
                       # provide the socket file path
                       - name: SOCKET_PATH
-                        value: "/run/containerd/containerd.sock"
+                        value: "{{workflow.parameters.socketPath}}"
 
                       ## it defines the sequence of chaos execution for multiple target pods
                       ## supported values: serial, parallel
@@ -616,7 +621,7 @@ spec:
 
                       # provide the socket file path
                       - name: SOCKET_PATH
-                        value: "/run/containerd/containerd.sock"
+                        value: "{{workflow.parameters.socketPath}}"
 
                       ## it defines the sequence of chaos execution for multiple target pods
                       ## supported values: serial, parallel
@@ -857,6 +862,10 @@ spec:
                               value: '30' # in seconds
                             - name: CHAOS_KILL_COMMAND
                               value: "kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')"
+                            - name: CONTAINER_RUNTIME
+                              value: 'containerd'
+                            - name: SOCKET_PATH
+                              value: "{{workflow.parameters.socketPath}}"
 
       container:
         image: litmuschaos/litmus-checker:latest
@@ -928,6 +937,10 @@ spec:
                               value: '30' # in seconds
                             - name: CHAOS_KILL_COMMAND
                               value: "kill -9 $(ps afx | grep \"[dd] if /dev/zero\" | awk '{print $1}' | tr '\n' ' ')"
+                            - name: CONTAINER_RUNTIME
+                              value: 'containerd'
+                            - name: SOCKET_PATH
+                              value: "{{workflow.parameters.socketPath}}"
 
       container:
         image: litmuschaos/litmus-checker:latest
@@ -1080,7 +1093,7 @@ spec:
                             - name: CONTAINER_RUNTIME
                               value: 'containerd'
                             - name: SOCKET_PATH
-                              value: '/run/containerd/containerd.sock'
+                              value: "{{workflow.parameters.socketPath}}"
       container:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]

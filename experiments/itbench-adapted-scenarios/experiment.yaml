@@ -145,11 +145,11 @@ spec:
       - --set
       - agent.secret.LITELLM_MASTER_KEY=sk-agentcert-2026
       - --set
-      - agent.config.OPENAI_BASE_URL=http://litellm:14000/v1
+      - agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}
       - --set
-      - agent.config.MODEL_ALIAS=gpt-4o
+      - agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}
       - --set
-      - agent.config.MCP_URLS=http://kubernetes-mcp-server.sock-shop.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.sock-shop.svc.cluster.local:8083/mcp
+      - agent.config.MCP_URLS=http://kubernetes-mcp-server.{{workflow.parameters.appNamespace}}.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.{{workflow.parameters.appNamespace}}.svc.cluster.local:8083/mcp
       - --set
       - agent.config.CHAOS_NAMESPACE=litmus
       - --set
@@ -173,7 +173,7 @@ spec:
       - --set
       - sidecar.injectionMode=openai-metadata
       - --set
-      - sidecar.upstream=http://litellm:14000
+      - sidecar.upstream={{workflow.parameters.litellmUpstream}}
       - --set
       - sidecar.image.repository=agentcert/agent-sidecar
       - --set
@@ -571,11 +571,11 @@ spec:
       - --set
       - agent.secret.LITELLM_MASTER_KEY=sk-agentcert-2026
       - --set
-      - agent.config.OPENAI_BASE_URL=http://litellm:14000/v1
+      - agent.config.OPENAI_BASE_URL={{workflow.parameters.openaiBaseUrl}}
       - --set
-      - agent.config.MODEL_ALIAS=gpt-4o
+      - agent.config.MODEL_ALIAS={{workflow.parameters.openaiModel}}
       - --set
-      - agent.config.MCP_URLS=http://kubernetes-mcp-server.sock-shop.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.sock-shop.svc.cluster.local:8083/mcp
+      - agent.config.MCP_URLS=http://kubernetes-mcp-server.{{workflow.parameters.appNamespace}}.svc.cluster.local:8081/mcp,http://prometheus-mcp-server.{{workflow.parameters.appNamespace}}.svc.cluster.local:8083/mcp
       - --set
       - agent.config.CHAOS_NAMESPACE=litmus
       - --set
@@ -599,7 +599,7 @@ spec:
       - --set
       - sidecar.injectionMode=openai-metadata
       - --set
-      - sidecar.upstream=http://litellm:14000
+      - sidecar.upstream={{workflow.parameters.litellmUpstream}}
       - --set
       - sidecar.image.repository=agentcert/agent-sidecar
       - --set
@@ -662,11 +662,11 @@ spec:
     - name: openaiApiKey
       value: ''
     - name: openaiModel
-      value: gpt-4o
+      value: qwen2.5-32b-instruct
     - name: openaiBaseUrl
-      value: http://litellm.litellm.svc.cluster.local:4000/v1
+      value: http://litellm.ace.svc.cluster.local:14000/v1
     - name: litellmUpstream
-      value: http://172.26.0.1:14000
+      value: http://litellm.ace.svc.cluster.local:14000
     - name: scanInterval
       value: '60'
     - name: faultDuration
