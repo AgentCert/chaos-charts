@@ -61,13 +61,13 @@ spec:
 
     - name: install-application
       container:
-        image: agentcert/agentcert-install-app:latest
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-app:v3-secret-fix
         imagePullPolicy: IfNotPresent
         args: ["-folder=sock-shop", "-namespace=sock-shop", "-create-namespace", "-wait", "-timeout=30m"]
 
     - name: install-agent
       container:
-        image: agentcert/agentcert-install-agent:latest
+        image: infyartifactory.jfrog.io/docker-local/agentcert/agentcert-install-agent:v2-jfrog
         imagePullPolicy: Always
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
@@ -138,7 +138,7 @@ spec:
                       - apiGroups: ["litmuschaos.io"]
                         resources: ["chaosengines","chaosexperiments","chaosresults"]
                         verbs: ["create","list","get","patch","update","delete"]
-                    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                    image: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                     imagePullPolicy: Always
                     args:
                       - -c
@@ -157,9 +157,9 @@ spec:
                       - name: RAMP_TIME
                         value: ""
                       - name: LIB_IMAGE
-                        value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                        value: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                       - name: STRESS_IMAGE
-                        value: "alexeiled/stress-ng:latest-ubuntu"
+                        value: "infyartifactory.jfrog.io/docker-local/alexeiled/stress-ng:latest-ubuntu"
                       - name: CONTAINER_RUNTIME
                         value: "containerd"
                       - name: SOCKET_PATH
@@ -233,7 +233,7 @@ spec:
                       - apiGroups: ["litmuschaos.io"]
                         resources: ["chaosengines","chaosexperiments","chaosresults"]
                         verbs: ["create","list","get","patch","update","delete"]
-                    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                    image: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                     imagePullPolicy: Always
                     args:
                       - -c
@@ -244,11 +244,11 @@ spec:
                       - name: TARGET_CONTAINER
                         value: ""
                       - name: LIB_IMAGE
-                        value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                        value: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                       - name: NETWORK_INTERFACE
                         value: "eth0"
                       - name: TC_IMAGE
-                        value: "gaiadocker/iproute2"
+                        value: "infyartifactory.jfrog.io/docker-local/gaiadocker/iproute2"
                       - name: NETWORK_PACKET_LOSS_PERCENTAGE
                         value: "100"
                       - name: TOTAL_CHAOS_DURATION
@@ -332,7 +332,7 @@ spec:
                       - apiGroups: ["litmuschaos.io"]
                         resources: ["chaosengines","chaosexperiments","chaosresults"]
                         verbs: ["create","list","get","patch","update","delete"]
-                    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                    image: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                     imagePullPolicy: Always
                     args:
                       - -c
@@ -351,9 +351,9 @@ spec:
                       - name: RAMP_TIME
                         value: ""
                       - name: LIB_IMAGE
-                        value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+                        value: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
                       - name: STRESS_IMAGE
-                        value: "alexeiled/stress-ng:latest-ubuntu"
+                        value: "infyartifactory.jfrog.io/docker-local/alexeiled/stress-ng:latest-ubuntu"
                       - name: CONTAINER_RUNTIME
                         value: "containerd"
                       - name: SOCKET_PATH
@@ -378,7 +378,7 @@ spec:
       metadata: {}
       container:
         name: ""
-        image: litmuschaos/k8s:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/k8s:latest
         command:
           - sh
           - "-c"
@@ -440,7 +440,7 @@ spec:
                             - name: CHAOS_KILL_COMMAND
                               value: "kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')"
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     - name: pod-network-loss
@@ -504,7 +504,7 @@ spec:
                             - name: SOCKET_PATH
                               value: '/run/containerd/containerd.sock'
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     - name: pod-memory-hog
@@ -561,22 +561,22 @@ spec:
                             - name: CHAOS_KILL_COMMAND
                               value: "kill -9 $(ps afx | grep \"[dd] if /dev/zero\" | awk '{print $1}' | tr '\n' ' ')"
       container:
-        image: litmuschaos/litmus-checker:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     - name: load-test
       container:
-        image: litmuschaos/litmus-app-deployer:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-app-deployer:latest
         args: ["-namespace=loadtest", "-app=loadtest"]
 
     - name: delete-loadtest
       container:
-        image: litmuschaos/litmus-app-deployer:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/litmus-app-deployer:latest
         args: ["-namespace=loadtest","-operation=delete", "-app=loadtest"]
 
     - name: cleanup-chaos-resources
       container:
-        image: litmuschaos/k8s:latest
+        image: infyartifactory.jfrog.io/docker-local/litmuschaos/k8s:latest
         command: [sh, -c]
         args:
           [

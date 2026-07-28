@@ -68,7 +68,7 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+    image: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
     imagePullPolicy: Always
     args:
       - -c
@@ -84,10 +84,10 @@ spec:
 
       # provide lib image
       - name: LIB_IMAGE
-        value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+        value: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
 
       - name: TC_IMAGE
-        value: "gaiadocker/iproute2"
+        value: "infyartifactory.jfrog.io/docker-local/gaiadocker/iproute2"
 
       - name: NETWORK_LATENCY
         value: "2000" #in ms

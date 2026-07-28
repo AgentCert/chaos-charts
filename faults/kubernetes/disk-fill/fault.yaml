@@ -68,7 +68,7 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+    image: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
     imagePullPolicy: Always
     args:
       - -c
@@ -112,7 +112,7 @@ spec:
         value: "false"
 
       - name: LIB_IMAGE
-        value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
+        value: "infyartifactory.jfrog.io/docker-local/litmuschaos/go-runner:latest"
 
       # provide the socket file path
       - name: SOCKET_PATH
