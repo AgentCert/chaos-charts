@@ -70,7 +70,7 @@ spec:
     metadata: {}
     container:
       name: ''
-      image: localhost:5000/agentcert/agentcert-install-app:latest
+      image: agentcert/agentcert-install-app:latest
       args:
       - -folder=otel-demo
       - -namespace=otel-demo
@@ -112,7 +112,7 @@ spec:
         agentcert.io/install-type: agent
     container:
       name: ''
-      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      image: agentcert/agentcert-install-agent:latest
       args:
       - -folder={{workflow.parameters.agentFolder}}
       - -namespace={{workflow.parameters.appNamespace}}
@@ -543,7 +543,7 @@ spec:
         agentcert.io/install-type: agent
     container:
       name: ''
-      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      image: agentcert/agentcert-install-agent:latest
       args:
       - -folder={{workflow.parameters.agentFolder}}
       - -namespace={{workflow.parameters.appNamespace}}
@@ -627,7 +627,7 @@ spec:
     metadata: {}
     container:
       name: ''
-      image: localhost:5000/agentcert/agentcert-install-agent:latest
+      image: agentcert/agentcert-install-agent:latest
       command:
       - sh
       - -c
