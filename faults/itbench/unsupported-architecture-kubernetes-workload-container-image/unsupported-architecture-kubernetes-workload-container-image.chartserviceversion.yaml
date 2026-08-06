@@ -14,7 +14,7 @@ metadata:
       SRE scenarios 23, 57 and 60
       (unsupported-architecture-kubernetes-workload-container-image).
 spec:
-  displayName: Unsupported Architecture Kubernetes Workload Container Image
+  displayName: Wrong CPU Architecture
   categoryDescription: |
     Unsupported architecture container image fault disrupts a Kubernetes
     workload by setting its container's image to a tag published only for a

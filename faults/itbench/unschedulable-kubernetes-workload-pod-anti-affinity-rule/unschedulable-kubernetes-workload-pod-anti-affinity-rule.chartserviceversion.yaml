@@ -14,7 +14,7 @@ metadata:
       ITBench SRE scenario
       "unschedulable-kubernetes-workload-pod-anti-affinity-rule".
 spec:
-  displayName: Unschedulable Kubernetes Workload Pod Anti Affinity Rule
+  displayName: Impossible Pod Affinity
   categoryDescription: |
     Unschedulable pod anti-affinity fault disrupts scheduling of a Kubernetes
     workload by patching its pod template with a

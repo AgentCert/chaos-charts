@@ -13,7 +13,7 @@ metadata:
       Mirrors ITBench SRE scenario
       "unassigned-kubernetes-workload-container-resource-limits".
 spec:
-  displayName: Unassigned Kubernetes Workload Container Resource Limits
+  displayName: Missing Resource Limits
   categoryDescription: |
     Unassigned resource limits fault disrupts the resource ceiling of a
     Kubernetes workload by removing the target container's

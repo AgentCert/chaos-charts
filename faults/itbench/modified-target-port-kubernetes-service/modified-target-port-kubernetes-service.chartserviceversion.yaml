@@ -12,7 +12,7 @@ metadata:
       a closed port, then restores the original. Mirrors ITBench SRE scenario
       "modified-target-port-kubernetes-service".
 spec:
-  displayName: Modified Target Port Kubernetes Service
+  displayName: Wrong Service Port
   categoryDescription: |
     Modified target port fault disrupts traffic to a Kubernetes workload by
     changing the target Service's first port targetPort to a value no pod

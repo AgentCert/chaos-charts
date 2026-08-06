@@ -13,7 +13,7 @@ metadata:
       restores the original DNS configuration. Mirrors ITBench SRE scenario
       "failing-name-resolution-kubernetes-workload-dns-policy".
 spec:
-  displayName: Failing Name Resolution Kubernetes Workload DNS Policy
+  displayName: Broken DNS Resolution
   categoryDescription: |
     Failing name resolution DNS policy fault disrupts a Kubernetes workload
     by patching its pod template's dnsPolicy to "None" and pointing

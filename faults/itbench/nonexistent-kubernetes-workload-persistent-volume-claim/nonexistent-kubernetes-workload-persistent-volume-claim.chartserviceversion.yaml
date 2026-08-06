@@ -13,7 +13,7 @@ metadata:
       undo. Mirrors ITBench SRE scenario
       "nonexistent-kubernetes-workload-persistent-volume-claim".
 spec:
-  displayName: Nonexistent Kubernetes Workload Persistent Volume Claim
+  displayName: Invalid Storage Claim
   categoryDescription: |
     Nonexistent PVC fault disrupts a Kubernetes workload by creating a
     PersistentVolumeClaim that references a StorageClass that does not exist,

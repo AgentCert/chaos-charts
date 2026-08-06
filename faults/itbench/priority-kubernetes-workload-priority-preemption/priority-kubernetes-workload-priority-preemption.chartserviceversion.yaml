@@ -13,7 +13,7 @@ metadata:
       pod via resource pressure, then removes both. Mirrors ITBench SRE
       scenario "priority-kubernetes-workload-priority-preemption".
 spec:
-  displayName: Priority Kubernetes Workload Priority Preemption
+  displayName: Priority Pod Preemption
   categoryDescription: |
     Priority preemption fault disrupts a Kubernetes workload not by deleting
     it directly, but by introducing a higher-priority competing workload that

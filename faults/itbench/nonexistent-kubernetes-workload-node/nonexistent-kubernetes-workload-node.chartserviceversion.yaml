@@ -13,7 +13,7 @@ metadata:
       restores the original nodeSelector. Mirrors ITBench SRE fault
       "nonexistent-kubernetes-workload-node".
 spec:
-  displayName: Nonexistent Kubernetes Workload Node
+  displayName: Missing Target Node
   categoryDescription: |
     Nonexistent node fault disrupts scheduling of a Kubernetes workload by
     patching its pod template with a nodeSelector referencing a node name

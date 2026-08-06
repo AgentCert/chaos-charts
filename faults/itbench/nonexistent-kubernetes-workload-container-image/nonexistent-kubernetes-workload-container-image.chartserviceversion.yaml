@@ -12,7 +12,7 @@ metadata:
       Mirrors ITBench SRE scenario
       "nonexistent-kubernetes-workload-container-image".
 spec:
-  displayName: Nonexistent Kubernetes Workload Container Image
+  displayName: Missing Container Image
   categoryDescription: |
     Points a workload's container at an image tag that does not exist.
     - Simulates a bad deploy/typo in the image reference.

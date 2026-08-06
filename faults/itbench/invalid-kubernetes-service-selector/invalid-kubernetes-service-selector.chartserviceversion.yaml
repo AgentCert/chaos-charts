@@ -12,7 +12,7 @@ metadata:
       matches no pods, then restores the original selector. Mirrors ITBench SRE
       scenario "invalid-kubernetes-service-selector".
 spec:
-  displayName: Invalid Kubernetes Service Selector
+  displayName: Invalid Service Selector
   categoryDescription: |
     Invalid service selector fault disrupts traffic to a Kubernetes workload by
     replacing the target Service's label selector with a value that matches no

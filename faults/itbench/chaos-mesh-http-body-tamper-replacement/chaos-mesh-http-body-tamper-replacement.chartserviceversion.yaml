@@ -15,7 +15,7 @@ metadata:
       fault.yaml/ground_truth.yaml for the documented approximation and its
       limitations. Mirrors ITBench SRE scenario 26.
 spec:
-  displayName: Chaos Mesh HTTP Body Tamper Replacement
+  displayName: HTTP Body Tamper
   categoryDescription: |
     ITBench SRE scenario 26 uses Chaos Mesh's HTTPChaos to transparently
     intercept and rewrite the POST body of real checkout->email traffic in the

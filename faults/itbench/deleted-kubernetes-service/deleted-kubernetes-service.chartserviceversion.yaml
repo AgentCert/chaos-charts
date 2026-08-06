@@ -12,7 +12,7 @@ metadata:
       captured manifest. Mirrors ITBench SRE scenario
       "deleted-kubernetes-service".
 spec:
-  displayName: Deleted Kubernetes Service
+  displayName: Deleted Service Object
   categoryDescription: |
     Deleted Kubernetes Service fault disrupts a Kubernetes workload's
     reachability by deleting its Service object.

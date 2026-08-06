@@ -13,7 +13,7 @@ metadata:
       then restores the original limit/request. Mirrors ITBench SRE scenario
       "valkey-workload-out-of-memory".
 spec:
-  displayName: Valkey Workload Out Of Memory
+  displayName: Valkey Memory Exhaustion
   categoryDescription: |
     Valkey workload out-of-memory fault disrupts the otel-demo valkey-cart
     workload by patching its container's memory limit/request down to an

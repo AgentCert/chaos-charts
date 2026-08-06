@@ -13,7 +13,7 @@ metadata:
       Mirrors ITBench SRE scenario
       "misconfigured-kubernetes-workload-container-readiness-probe".
 spec:
-  displayName: Misconfigured Kubernetes Workload Container Readiness Probe
+  displayName: Broken Readiness Probe
   categoryDescription: |
     Misconfigured readiness probe fault disrupts traffic to a Kubernetes workload
     by patching the target container's readinessProbe to point at an unreachable

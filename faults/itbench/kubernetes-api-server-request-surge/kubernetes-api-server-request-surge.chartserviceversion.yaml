@@ -13,7 +13,7 @@ metadata:
       removes it. Mirrors ITBench SRE scenario
       "kubernetes-api-server-request-surge".
 spec:
-  displayName: Kubernetes API Server Request Surge
+  displayName: API Server Surge
   categoryDescription: |
     Kubernetes API server request surge fault deploys a short-lived
     load-generator Deployment inside a target namespace that hammers the

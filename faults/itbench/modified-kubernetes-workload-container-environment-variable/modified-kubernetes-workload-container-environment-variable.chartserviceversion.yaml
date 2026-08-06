@@ -12,7 +12,7 @@ metadata:
       value, then restores the original value. Mirrors ITBench SRE scenario
       "modified-kubernetes-workload-container-environment-variable".
 spec:
-  displayName: Modified Kubernetes Workload Container Environment Variable
+  displayName: Bad Environment Variable
   categoryDescription: |
     Modified environment variable fault disrupts a Kubernetes workload by
     overwriting one named environment variable on a target container with an

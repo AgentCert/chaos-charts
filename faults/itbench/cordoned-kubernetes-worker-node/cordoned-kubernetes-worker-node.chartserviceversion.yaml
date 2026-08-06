@@ -12,7 +12,7 @@ metadata:
       uncordons it. Mirrors ITBench SRE scenario
       "cordoned-kubernetes-worker-node".
 spec:
-  displayName: Cordoned Kubernetes Worker Node
+  displayName: Cordoned Worker Node
   categoryDescription: |
     Cordoned worker node fault disrupts scheduling for a Kubernetes workload
     by marking the node hosting its pod(s) as unschedulable (`kubectl

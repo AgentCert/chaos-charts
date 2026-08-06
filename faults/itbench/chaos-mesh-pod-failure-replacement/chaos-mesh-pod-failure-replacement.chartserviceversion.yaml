@@ -14,7 +14,7 @@ metadata:
       killing/restarting the container. Mirrors ITBench SRE scenario 18
       (otel-demo `checkout` service failure).
 spec:
-  displayName: Chaos Mesh Pod Failure Replacement
+  displayName: Frozen Pod Process
   categoryDescription: |
     Chaos Mesh pod-failure replacement fault disrupts a Kubernetes workload by
     freezing its main container process in place (SIGSTOP/SIGCONT) instead of

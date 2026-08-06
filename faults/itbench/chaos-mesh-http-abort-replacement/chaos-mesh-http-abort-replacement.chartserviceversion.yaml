@@ -14,7 +14,7 @@ metadata:
       (aborted POST requests to OpenTelemetry Demo's `quote` service, port
       8080).
 spec:
-  displayName: Chaos Mesh HTTP Abort Replacement
+  displayName: HTTP Traffic Abort
   categoryDescription: |
     Chaos Mesh HTTP abort replacement fault disrupts traffic to a Kubernetes
     workload by creating a NetworkPolicy that denies ingress on a specific

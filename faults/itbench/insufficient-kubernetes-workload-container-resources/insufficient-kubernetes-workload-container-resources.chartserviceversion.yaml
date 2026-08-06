@@ -13,7 +13,7 @@ metadata:
       restores the original resources block. Mirrors ITBench SRE scenario
       "insufficient-kubernetes-workload-container-resources".
 spec:
-  displayName: Insufficient Kubernetes Workload Container Resources
+  displayName: Starved Container Resources
   categoryDescription: |
     Insufficient resources fault disrupts a Kubernetes workload by patching
     the target container's resources.requests/limits down to unrealistically

@@ -12,7 +12,7 @@ metadata:
       unrealistically low values, then restores them. Mirrors ITBench SRE/
       FinOps scenario "misconfigured-kubernetes-horizontal-pod-autoscaler".
 spec:
-  displayName: Misconfigured Kubernetes Horizontal Pod Autoscaler
+  displayName: Bad HPA Thresholds
   categoryDescription: |
     Misconfigured HPA fault disrupts a workload's autoscaling behavior by
     patching its HorizontalPodAutoscaler's CPU/memory averageUtilization

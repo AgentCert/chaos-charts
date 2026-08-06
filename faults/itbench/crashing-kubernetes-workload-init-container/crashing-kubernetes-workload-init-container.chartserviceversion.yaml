@@ -12,7 +12,7 @@ metadata:
       Deployment's pod into Init:CrashLoopBackOff, then removes it. Mirrors
       ITBench SRE scenario "crashing-kubernetes-workload-init-container".
 spec:
-  displayName: Crashing Kubernetes Workload Init Container
+  displayName: Crashing Init Container
   categoryDescription: |
     Crashing init container fault disrupts a Kubernetes workload by adding an
     extra initContainer to its pod template that runs a deliberately bad

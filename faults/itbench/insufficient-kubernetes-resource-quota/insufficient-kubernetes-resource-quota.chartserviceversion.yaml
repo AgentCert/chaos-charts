@@ -13,7 +13,7 @@ metadata:
       original quota (or deletes it if none existed). Mirrors ITBench SRE
       scenario "insufficient-kubernetes-resource-quota".
 spec:
-  displayName: Insufficient Kubernetes Resource Quota
+  displayName: Tight Resource Quota
   categoryDescription: |
     Insufficient resource quota fault disrupts a Kubernetes namespace by
     creating or tightening a ResourceQuota's hard cpu/memory limits so far

@@ -12,7 +12,7 @@ metadata:
       flagd-config ConfigMap, then restores its original value. Mirrors
       ITBench SRE scenario "opentelemetry-demo-feature-flag".
 spec:
-  displayName: OpenTelemetry Demo Feature Flag
+  displayName: Feature Flag Toggle
   categoryDescription: |
     OpenTelemetry Demo feature flag fault activates one of the Demo's built-in
     implemented faults (e.g. traffic floods, high CPU, service failures) by

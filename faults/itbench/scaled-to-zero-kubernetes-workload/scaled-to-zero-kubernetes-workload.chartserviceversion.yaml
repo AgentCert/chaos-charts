@@ -11,7 +11,7 @@ metadata:
       Scales a workload to zero replicas, then restores it. Mirrors ITBench
       SRE scenario "scaled-to-zero-kubernetes-workload".
 spec:
-  displayName: Scaled To Zero Kubernetes Workload
+  displayName: Scaled To Zero
   categoryDescription: |
     Scaled to zero fault disrupts the state of a Kubernetes workload by
     setting its replica count to zero.

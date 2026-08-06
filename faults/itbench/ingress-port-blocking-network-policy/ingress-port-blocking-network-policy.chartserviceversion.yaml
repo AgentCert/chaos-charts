@@ -12,7 +12,7 @@ metadata:
       pods, then deletes it. Mirrors ITBench SRE fault library index 6
       "ingress-port-blocking-network-policy".
 spec:
-  displayName: Ingress Port Blocking Network Policy
+  displayName: Blocked Ingress Traffic
   categoryDescription: |
     Ingress port blocking fault disrupts traffic to a Kubernetes workload by
     creating a NetworkPolicy that denies all ingress on the workload's pods.
