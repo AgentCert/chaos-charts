@@ -70,7 +70,7 @@ The upstream chart catalogue is preserved verbatim where possible; the differenc
 
 2. **OpenAI / LiteLLM / Langfuse parameters** plumbed through every experiment that
    touches an agent. Defaults:
-   - `openaiBaseUrl: http://litellm.litellm.svc.cluster.local:4000/v1`
+   - `openaiBaseUrl: http://litellm.ace.svc.cluster.local:14000/v1`
    - `openaiModel`, `openaiApiKey`, `litellmUpstream`, `otelEndpoint` are surfaced as
      experiment env vars so agents installed by the workflow inherit them.
 

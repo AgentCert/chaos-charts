@@ -40,9 +40,9 @@ spec:
       - name: openaiModel
         value: "gpt-4o"
       - name: openaiBaseUrl
-        value: "http://litellm.litellm.svc.cluster.local:4000/v1"
+        value: "http://litellm.ace.svc.cluster.local:14000/v1"
       - name: litellmUpstream
-        value: "http://172.26.0.1:14000"
+        value: "http://litellm.ace.svc.cluster.local:14000"
       - name: scanInterval
         value: "60"
 
