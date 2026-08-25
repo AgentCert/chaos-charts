@@ -82,15 +82,16 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "docker.io/agentcert/agentcert-uninstall-app:latest"
+    image: "docker.io/agentcert/agentcert-install-app:latest"
     imagePullPolicy: Always
     command:
-      - /usr/local/bin/uninstall-app
+      - /usr/local/bin/install-app
     args:
-      - -folder=sock-shop
-      - -namespace=sock-shop
+      - -delete
+      - -folder=$(FOLDER)
+      - -namespace=$(NAMESPACE)
       - -delete-namespace
-      - -timeout=5m
+      - -timeout=$(TIMEOUT)
     env:
       - name: FOLDER
         value: "sock-shop"

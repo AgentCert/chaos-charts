@@ -82,11 +82,12 @@ spec:
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list", "delete"]
-    image: "docker.io/agentcert/agentcert-uninstall-agent:latest"
+    image: "docker.io/agentcert/agentcert-install-agent:latest"
     imagePullPolicy: Always
     command:
-      - /usr/local/bin/uninstall-agent
+      - /usr/local/bin/install-agent
     args:
+      - -delete
       - -folder=$(FOLDER)
       - -namespace=$(NAMESPACE)
       - -timeout=$(TIMEOUT)
