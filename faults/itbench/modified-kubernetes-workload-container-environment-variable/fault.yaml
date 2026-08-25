@@ -10,9 +10,9 @@ description:
     (modified-kubernetes-workload-container-environment-variable).
 kind: ChaosExperiment
 metadata:
-  name: modified-kubernetes-workload-container-environment-variable
+  name: modified-container-environment-variable
   labels:
-    name: modified-kubernetes-workload-container-environment-variable
+    name: modified-container-environment-variable
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -29,85 +29,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
-        echo "Target=${TARGET} container=${CONTAINER} envVar=${ENV_VAR_NAME}"
-
-        # Determine whether the env var already exists on the container, and
-        # if so, capture its original value so it can be restored exactly on
-        # revert. If it did not exist, we remove it on revert instead of
-        # setting it to an empty string.
-        EXISTING_NAMES=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].env[*].name}")
-        EXISTED="false"
-        for n in $EXISTING_NAMES; do
-          if [ "$n" = "$ENV_VAR_NAME" ]; then
-            EXISTED="true"
-          fi
-        done
-
-        ORIG_VALUE=""
-        if [ "$EXISTED" = "true" ]; then
-          ORIG_VALUE=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-            -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].env[?(@.name=='${ENV_VAR_NAME}')].value}")
-          echo "Original ${ENV_VAR_NAME}=${ORIG_VALUE}"
-        else
-          echo "${ENV_VAR_NAME} does not currently exist on ${CONTAINER}; will remove it on revert"
-        fi
-
-        echo "Injecting: setting ${ENV_VAR_NAME}=${BAD_ENV_VALUE} on ${CONTAINER}"
-        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"env\":[{\"name\":\"${ENV_VAR_NAME}\",\"value\":\"${BAD_ENV_VALUE}\"}]}]}}}}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        if [ "$EXISTED" = "true" ]; then
-          echo "Reverting: restoring ${ENV_VAR_NAME}=${ORIG_VALUE} on ${CONTAINER}"
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-            -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"env\":[{\"name\":\"${ENV_VAR_NAME}\",\"value\":\"${ORIG_VALUE}\"}]}]}}}}"
-        else
-          echo "Reverting: removing ${ENV_VAR_NAME} from ${CONTAINER} (it did not exist originally)"
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-            -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"env\":[{\"name\":\"${ENV_VAR_NAME}\",\"\$patch\":\"delete\"}]}]}}}}"
-        fi
+      - -name
+      - modified-kubernetes-workload-container-environment-variable
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # container whose environment variable is modified; defaults to the
       # workload name if unset
       - name: TARGET_CONTAINER
@@ -126,7 +55,7 @@ spec:
         value: "300"
 
     labels:
-      name: modified-kubernetes-workload-container-environment-variable
+      name: modified-container-environment-variable
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

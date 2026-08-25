@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opentelemetry-demo-feature-flag-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: opentelemetry-demo-feature-flag-sa
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: itbench-fault-rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: opentelemetry-demo-feature-flag-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: opentelemetry-demo-feature-flag-sa
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "list", "get", "delete", "deletecollection"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosengines"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosexperiments"]
+    verbs: ["get", "list"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosresults"]
+    verbs: ["create", "get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: opentelemetry-demo-feature-flag-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: opentelemetry-demo-feature-flag-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: opentelemetry-demo-feature-flag-sa
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-demo-feature-flag-sa
+    namespace: "#{INFRA_NAMESPACE}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opentelemetry-demo-feature-flag-sa-target
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opentelemetry-demo-feature-flag-sa-target
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opentelemetry-demo-feature-flag-sa-target
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-demo-feature-flag-sa
+    namespace: "#{INFRA_NAMESPACE}"

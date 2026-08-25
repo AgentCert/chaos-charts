@@ -84,83 +84,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        # ChaosEngine.spec.appinfo.appkind is CRD-validated to a fixed enum
-        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job) --
-        # "pod" is rejected outright at admission time. This fault always
-        # targets a pod, never any other kind, so hardcode it here instead
-        # of trusting TARGETS' kind component (the ChaosEngine submission uses
-        # a dummy CRD-valid appkind like "deployment" purely to satisfy the
-        # schema; only appns/applabel need to vary per submission).
-        APP_KIND="pod"
-        echo "Resolving target ${APP_KIND}s in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        PODS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" \
-          --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')
-        if [ -z "$PODS" ]; then
-          echo "no Running ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target pods: ${PODS}"
-
-        # See the ChaosExperiment description for the full rationale: a
-        # plain `kubectl exec <pod> -c ${TARGET_CONTAINER} -- kill -STOP 1`
-        # cannot run here because the container image is distroless (no
-        # shell, no kill binary). We instead attach an ephemeral debug
-        # container that shares the target container's PID namespace and
-        # send the signal from there.
-        TS=$(date +%s)
-        for POD in $PODS; do
-          DEBUG_NAME=$(echo "chaos-freeze-${TS}-${POD}" | cut -c1-63 | sed 's/-*$//')
-          echo "Injecting: freezing pod=${POD} container=${TARGET_CONTAINER} via ephemeral debug container=${DEBUG_NAME} (image=${DEBUG_IMAGE})"
-          kubectl debug -n "${APP_NAMESPACE}" "${POD}" \
-            --image="${DEBUG_IMAGE}" \
-            --container="${DEBUG_NAME}" \
-            --target="${TARGET_CONTAINER}" \
-            --attach=false \
-            -- sh -c "kill -STOP 1; sleep ${TOTAL_CHAOS_DURATION}; kill -CONT 1"
-        done
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (each ephemeral debug container independently runs its own STOP -> sleep -> CONT sequence, so the freeze self-reverts even if this experiment job is interrupted)"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Fault duration elapsed. Ephemeral debug container state per target pod:"
-        for POD in $PODS; do
-          DEBUG_NAME=$(echo "chaos-freeze-${TS}-${POD}" | cut -c1-63 | sed 's/-*$//')
-          REASON=$(kubectl get pod -n "${APP_NAMESPACE}" "${POD}" \
-            -o jsonpath="{.status.ephemeralContainerStatuses[?(@.name=='${DEBUG_NAME}')].state.terminated.reason}" 2>/dev/null || true)
-          echo "pod=${POD} debugContainer=${DEBUG_NAME} terminated=${REASON:-<not yet reported>}"
-        done
-        echo "NOTE: ephemeral debug containers cannot be individually removed (Kubernetes API limitation) -- they remain visible (Completed) under 'kubectl describe pod' until the Pod itself is deleted/recreated. This is an expected, documented side effect of this fault's mechanism, not a bug."
+      - -name
+      - chaos-mesh-pod-failure-replacement
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: "otel-demo"
-      - name: APP_LABEL
-        value: "opentelemetry.io/name=checkout"
-      - name: APP_KIND
-        value: "pod"
-
       # container (within the matched pod) whose main process gets frozen
       - name: TARGET_CONTAINER
         value: "checkout"

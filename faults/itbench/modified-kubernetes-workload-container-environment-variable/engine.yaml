@@ -13,7 +13,7 @@ spec:
   chaosServiceAccount: modified-kubernetes-workload-container-environment-variable-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: modified-kubernetes-workload-container-environment-variable
+    - name: modified-container-environment-variable
       spec:
         components:
           env:

@@ -50,61 +50,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target pod(s) in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        NODE_NAME=$(kubectl get pod -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].spec.nodeName}')
-        if [ -z "$NODE_NAME" ]; then
-          echo "no pod found matching label ${APP_LABEL} in ${APP_NAMESPACE} (or pod not yet scheduled to a node)" >&2
-          exit 1
-        fi
-        echo "Target node=${NODE_NAME}"
-
-        # Capture original schedulability so revert restores the true prior
-        # state instead of blindly uncordoning (the node may have already
-        # been cordoned for maintenance before this fault ran)
-        ORIG_UNSCHEDULABLE=$(kubectl get node "${NODE_NAME}" -o jsonpath='{.spec.unschedulable}')
-        echo "Original node spec.unschedulable: ${ORIG_UNSCHEDULABLE:-<false/unset>}"
-
-        echo "Injecting: cordoning node ${NODE_NAME}"
-        kubectl cordon "${NODE_NAME}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        if [ "$ORIG_UNSCHEDULABLE" = "true" ]; then
-          echo "Node ${NODE_NAME} was already cordoned before injection; leaving it cordoned"
-        else
-          echo "Reverting: uncordoning node ${NODE_NAME}"
-          kubectl uncordon "${NODE_NAME}"
-        fi
+      - -name
+      - cordoned-kubernetes-worker-node
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
       - name: APP_KIND
         # Not consumed directly by this fault's node-resolution logic (the
         # target node is located via the pod's spec.nodeName, not via the

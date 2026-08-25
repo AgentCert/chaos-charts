@@ -13,7 +13,7 @@ spec:
   chaosServiceAccount: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+    - name: unschedulable-pod-anti-affinity-rule
       spec:
         components:
           env:

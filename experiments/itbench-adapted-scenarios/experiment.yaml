@@ -649,6 +649,7 @@ spec:
         \ --ignore-not-found 2>&1 || true\necho \"[uninstall-all] Done\""
       resources: {}
   entrypoint: argowf-chaos
+  onExit: uninstall-all
   arguments:
     parameters:
     - name: adminModeNamespace

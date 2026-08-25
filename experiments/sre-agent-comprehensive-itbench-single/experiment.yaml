@@ -7,6 +7,7 @@ metadata:
     subject: "sre-agent-comprehensive-itbench-single"
 spec:
   entrypoint: argowf-chaos
+  onExit: uninstall-all
   serviceAccountName: argo-chaos
   securityContext:
     runAsUser: 1000
@@ -198,3 +199,20 @@ spec:
       container:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
+
+    # ── Teardown ─────────────────────────────────────────────────────────────
+
+    - name: uninstall-all
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - |
+            set +e
+            echo "[uninstall-all] Removing agent release {{workflow.parameters.agentFolder}} from {{workflow.parameters.appNamespace}}"
+            helm uninstall "{{workflow.parameters.agentFolder}}" -n "{{workflow.parameters.appNamespace}}" --ignore-not-found || true
+            echo "[uninstall-all] Removing app release otel-demo from otel-demo"
+            helm uninstall otel-demo -n otel-demo --ignore-not-found || true
+            kubectl delete chaosengines.litmuschaos.io --all -n "{{workflow.parameters.adminModeNamespace}}" --ignore-not-found || true
+            kubectl delete chaosresults.litmuschaos.io --all -n "{{workflow.parameters.adminModeNamespace}}" --ignore-not-found || true
+            echo "[uninstall-all] Done"

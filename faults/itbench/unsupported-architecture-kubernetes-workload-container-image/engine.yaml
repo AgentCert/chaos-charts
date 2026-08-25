@@ -13,7 +13,7 @@ spec:
   chaosServiceAccount: unsupported-architecture-kubernetes-workload-container-image-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: unsupported-architecture-kubernetes-workload-container-image
+    - name: unsupported-architecture-container-image
       spec:
         components:
           env:

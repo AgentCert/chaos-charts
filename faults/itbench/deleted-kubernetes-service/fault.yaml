@@ -25,87 +25,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        # ChaosEngine.spec.appinfo.appkind is CRD-validated to a fixed enum
-        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job) --
-        # "service" is rejected outright at admission time. This fault always
-        # targets a service, never any other kind, so hardcode it here instead
-        # of trusting TARGETS' kind component (the ChaosEngine submission uses
-        # a dummy CRD-valid appkind like "deployment" purely to satisfy the
-        # schema; only appns/applabel need to vary per submission).
-        APP_KIND="service"
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target=${TARGET}"
-
-        BACKUP_FILE="/tmp/${TARGET}-service-backup.yaml"
-        echo "Capturing full Service manifest for ${TARGET} to ${BACKUP_FILE} before deletion"
-        kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "${TARGET}" -o yaml --show-managed-fields=false > "${BACKUP_FILE}"
-
-        # Strip server-generated/immutable fields so the captured manifest can
-        # be re-applied as a brand-new object once the Service is deleted:
-        # resourceVersion is rejected outright on create; uid/generation/
-        # creationTimestamp/selfLink are server-assigned; status is a
-        # server-managed subresource; and clusterIP/clusterIPs are dropped so
-        # Kubernetes allocates a fresh address (the original one is released
-        # back to the pool the moment the Service is deleted, so re-requesting
-        # it by value is not guaranteed to succeed). The
-        # kubectl.kubernetes.io/last-applied-configuration annotation (stale
-        # once the object is recreated) is stripped too.
-        awk '
-          skip_status==1                { next }
-          /^status:/                     { skip_status=1; next }
-          skip_clusterips==1 && /^  - /  { next }
-          /^  clusterIPs:/               { skip_clusterips=1; next }
-                                          { skip_clusterips=0 }
-          /^  (resourceVersion|uid|selfLink|generation|creationTimestamp|clusterIP):/ { next }
-          /last-applied-configuration:/  { next }
-          { print }
-        ' "${BACKUP_FILE}" > "${BACKUP_FILE}.clean"
-        mv "${BACKUP_FILE}.clean" "${BACKUP_FILE}"
-
-        echo "Injecting: deleting Service ${TARGET}"
-        kubectl delete "${APP_KIND}" -n "${APP_NAMESPACE}" "${TARGET}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting: recreating Service ${TARGET} from captured manifest"
-        kubectl apply -f "${BACKUP_FILE}"
+      - -name
+      - deleted-kubernetes-service
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "service"
-
       - name: TOTAL_CHAOS_DURATION
         value: "300"
 

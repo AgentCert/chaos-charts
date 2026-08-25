@@ -28,74 +28,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target=${TARGET}"
-
-        # Capture how many initContainers already exist so we know the exact
-        # index the hanging one will land at once appended -- this lets us
-        # remove precisely that entry (and no other pre-existing ones) on
-        # revert via a JSON-patch "remove" by index.
-        ORIG_INIT_NAMES=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" -o jsonpath='{.spec.template.spec.initContainers[*].name}')
-        ORIG_INIT_COUNT=$(echo "${ORIG_INIT_NAMES}" | wc -w)
-        echo "Original initContainers count: ${ORIG_INIT_COUNT}"
-
-        HANG_CONTAINER_JSON="{\"name\":\"${HANG_CONTAINER_NAME}\",\"image\":\"${HANG_CONTAINER_IMAGE}\",\"command\":[\"/bin/sh\"],\"args\":[\"-c\",\"${HANG_COMMAND}\"]}"
-
-        echo "Injecting: appending hanging init container '${HANG_CONTAINER_NAME}' (image=${HANG_CONTAINER_IMAGE}, cmd='${HANG_COMMAND}')"
-        if [ "${ORIG_INIT_COUNT}" -eq 0 ]; then
-          # JSON Patch "add .../initContainers/-" requires the array to
-          # already exist; when there are no pre-existing init containers the
-          # field is entirely absent, so create it as a single-element array.
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
-            -p "[{\"op\":\"add\",\"path\":\"/spec/template/spec/initContainers\",\"value\":[${HANG_CONTAINER_JSON}]}]"
-        else
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
-            -p "[{\"op\":\"add\",\"path\":\"/spec/template/spec/initContainers/-\",\"value\":${HANG_CONTAINER_JSON}}]"
-        fi
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (pods should be stuck in Init:0/1 / Pending)"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting: removing appended init container at index ${ORIG_INIT_COUNT}"
-        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
-          -p "[{\"op\":\"remove\",\"path\":\"/spec/template/spec/initContainers/${ORIG_INIT_COUNT}\"}]"
+      - -name
+      - hanging-kubernetes-workload-init-container
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # hanging init container parameters, matching ITBench's own fixture
       # (see inject_hanging_kubernetes_workload_init_container.yaml)
       - name: HANG_CONTAINER_NAME

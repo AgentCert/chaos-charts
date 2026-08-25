@@ -52,100 +52,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        CONTAINER="${TARGET_CONTAINER:-$TARGET}"
-        echo "Target=${TARGET} container=${CONTAINER} secret=${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY}"
-
-        # Capture original command/args -- the injected
-        # `valkey-server --requirepass $(VALKEY_PASSWORD)` override fully
-        # replaces both fields, so they must be restored verbatim (or
-        # removed, if unset) on revert.
-        ORIG_COMMAND=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].command}")
-        ORIG_ARGS=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-          -o jsonpath="{.spec.template.spec.containers[?(@.name=='${CONTAINER}')].args}")
-        echo "Original command: ${ORIG_COMMAND:-<none>}"
-        echo "Original args: ${ORIG_ARGS:-<none>}"
-
-        # Capture whether the credentials Secret already existed (and, if
-        # so, its original base64-encoded password value) so it can be
-        # restored exactly rather than merely deleted on revert.
-        SECRET_EXISTED="false"
-        ORIG_SECRET_VALUE=""
-        if kubectl get secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" >/dev/null 2>&1; then
-          SECRET_EXISTED="true"
-          ORIG_SECRET_VALUE=$(kubectl get secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" \
-            -o jsonpath="{.data.${VALKEY_SECRET_KEY}}")
-        fi
-        echo "Secret ${VALKEY_SECRET_NAME} existed=${SECRET_EXISTED}"
-
-        echo "Injecting: setting ${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY} to an invalid password"
-        if [ "$SECRET_EXISTED" = "true" ]; then
-          kubectl patch secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --type=merge \
-            -p "{\"stringData\":{\"${VALKEY_SECRET_KEY}\":\"${FAULT_PASSWORD}\"}}"
-        else
-          kubectl create secret generic "${VALKEY_SECRET_NAME}" -n "${APP_NAMESPACE}" \
-            --from-literal="${VALKEY_SECRET_KEY}=${FAULT_PASSWORD}"
-        fi
-
-        echo "Injecting: forcing ${CONTAINER} to require the (now-invalid) password"
-        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic -p \
-          "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":[\"valkey-server\"],\"args\":[\"--requirepass\",\"\$(VALKEY_PASSWORD)\"],\"env\":[{\"name\":\"VALKEY_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"${VALKEY_SECRET_NAME}\",\"key\":\"${VALKEY_SECRET_KEY}\"}}}]}]}}}}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting: restoring original command/args, removing injected env var"
-        if [ -z "$ORIG_COMMAND" ]; then COMMAND_JSON="null"; else COMMAND_JSON="$ORIG_COMMAND"; fi
-        if [ -z "$ORIG_ARGS" ]; then ARGS_JSON="null"; else ARGS_JSON="$ORIG_ARGS"; fi
-        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic -p \
-          "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${CONTAINER}\",\"command\":${COMMAND_JSON},\"args\":${ARGS_JSON},\"env\":[{\"name\":\"VALKEY_PASSWORD\",\"\$patch\":\"delete\"}]}]}}}}"
-
-        if [ "$SECRET_EXISTED" = "true" ]; then
-          echo "Reverting: restoring original ${VALKEY_SECRET_NAME}/${VALKEY_SECRET_KEY} value"
-          kubectl patch secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --type=merge \
-            -p "{\"data\":{\"${VALKEY_SECRET_KEY}\":\"${ORIG_SECRET_VALUE}\"}}"
-        else
-          echo "Reverting: deleting ${VALKEY_SECRET_NAME} (it did not exist before fault injection)"
-          kubectl delete secret -n "${APP_NAMESPACE}" "${VALKEY_SECRET_NAME}" --ignore-not-found
-        fi
+      - -name
+      - valkey-workload-changed-password
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # container whose command/args are forced to require a password;
       # defaults to the workload name if unset
       - name: TARGET_CONTAINER

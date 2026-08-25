@@ -7,6 +7,7 @@ metadata:
     subject: "bookinfo-itbench"
 spec:
   entrypoint: argowf-chaos
+  onExit: uninstall-all
   serviceAccountName: argo-chaos
   securityContext:
     runAsUser: 1000
@@ -64,10 +65,8 @@ spec:
         - - name: scenario-53-nonexistent-pvc
             template: scenario-53-nonexistent-pvc
 
-        # ── Optional cleanup ───────────────────────────────────────────────
-        # Uncomment to tear down after evaluation:
-        #- - name: delete-application
-        #    template: delete-application
+        # Teardown also runs via spec.onExit so failed/aborted workflows do not
+        # leave long-running agents behind.
 
     # ── Setup templates ─────────────────────────────────────────────────────
 
@@ -356,10 +355,16 @@ spec:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
-    # ── Optional teardown ────────────────────────────────────────────────────
-    - name: delete-application
+    # ── Teardown ─────────────────────────────────────────────────────────────
+    - name: uninstall-all
       container:
         image: litmuschaos/k8s:latest
         command: [sh, -c]
         args:
-          - "helm uninstall bookinfo -n book-info || true"
+          - |
+            set +e
+            echo "[uninstall-all] Removing agent release {{workflow.parameters.agentFolder}} from {{workflow.parameters.appNamespace}}"
+            helm uninstall "{{workflow.parameters.agentFolder}}" -n "{{workflow.parameters.appNamespace}}" --ignore-not-found || true
+            echo "[uninstall-all] Removing app release bookinfo from book-info"
+            helm uninstall bookinfo -n book-info --ignore-not-found || true
+            echo "[uninstall-all] Done"

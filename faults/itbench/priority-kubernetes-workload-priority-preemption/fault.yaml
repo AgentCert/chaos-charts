@@ -49,85 +49,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target=${TARGET}"
-
-        TARGET_POD=$(kubectl get pods -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET_POD" ]; then
-          echo "no running pod found for ${APP_KIND}/${TARGET} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        NODE=$(kubectl get pod -n "${APP_NAMESPACE}" "$TARGET_POD" -o jsonpath='{.spec.nodeName}')
-        if [ -z "$NODE" ]; then
-          echo "could not determine the scheduling node for pod ${TARGET_POD}" >&2
-          exit 1
-        fi
-        echo "Target pod=${TARGET_POD} is scheduled on node=${NODE}"
-
-        # Size the decoy's memory request as a percentage of the target node's
-        # allocatable memory, so the scheduler cannot fit the (higher-priority)
-        # decoy on that node without preempting lower-priority pods already
-        # running there -- including the target's pod.
-        NODE_ALLOC_MEM_RAW=$(kubectl get node "$NODE" -o jsonpath='{.status.allocatable.memory}')
-        NODE_ALLOC_MEM_KI=${NODE_ALLOC_MEM_RAW%Ki}
-        DECOY_MEM_KI=$(( NODE_ALLOC_MEM_KI * DECOY_MEMORY_PERCENT / 100 ))
-        DECOY_MEMORY_REQUEST="${DECOY_MEM_KI}Ki"
-        DECOY_NS="${DECOY_NAMESPACE:-$APP_NAMESPACE}"
-        echo "Node allocatable memory=${NODE_ALLOC_MEM_RAW}; decoy will request ${DECOY_MEMORY_REQUEST} (${DECOY_MEMORY_PERCENT}%), pinned to node=${NODE}"
-
-        echo "Injecting: creating higher-priority PriorityClass ${PRIORITY_CLASS_NAME} (value=${PRIORITY_VALUE})"
-        kubectl create priorityclass "${PRIORITY_CLASS_NAME}" \
-          --value="${PRIORITY_VALUE}" \
-          --description="Temporary priority class created by the priority-kubernetes-workload-priority-preemption chaos fault"
-
-        echo "Injecting: creating decoy pressure Deployment ${DECOY_NAME} in ${DECOY_NS}"
-        DECOY_MANIFEST="{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"${DECOY_NAME}\",\"namespace\":\"${DECOY_NS}\",\"labels\":{\"app\":\"${DECOY_NAME}\",\"chaos.itbench.io/role\":\"priority-preemption-decoy\"}},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"${DECOY_NAME}\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"${DECOY_NAME}\"}},\"spec\":{\"priorityClassName\":\"${PRIORITY_CLASS_NAME}\",\"nodeSelector\":{\"kubernetes.io/hostname\":\"${NODE}\"},\"containers\":[{\"name\":\"decoy\",\"image\":\"${DECOY_IMAGE}\",\"resources\":{\"requests\":{\"cpu\":\"${DECOY_CPU_REQUEST}\",\"memory\":\"${DECOY_MEMORY_REQUEST}\"}}}]}}}}"
-        echo "$DECOY_MANIFEST" | kubectl apply -f -
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (the target pod should be preempted, and its replacement left Pending with a FailedScheduling/Preempted event)"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting: deleting decoy Deployment ${DECOY_NAME} and PriorityClass ${PRIORITY_CLASS_NAME}"
-        kubectl delete deployment "${DECOY_NAME}" -n "${DECOY_NS}" --ignore-not-found=true
-        kubectl delete pods -n "${DECOY_NS}" -l "app=${DECOY_NAME}" --ignore-not-found=true --force --grace-period=0 || true
-        kubectl delete priorityclass "${PRIORITY_CLASS_NAME}" --ignore-not-found=true
+      - -name
+      - priority-kubernetes-workload-priority-preemption
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # name/value of the temporary, cluster-scoped PriorityClass created to
       # outrank the target workload (which normally has no priorityClassName,
       # i.e. the default priority of 0)

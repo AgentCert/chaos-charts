@@ -34,89 +34,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target=${TARGET} (fault is namespace-scoped: ${QUOTA_NAME} quota applies to all workloads in ${APP_NAMESPACE})"
-
-        # Capture whether the ResourceQuota already existed, and if so, the
-        # original value of each of the four hard keys we are about to
-        # tighten (empty means that particular key was not set originally).
-        if kubectl get resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" >/dev/null 2>&1; then
-          EXISTED="true"
-          ORIG_REQ_CPU=$(kubectl get resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" -o jsonpath='{.spec.hard.requests\.cpu}')
-          ORIG_REQ_MEM=$(kubectl get resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" -o jsonpath='{.spec.hard.requests\.memory}')
-          ORIG_LIM_CPU=$(kubectl get resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" -o jsonpath='{.spec.hard.limits\.cpu}')
-          ORIG_LIM_MEM=$(kubectl get resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" -o jsonpath='{.spec.hard.limits\.memory}')
-          echo "ResourceQuota ${QUOTA_NAME} already exists; original hard: requests.cpu=${ORIG_REQ_CPU:-<unset>} requests.memory=${ORIG_REQ_MEM:-<unset>} limits.cpu=${ORIG_LIM_CPU:-<unset>} limits.memory=${ORIG_LIM_MEM:-<unset>}"
-        else
-          EXISTED="false"
-          echo "ResourceQuota ${QUOTA_NAME} does not exist yet; it will be created now and deleted entirely on revert"
-        fi
-
-        echo "Injecting: setting ${QUOTA_NAME} hard limits to requests.cpu=${QUOTA_HARD_REQUESTS_CPU} requests.memory=${QUOTA_HARD_REQUESTS_MEMORY} limits.cpu=${QUOTA_HARD_LIMITS_CPU} limits.memory=${QUOTA_HARD_LIMITS_MEMORY}"
-        if [ "$EXISTED" = "true" ]; then
-          kubectl patch resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" --type=merge -p \
-            "{\"spec\":{\"hard\":{\"requests.cpu\":\"${QUOTA_HARD_REQUESTS_CPU}\",\"requests.memory\":\"${QUOTA_HARD_REQUESTS_MEMORY}\",\"limits.cpu\":\"${QUOTA_HARD_LIMITS_CPU}\",\"limits.memory\":\"${QUOTA_HARD_LIMITS_MEMORY}\"}}}"
-        else
-          kubectl create resourcequota "${QUOTA_NAME}" -n "${APP_NAMESPACE}" \
-            --hard="requests.cpu=${QUOTA_HARD_REQUESTS_CPU},requests.memory=${QUOTA_HARD_REQUESTS_MEMORY},limits.cpu=${QUOTA_HARD_LIMITS_CPU},limits.memory=${QUOTA_HARD_LIMITS_MEMORY}"
-        fi
-
-        echo "Triggering new pod admission attempts: rollout restart ${APP_KIND}/${TARGET}"
-        kubectl rollout restart -n "${APP_NAMESPACE}" "${APP_KIND}/${TARGET}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting ResourceQuota ${QUOTA_NAME}"
-        if [ "$EXISTED" = "true" ]; then
-          REQ_CPU_JSON="null"; [ -n "$ORIG_REQ_CPU" ] && REQ_CPU_JSON="\"${ORIG_REQ_CPU}\""
-          REQ_MEM_JSON="null"; [ -n "$ORIG_REQ_MEM" ] && REQ_MEM_JSON="\"${ORIG_REQ_MEM}\""
-          LIM_CPU_JSON="null"; [ -n "$ORIG_LIM_CPU" ] && LIM_CPU_JSON="\"${ORIG_LIM_CPU}\""
-          LIM_MEM_JSON="null"; [ -n "$ORIG_LIM_MEM" ] && LIM_MEM_JSON="\"${ORIG_LIM_MEM}\""
-          echo "Restoring original hard limits (null means the key did not exist before injection and is removed)"
-          kubectl patch resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" --type=merge -p \
-            "{\"spec\":{\"hard\":{\"requests.cpu\":${REQ_CPU_JSON},\"requests.memory\":${REQ_MEM_JSON},\"limits.cpu\":${LIM_CPU_JSON},\"limits.memory\":${LIM_MEM_JSON}}}}"
-        else
-          echo "Deleting ${QUOTA_NAME} (did not exist before injection)"
-          kubectl delete resourcequota -n "${APP_NAMESPACE}" "${QUOTA_NAME}" --ignore-not-found
-        fi
+      - -name
+      - insufficient-kubernetes-resource-quota
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # name of the ResourceQuota object to create/patch; matches ITBench's
       # own fixture ("kubectl -n otel-demo edit/delete resourcequota memory")
       - name: QUOTA_NAME

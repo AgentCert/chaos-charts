@@ -13,7 +13,7 @@ spec:
   chaosServiceAccount: misconfigured-kubernetes-workload-container-readiness-probe-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: misconfigured-kubernetes-workload-container-readiness-probe
+    - name: misconfigured-container-readiness-probe
       spec:
         components:
           env:

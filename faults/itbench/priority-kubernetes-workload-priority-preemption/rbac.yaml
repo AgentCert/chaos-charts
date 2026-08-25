@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: priority-kubernetes-workload-priority-preemption-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: priority-kubernetes-workload-priority-preemption-sa
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: itbench-fault-rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: priority-kubernetes-workload-priority-preemption-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: priority-kubernetes-workload-priority-preemption-sa
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "list", "get", "delete", "deletecollection"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosengines"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosexperiments"]
+    verbs: ["get", "list"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosresults"]
+    verbs: ["create", "get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: priority-kubernetes-workload-priority-preemption-sa
+  namespace: "#{INFRA_NAMESPACE}"
+  labels:
+    name: priority-kubernetes-workload-priority-preemption-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: priority-kubernetes-workload-priority-preemption-sa
+subjects:
+  - kind: ServiceAccount
+    name: priority-kubernetes-workload-priority-preemption-sa
+    namespace: "#{INFRA_NAMESPACE}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: priority-kubernetes-workload-priority-preemption-sa-target
+rules:
+  - apiGroups: ["scheduling.k8s.io"]
+    resources: ["priorityclasses"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: priority-kubernetes-workload-priority-preemption-sa-target
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: priority-kubernetes-workload-priority-preemption-sa-target
+subjects:
+  - kind: ServiceAccount
+    name: priority-kubernetes-workload-priority-preemption-sa
+    namespace: "#{INFRA_NAMESPACE}"

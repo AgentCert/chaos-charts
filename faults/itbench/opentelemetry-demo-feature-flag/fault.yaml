@@ -24,130 +24,17 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        # ChaosEngine.spec.appinfo.appkind is CRD-validated to a fixed enum
-        # (deployment|statefulset|daemonset|deploymentconfig|rollout|job) --
-        # "configmap" is rejected outright at admission time. This fault always
-        # targets a configmap, never any other kind, so hardcode it here instead
-        # of trusting TARGETS' kind component (the ChaosEngine submission uses
-        # a dummy CRD-valid appkind like "deployment" purely to satisfy the
-        # schema; only appns/applabel need to vary per submission).
-        APP_KIND="configmap"
-        echo "Resolving target ${APP_KIND}/flagd-config in ns=${APP_NAMESPACE}"
-        CURRENT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" flagd-config -o jsonpath='{.data.demo\.flagd\.json}')
-        if [ -z "$CURRENT" ]; then
-          echo "ConfigMap flagd-config has no 'demo.flagd.json' data key" >&2
-          exit 1
-        fi
-
-        if ! printf '%s\n' "$CURRENT" | grep -q "\"${FLAG_NAME}\"[[:space:]]*:[[:space:]]*{"; then
-          echo "flag '${FLAG_NAME}' not found in demo.flagd.json flags map" >&2
-          exit 1
-        fi
-
-        # Prints the current defaultVariant of the named flag's JSON object
-        # (empty if the flag has no defaultVariant field).
-        extract_variant() {
-          awk -v flag="$1" '
-            BEGIN { in_block=0; depth=0; found=0 }
-            {
-              line = $0
-              if (!in_block) {
-                if (match(line, "\"" flag "\"[[:space:]]*:[[:space:]]*\\{")) { in_block=1; depth=1; next }
-              } else {
-                if (depth == 1 && found == 0 && match(line, /"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
-                  val = line
-                  sub(/^.*"defaultVariant"[[:space:]]*:[[:space:]]*"/, "", val)
-                  sub(/".*$/, "", val)
-                  print val
-                  found = 1
-                }
-                opens = gsub(/\{/, "{", line); closes = gsub(/\}/, "}", line)
-                depth += opens - closes
-                if (depth <= 0) in_block = 0
-              }
-            }
-          '
-        }
-
-        # Rewrites the named flag's defaultVariant in place; every other byte
-        # of the JSON document (other flags, ordering, description, etc.) is
-        # left untouched so the revert is byte-exact.
-        patch_variant() {
-          awk -v flag="$1" -v newval="$2" '
-            BEGIN { in_block=0; depth=0; found=0 }
-            {
-              line = $0
-              if (!in_block) {
-                if (match(line, "\"" flag "\"[[:space:]]*:[[:space:]]*\\{")) { in_block=1; depth=1; print line; next }
-              } else {
-                if (depth == 1 && found == 0 && match(line, /"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
-                  sub(/"defaultVariant"[[:space:]]*:[[:space:]]*"[^"]*"/, "\"defaultVariant\": \"" newval "\"", line)
-                  found = 1
-                }
-                opens = gsub(/\{/, "{", line); closes = gsub(/\}/, "}", line)
-                depth += opens - closes
-                if (depth <= 0) in_block = 0
-              }
-              print line
-            }
-          '
-        }
-
-        apply_configmap() {
-          # $1 = full new demo.flagd.json content; JSON-escape it and merge-patch
-          # it back into the single opaque data key (no jq/python in this image).
-          ESCAPED=$(printf '%s\n' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" flagd-config --type=merge \
-            -p "{\"data\":{\"demo.flagd.json\":\"${ESCAPED}\"}}"
-        }
-
-        ORIG_VARIANT=$(printf '%s\n' "$CURRENT" | extract_variant "${FLAG_NAME}")
-        ORIG_VARIANT="${ORIG_VARIANT:-${FLAG_REVERT_STATE}}"
-        echo "flag=${FLAG_NAME} originalDefaultVariant=${ORIG_VARIANT}"
-
-        echo "Injecting: setting ${FLAG_NAME}.defaultVariant=${FLAG_STATE}"
-        INJECTED=$(printf '%s\n' "$CURRENT" | patch_variant "${FLAG_NAME}" "${FLAG_STATE}")
-        apply_configmap "$INJECTED"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Reverting: restoring ${FLAG_NAME}.defaultVariant=${ORIG_VARIANT}"
-        REVERTED=$(printf '%s\n' "$INJECTED" | patch_variant "${FLAG_NAME}" "${ORIG_VARIANT}")
-        apply_configmap "$REVERTED"
+      - -name
+      - opentelemetry-demo-feature-flag
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo. This
       # fault targets the flagd-config ConfigMap by a fixed name, not by
       # label, so APP_LABEL is declared for interface consistency with other
       # first-class faults but is not used by the script.
-      - name: APP_NAMESPACE
-        value: "otel-demo"
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "configmap"
 
       # name of the feature flag to toggle, matching a key under
       # flagd-config's demo.flagd.json ".flags" map (e.g. loadGeneratorFloodHomepage,

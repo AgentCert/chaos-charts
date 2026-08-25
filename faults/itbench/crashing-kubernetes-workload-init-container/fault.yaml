@@ -29,79 +29,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target=${TARGET}"
-
-        # Capture how many initContainers already exist (0 means the field is
-        # absent/empty). Strategic-merge-patch merges initContainers by name
-        # (patchMergeKey=name, same additive convention used for volumeMounts
-        # in the nonexistent-pvc fault) and appends unmatched new entries to
-        # the end of the list, so this count also doubles as the index our
-        # injected initContainer will land at once appended.
-        ORIG_INIT_COUNT=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" \
-          -o jsonpath='{range .spec.template.spec.initContainers[*]}{.name}{"\n"}{end}' | (grep -c . || true))
-        echo "Target=${TARGET} existingInitContainers=${ORIG_INIT_COUNT}"
-
-        echo "Injecting: adding crashing initContainer '${INIT_CONTAINER_NAME}' (image=${INIT_CONTAINER_IMAGE})"
-        kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-          -p "{\"spec\":{\"template\":{\"spec\":{\"initContainers\":[{\"name\":\"${INIT_CONTAINER_NAME}\",\"image\":\"${INIT_CONTAINER_IMAGE}\",\"command\":[\"/bin/sh\",\"-c\",\"${BAD_SCRIPT}\"]}]}}}}"
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        # Revert: strategic-merge-patch cannot delete a single item out of a
-        # keyed list (it can only add/merge entries), so unlike a scalar
-        # field (e.g. readinessProbe, where reverting to "no probe" is a
-        # simple null substitution) we must either null out the whole list
-        # (safe only if it was empty beforehand) or JSON-patch-remove just
-        # the one index we injected, leaving any pre-existing initContainers
-        # untouched.
-        if [ "${ORIG_INIT_COUNT}" -eq 0 ]; then
-          echo "Reverting: no initContainers existed originally, clearing the whole initContainers field"
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=strategic \
-            -p '{"spec":{"template":{"spec":{"initContainers":null}}}}'
-        else
-          echo "Reverting: removing only the injected initContainer at index ${ORIG_INIT_COUNT}"
-          kubectl patch "${APP_KIND}" -n "${APP_NAMESPACE}" "$TARGET" --type=json \
-            -p "[{\"op\":\"remove\",\"path\":\"/spec/template/spec/initContainers/${ORIG_INIT_COUNT}\"}]"
-        fi
+      - -name
+      - crashing-kubernetes-workload-init-container
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: "otel-demo"
-      - name: APP_LABEL
-        value: "opentelemetry.io/name=recommendation"
-      - name: APP_KIND
-        value: "deployment"
-
       # distinctive name for the injected initContainer so revert can find it
       - name: INIT_CONTAINER_NAME
         value: "chaos-crashing-init"

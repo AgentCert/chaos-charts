@@ -13,7 +13,7 @@ spec:
   chaosServiceAccount: unassigned-kubernetes-workload-container-resource-limits-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: unassigned-kubernetes-workload-container-resource-limits
+    - name: unassigned-container-resource-limits
       spec:
         components:
           env:

@@ -57,90 +57,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /bin/sh
+      - /itbench-experiment
     args:
-      - -c
-      - |
-        set -eu
-        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND
-        # as env var names but never populates their values from
-        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine
-        # submission mistargeted an unrelated deployment because both vars were
-        # empty). This operator version instead sets a single combined TARGETS var,
-        # format "<kind>:<namespace>:[<label-selector>]:<mode>". Derive the vars
-        # every fault-injection script here still expects from it, and only fall
-        # back to whatever APP_KIND/APP_NAMESPACE/APP_LABEL already say if TARGETS
-        # isn't set (e.g. a future/different operator version that does populate
-        # them directly).
-        if [ -n "${TARGETS:-}" ]; then
-          APP_KIND=$(echo "$TARGETS" | cut -d: -f1)
-          APP_NAMESPACE=$(echo "$TARGETS" | cut -d: -f2)
-          APP_LABEL=$(echo "$TARGETS" | cut -d: -f3 | tr -d '[]')
-        fi
-        echo "Resolving target ${APP_KIND} in ns=${APP_NAMESPACE} label=${APP_LABEL}"
-        TARGET=$(kubectl get "${APP_KIND}" -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        if [ -z "$TARGET" ]; then
-          echo "no ${APP_KIND} found matching label ${APP_LABEL} in ${APP_NAMESPACE}" >&2
-          exit 1
-        fi
-        echo "Target workload=${TARGET}"
-
-        if [ -n "${SERVICE_NAME:-}" ]; then
-          SVC="$SERVICE_NAME"
-        else
-          SVC=$(kubectl get service -n "${APP_NAMESPACE}" -l "${APP_LABEL}" -o jsonpath='{.items[0].metadata.name}')
-        fi
-        if [ -z "$SVC" ]; then
-          echo "no Service found matching label ${APP_LABEL} in ${APP_NAMESPACE} (set SERVICE_NAME to override)" >&2
-          exit 1
-        fi
-        echo "Target service=${SVC} port=${SERVICE_PORT} path=${REQUEST_PATH}"
-
-        URL="http://${SVC}.${APP_NAMESPACE}.svc.cluster.local:${SERVICE_PORT}${REQUEST_PATH}"
-        GEN_POD="chaos-http-body-tamper-$(date +%s)"
-
-        echo "NOTE: ACE has no service mesh / Chaos Mesh transparent proxy, so"
-        echo "genuine in-flight tampering of real checkout->email traffic is not"
-        echo "reproducible via kubectl alone. Approximating by firing synthetic"
-        echo "requests carrying ITBench's exact tampered body directly at the"
-        echo "target service instead of intercepting real traffic in flight."
-
-        echo "Injecting: launching request-generator pod ${GEN_POD} -> ${URL}"
-        kubectl run "${GEN_POD}" -n "${APP_NAMESPACE}" \
-          --image="${GENERATOR_IMAGE}" \
-          --restart=Never \
-          --labels="chaos-injector=chaos-mesh-http-body-tamper-replacement" \
-          --env="TAMPER_URL=${URL}" \
-          --env="TAMPER_BODY=${TAMPERED_BODY}" \
-          --env="TAMPER_METHOD=${REQUEST_METHOD}" \
-          --env="TAMPER_INTERVAL=${REQUEST_INTERVAL_SECONDS}" \
-          --command -- /bin/sh -c 'while true; do curl -s -o /dev/null -w "%{http_code} " -X "$TAMPER_METHOD" -H "Content-Type: application/json" -d "$TAMPER_BODY" "$TAMPER_URL"; sleep "$TAMPER_INTERVAL"; done'
-
-        echo "Waiting for generator pod to become Ready"
-        kubectl wait -n "${APP_NAMESPACE}" "pod/${GEN_POD}" --for=condition=Ready --timeout=60s || true
-
-        echo "Holding fault for ${TOTAL_CHAOS_DURATION}s (tampered POST every ${REQUEST_INTERVAL_SECONDS}s)"
-        sleep "${TOTAL_CHAOS_DURATION}"
-
-        echo "Recent generator log (HTTP status codes observed against ${SVC}):"
-        kubectl logs -n "${APP_NAMESPACE}" "${GEN_POD}" --tail=20 || true
-
-        echo "Reverting: no application state was ever modified (unlike a"
-        echo "config/patch fault) -- reverting simply means stopping the"
-        echo "synthetic tampered traffic by removing the generator pod."
-        kubectl delete pod "${GEN_POD}" -n "${APP_NAMESPACE}" --ignore-not-found --wait=false
+      - -name
+      - chaos-mesh-http-body-tamper-replacement
     env:
-      # Injected by the chaos-operator from ChaosEngine.spec.appinfo
-      - name: APP_NAMESPACE
-        value: ""
-      - name: APP_LABEL
-        value: ""
-      - name: APP_KIND
-        value: "deployment"
-
       # Service fronting the target workload; if unset, resolved via APP_LABEL
       - name: SERVICE_NAME
         value: ""
