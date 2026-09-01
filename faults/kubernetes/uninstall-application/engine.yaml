@@ -15,18 +15,10 @@ spec:
       spec:
         components:
           env:
-            # folder name containing the application manifests
+            # Helm release name of the app to remove
             - name: FOLDER
               value: 'sock-shop'
 
-            # target namespace for application removal
+            # namespace to tear down (always deleted in full)
             - name: NAMESPACE
               value: 'sock-shop'
-
-            # whether to delete the namespace after removing the application
-            - name: DELETE_NAMESPACE
-              value: 'true'
-
-            # timeout for the operation
-            - name: TIMEOUT
-              value: '5m'

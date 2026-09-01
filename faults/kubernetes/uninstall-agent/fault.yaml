@@ -2,7 +2,20 @@
 apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
-    Uninstalls/removes an AI agent from the Kubernetes cluster after chaos testing
+    Removes an AI agent's Helm release from the Kubernetes cluster after a run.
+
+    Implemented as a real litmus-go SDK experiment binary (bin/itbench-experiment,
+    -name uninstall-agent; source: experiments/itbench/uninstall-agent/experiment)
+    rather than a raw helm-wrapper container -- so it reports a real ChaosResult
+    (SOT/EOT, verdict Pass on success) via pkg/result instead of the operator/UI
+    always showing Fail/0% regardless of whether the teardown actually worked.
+
+    Release-scoped, not namespace-scoped: the agent frequently shares the target
+    application's namespace, so this deletes only the objects Helm recorded for
+    release FOLDER (the app.kubernetes.io/managed-by=Helm label plus the
+    meta.helm.sh/release-name annotation Helm stamps on every managed object),
+    plus Helm's own release-state Secrets. Full namespace teardown is the
+    uninstall-application step's job.
 kind: ChaosExperiment
 metadata:
   name: uninstall-agent
@@ -17,92 +30,55 @@ spec:
   definition:
     scope: Cluster
     permissions:
-      # Create and monitor the experiment & helper pods
-      - apiGroups: [""]
-        resources: ["pods"]
-        verbs:
-          [
-            "create",
-            "delete",
-            "get",
-            "list",
-            "patch",
-            "update",
-            "deletecollection",
-          ]
-      # Performs CRUD operations on the events inside chaosengine and chaosresult
-      - apiGroups: [""]
-        resources: ["events"]
-        verbs: ["create", "get", "list", "patch", "update"]
-      # Fetch configmaps details and mount it to the experiment pod (if specified)
-      - apiGroups: [""]
-        resources: ["configmaps"]
-        verbs: ["get", "list"]
-      # Track and get the runner, experiment, and helper pods log
-      - apiGroups: [""]
-        resources: ["pods/log"]
-        verbs: ["get", "list", "watch"]
-      # for creating and managing to execute commands inside target container
-      - apiGroups: [""]
-        resources: ["pods/exec"]
-        verbs: ["get", "list", "create"]
-      # for configuring and monitor the experiment job by the chaos-runner pod
-      - apiGroups: ["batch"]
-        resources: ["jobs"]
-        verbs: ["create", "list", "get", "delete", "deletecollection"]
-      # for creation, status polling and deletion of litmus chaos resources used within a chaos workflow
+      # litmus-go SDK: ChaosResult lifecycle + events
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-      # for removing agents - namespaces
       - apiGroups: [""]
-        resources: ["namespaces"]
-        verbs: ["create", "get", "list", "delete"]
-      # for removing agents - services
+        resources: ["events"]
+        verbs: ["create", "get", "list", "patch", "update"]
       - apiGroups: [""]
-        resources: ["services"]
-        verbs: ["create", "get", "list", "delete"]
-      # for removing agents - deployments
+        resources: ["pods", "pods/log"]
+        verbs: ["get", "list", "watch"]
+      # Helm-release sweep: list + delete the kinds an ACE agent chart can create
       - apiGroups: ["apps"]
-        resources: ["deployments", "statefulsets", "replicasets", "daemonsets"]
-        verbs: ["create", "get", "list", "delete", "patch", "update"]
-      # for removing agents - serviceaccounts
-      - apiGroups: [""]
-        resources: ["serviceaccounts"]
-        verbs: ["create", "get", "list", "delete"]
-      # for removing agents - secrets
-      - apiGroups: [""]
-        resources: ["secrets"]
-        verbs: ["create", "get", "list", "delete"]
-      # for removing agents - roles and rolebindings
-      - apiGroups: ["rbac.authorization.k8s.io"]
-        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
-        verbs: ["create", "get", "list", "delete"]
-      # for removing agents - persistentvolumeclaims
-      - apiGroups: [""]
-        resources: ["persistentvolumeclaims"]
+        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
         verbs: ["get", "list", "delete"]
-    image: "docker.io/agentcert/agentcert-install-agent:latest"
-    imagePullPolicy: Always
+      - apiGroups: [""]
+        resources:
+          ["services", "configmaps", "secrets", "serviceaccounts", "persistentvolumeclaims"]
+        verbs: ["get", "list", "delete"]
+      - apiGroups: ["batch"]
+        resources: ["jobs", "cronjobs"]
+        verbs: ["get", "list", "delete"]
+      - apiGroups: ["autoscaling"]
+        resources: ["horizontalpodautoscalers"]
+        verbs: ["get", "list", "delete"]
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses", "networkpolicies"]
+        verbs: ["get", "list", "delete"]
+      - apiGroups: ["policy"]
+        resources: ["poddisruptionbudgets"]
+        verbs: ["get", "list", "delete"]
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        resources:
+          ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+        verbs: ["get", "list", "delete"]
+    image: "agentcert/itbench-experiment:dev"
+    imagePullPolicy: IfNotPresent
     command:
-      - /usr/local/bin/install-agent
+      - /itbench-experiment
     args:
-      - -delete
-      - -folder=$(FOLDER)
-      - -namespace=$(NAMESPACE)
-      - -timeout=$(TIMEOUT)
+      - -name
+      - uninstall-agent
     env:
-      # folder name of the Helm chart to uninstall
+      # Helm release name of the agent to remove (== AgentHub chart folder by convention)
       - name: FOLDER
         value: ""
 
-      # target namespace
+      # namespace the agent release was installed into
       - name: NAMESPACE
         value: ""
-
-      # timeout for the operation
-      - name: TIMEOUT
-        value: "5m"
 
     labels:
       name: uninstall-agent

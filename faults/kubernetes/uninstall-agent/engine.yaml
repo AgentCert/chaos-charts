@@ -15,14 +15,10 @@ spec:
       spec:
         components:
           env:
-            # folder name containing the agent manifests
+            # Helm release name of the agent to remove
             - name: FOLDER
               value: 'flash-agent'
 
-            # target namespace for agent removal
+            # namespace the agent release was installed into
             - name: NAMESPACE
               value: 'sock-shop'
-
-            # timeout for the operation
-            - name: TIMEOUT
-              value: '5m'
