@@ -174,7 +174,7 @@ spec:
     - name: install-application
       container:
         image: agentcert/agentcert-install-app:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         args:
           - "-folder=otel-demo"
           - "-namespace=otel-demo"
