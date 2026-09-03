@@ -389,6 +389,24 @@ spec:
                   experiments:
                     - name: scaled-to-zero-kubernetes-workload
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=accounting' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -425,6 +443,24 @@ spec:
                   experiments:
                     - name: nonexistent-kubernetes-workload-container-image
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=product-catalog' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER

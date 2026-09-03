@@ -3478,6 +3478,24 @@ spec:
                   experiments:
                     - name: scaled-to-zero-kubernetes-workload
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=accounting' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -3514,6 +3532,24 @@ spec:
                   experiments:
                     - name: nonexistent-kubernetes-workload-container-image
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=product-catalog' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -3554,6 +3590,24 @@ spec:
                   experiments:
                     - name: misconfigured-kubernetes-workload-container-readiness-probe
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=frontend' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -3596,6 +3650,24 @@ spec:
                   experiments:
                     - name: modified-target-port-kubernetes-service
                       spec:
+                        probe:
+                          - name: "service-targetport-fixed"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get service ad -n otel-demo -o jsonpath='{.spec.ports[0].targetPort}' 2>/dev/null || echo unset"
+                              comparator:
+                                type: "string"
+                                criteria: "notEqual"
+                                value: "9999"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: BROKEN_TARGET_PORT
@@ -3631,6 +3703,24 @@ spec:
                   experiments:
                     - name: opentelemetry-demo-feature-flag
                       spec:
+                        probe:
+                          - name: "feature-flag-reset"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get configmap flagd-config -n otel-demo -o go-template='{{index .data \"demo.flagd.json\"}}' 2>/dev/null | grep -o '\"defaultVariant\": *\"on\"' | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: FLAG_NAME
@@ -3668,6 +3758,24 @@ spec:
                   experiments:
                     - name: opentelemetry-demo-feature-flag
                       spec:
+                        probe:
+                          - name: "feature-flag-reset"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get configmap flagd-config -n otel-demo -o go-template='{{index .data \"demo.flagd.json\"}}' 2>/dev/null | grep -o '\"defaultVariant\": *\"on\"' | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: FLAG_NAME
@@ -3705,6 +3813,24 @@ spec:
                   experiments:
                     - name: modified-kubernetes-workload-container-environment-variable
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=shipping' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -3744,6 +3870,24 @@ spec:
                   experiments:
                     - name: chaos-mesh-pod-failure-replacement
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=checkout' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -3779,6 +3923,24 @@ spec:
                   experiments:
                     - name: unsupported-architecture-kubernetes-workload-container-image
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=checkout' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -3814,6 +3976,24 @@ spec:
                   experiments:
                     - name: chaos-mesh-http-body-tamper-replacement
                       spec:
+                        probe:
+                          - name: "rogue-resource-removed"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get pods -n otel-demo -l chaos-injector=chaos-mesh-http-body-tamper-replacement -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: SERVICE_NAME
@@ -3851,6 +4031,24 @@ spec:
                   experiments:
                     - name: chaos-mesh-http-abort-replacement
                       spec:
+                        probe:
+                          - name: "rogue-resource-removed"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get networkpolicy -n otel-demo -l litmuschaos.io/fault=chaos-mesh-http-abort-replacement -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_PORT
@@ -3886,6 +4084,24 @@ spec:
                   experiments:
                     - name: ingress-port-blocking-network-policy
                       spec:
+                        probe:
+                          - name: "rogue-resource-removed"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get networkpolicy -n otel-demo -l litmuschaos.io/fault=ingress-port-blocking-network-policy -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -3919,6 +4135,24 @@ spec:
                   experiments:
                     - name: nonexistent-kubernetes-workload-node
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=ad' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -3952,6 +4186,24 @@ spec:
                   experiments:
                     - name: nonexistent-kubernetes-workload-node
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=cart' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -3985,6 +4237,24 @@ spec:
                   experiments:
                     - name: valkey-workload-changed-password
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=valkey-cart' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -4020,6 +4290,24 @@ spec:
                   experiments:
                     - name: misconfigured-kubernetes-horizontal-pod-autoscaler
                       spec:
+                        probe:
+                          - name: "hpa-targets-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get hpa -n otel-demo -l 'opentelemetry.io/name=fraud-detection' -o jsonpath='{.items[0].spec.metrics[*].resource.target.averageUtilization}' 2>/dev/null | xargs -n1 2>/dev/null | grep -Eo '^[0-9]+' | sort -n | head -1 || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "50"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4053,6 +4341,24 @@ spec:
                   experiments:
                     - name: misconfigured-kubernetes-horizontal-pod-autoscaler
                       spec:
+                        probe:
+                          - name: "hpa-targets-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get hpa -n otel-demo -l 'opentelemetry.io/name=frontend' -o jsonpath='{.items[0].spec.metrics[*].resource.target.averageUtilization}' 2>/dev/null | xargs -n1 2>/dev/null | grep -Eo '^[0-9]+' | sort -n | head -1 || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "50"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4086,6 +4392,24 @@ spec:
                   experiments:
                     - name: misconfigured-kubernetes-horizontal-pod-autoscaler
                       spec:
+                        probe:
+                          - name: "hpa-targets-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get hpa -n otel-demo -l 'opentelemetry.io/name=image-provider' -o jsonpath='{.items[0].spec.metrics[*].resource.target.averageUtilization}' 2>/dev/null | xargs -n1 2>/dev/null | grep -Eo '^[0-9]+' | sort -n | head -1 || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "50"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4119,6 +4443,24 @@ spec:
                   experiments:
                     - name: cordoned-kubernetes-worker-node
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=payment' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4152,6 +4494,24 @@ spec:
                   experiments:
                     - name: valkey-workload-out-of-memory
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=valkey-cart' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -4187,6 +4547,24 @@ spec:
                   experiments:
                     - name: unassigned-kubernetes-workload-container-resource-limits
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=cart' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -4222,6 +4600,24 @@ spec:
                   experiments:
                     - name: pod-memory-hog
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=cart' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: MEMORY_CONSUMPTION
@@ -4259,6 +4655,24 @@ spec:
                   experiments:
                     - name: priority-kubernetes-workload-priority-preemption
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=kafka' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: DECOY_NAMESPACE
@@ -4294,6 +4708,24 @@ spec:
                   experiments:
                     - name: failing-name-resolution-kubernetes-workload-dns-policy
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=frontend' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4327,6 +4759,24 @@ spec:
                   experiments:
                     - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=payment' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: ANTI_AFFINITY_LABEL
@@ -4362,6 +4812,24 @@ spec:
                   experiments:
                     - name: hanging-kubernetes-workload-init-container
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=email' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4395,6 +4863,24 @@ spec:
                   experiments:
                     - name: insufficient-kubernetes-workload-container-resources
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=postgresql' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -4430,6 +4916,24 @@ spec:
                   experiments:
                     - name: kubernetes-api-server-request-surge
                       spec:
+                        probe:
+                          - name: "rogue-resource-removed"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l litmuschaos.io/fault=kubernetes-api-server-request-surge -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: REQUESTS_PER_SECOND
@@ -4465,6 +4969,24 @@ spec:
                   experiments:
                     - name: insufficient-kubernetes-resource-quota
                       spec:
+                        probe:
+                          - name: "resource-quota-cleared"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get resourcequota memory -n otel-demo -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4498,6 +5020,24 @@ spec:
                   experiments:
                     - name: opentelemetry-demo-feature-flag
                       spec:
+                        probe:
+                          - name: "feature-flag-reset"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get configmap flagd-config -n otel-demo -o go-template='{{index .data \"demo.flagd.json\"}}' 2>/dev/null | grep -o '\"defaultVariant\": *\"on\"' | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: FLAG_NAME
@@ -4535,6 +5075,24 @@ spec:
                   experiments:
                     - name: crashing-kubernetes-workload-init-container
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=recommendation' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4568,6 +5126,24 @@ spec:
                   experiments:
                     - name: insufficient-kubernetes-resource-quota
                       spec:
+                        probe:
+                          - name: "resource-quota-cleared"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get resourcequota memory -n otel-demo -o name 2>/dev/null | wc -l"
+                              comparator:
+                                type: "int"
+                                criteria: "=="
+                                value: "0"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
@@ -4601,6 +5177,24 @@ spec:
                   experiments:
                     - name: invalid-kubernetes-workload-container-command
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n otel-demo -l 'opentelemetry.io/name=product-catalog' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
@@ -4636,6 +5230,24 @@ spec:
                   experiments:
                     - name: deleted-kubernetes-service
                       spec:
+                        probe:
+                          - name: "service-endpoints-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get endpoints product-catalog -n otel-demo -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | xargs -n1 2>/dev/null | grep -c '[.]' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION

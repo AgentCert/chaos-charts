@@ -192,6 +192,62 @@ spec:
                   experiments:
                     - name: scaled-to-zero-kubernetes-workload
                       spec:
+                        # Recovery probe -- see litmus-go pkg/itbench/common's
+                        # HoldChaos/RunMidChaosHook (OPEN_WEIGHT_CERTIFICATION_HANDOFF.md
+                        # §120): scaled-to-zero-kubernetes-workload's own InjectFunc uses
+                        # PatchWorkloadField, which now calls HoldChaos in place of a bare
+                        # Sleep -- so this EOT probe is evaluated at the end of the hold,
+                        # BEFORE the experiment reverts spec.replicas back to its original
+                        # value. It is therefore judging the agent's own remediation, not
+                        # the experiment's self-revert (which happens after, and would
+                        # otherwise make this probe -- and the resiliency score -- pass
+                        # unconditionally regardless of what the agent did).
+                        #
+                        # spec.replicas (not status.availableReplicas) is checked because
+                        # it is the field ground_truth.yaml's remediation step names
+                        # directly ("Scale the Deployment/StatefulSet back to a healthy
+                        # replica count") and it is never blank/omitted once explicitly
+                        # set (status.availableReplicas is omitempty and absent at 0,
+                        # which a >= comparator can't parse). The probe pod inherits this
+                        # ChaosEngine's own chaosServiceAccount (litmus-admin, above) --
+                        # the same account the fault injection itself already needs `get`
+                        # on Deployments for, so no extra RBAC is required.
+                        probe:
+                          - name: "accounting-replicas-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              # 2>/dev/null: this cluster's flaky metrics.k8s.io/v1beta1
+                              # APIService makes every kubectl call emit "couldn't get
+                              # resource list" warnings to stderr; without the redirect
+                              # they land in the probe's failure `reason` field (verified
+                              # live -- the comparator still reads stdout correctly, but
+                              # the error message is unreadable noise).
+                              command: "kubectl get deployment accounting -n otel-demo -o jsonpath='{.spec.replicas}' 2>/dev/null"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                # bitnami/kubectl's versioned tags (e.g. "1.29") were pulled
+                                # behind Bitnami's paid tier in 2025, leaving only ":latest"
+                                # on the free registry -- confirmed live (ImagePullBackOff:
+                                # "docker.io/bitnami/kubectl:1.29: not found" on this
+                                # cluster). rancher/kubectl:v1.29.0 pulls fine but is a
+                                # shell-less distroless-style image (just /bin/kubectl, no
+                                # /bin/sh) -- also confirmed live -- which litmus-go's
+                                # cmdProbe source pod requires: it keeps the pod alive with
+                                # `/bin/sh -c "sleep 10000"` and execs the probe command via
+                                # `/bin/sh -c <command>` (pkg/probe/cmdprobe.go). alpine/k8s
+                                # ships both kubectl AND a real shell -- verified live
+                                # (`which kubectl` -> /usr/bin/kubectl, `which sh` -> /bin/sh).
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "15s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION

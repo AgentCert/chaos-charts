@@ -302,6 +302,24 @@ spec:
                   experiments:
                     - name: invalid-kubernetes-service-selector
                       spec:
+                        probe:
+                          - name: "service-endpoints-restored"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get endpoints details -n book-info -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | xargs -n1 2>/dev/null | grep -c '[.]' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: RANDOM_SUFFIX
@@ -341,6 +359,24 @@ spec:
                   experiments:
                     - name: nonexistent-kubernetes-workload-persistent-volume-claim
                       spec:
+                        probe:
+                          - name: "workload-ready"
+                            type: "cmdProbe"
+                            cmdProbe/inputs:
+                              command: "kubectl get deployment -n book-info -l 'app=reviews,version=v3' -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null | grep -Eo '^[0-9]+' || echo 0"
+                              comparator:
+                                type: "int"
+                                criteria: ">="
+                                value: "1"
+                              source:
+                                image: "alpine/k8s:1.29.2"
+                                imagePullPolicy: "IfNotPresent"
+                            mode: "EOT"
+                            runProperties:
+                              probeTimeout: "20s"
+                              interval: "5s"
+                              retry: 3
+                              stopOnFailure: false
                         components:
                           env:
                             - name: TARGET_CONTAINER
