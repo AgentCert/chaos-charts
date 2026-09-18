@@ -1,0 +1,554 @@
+# Fault Capability Catalog — authoritative, machine-readable classification of
+# every fault in this hub.
+#
+# WHY THIS EXISTS
+# A fault can be perfectly implemented and still fail the moment a user drops it
+# into an Argo workflow, because what it needs from its *target* is nowhere
+# declared. pod-io-stress against sock-shop/payment is the canonical case: the
+# fault enters the target container's mount namespace and writes files there, but
+# payment is a FROM-scratch image with readOnlyRootFilesystem: true — so the
+# injection dies with a bare "exit status 1" forty minutes into a run, and
+# agents/FAULT_APPLICATION_COMPATIBILITY.md still asserts every standard fault is
+# "injectable against Sock Shop, Bookinfo, and OpenTelemetry Demo alike".
+#
+# This catalog makes those requirements explicit so they can be checked before a
+# workflow runs instead of discovered during one.
+#
+# FIELD SEMANTICS
+#
+#   mechanism  — HOW the fault injects. This is the causal root: it determines
+#                every entry in targetRequirements. Read off the injector source,
+#                not inferred from the fault's name.
+#
+#     k8s-api           Pure Kubernetes API mutation via client-go. No helper pod,
+#                       no container access. Imposes NO target requirements.
+#     helper-cgroup     Helper pod enters the target's PID namespace only
+#                       (`nsutil -t PID -p`); the stressor binary resolves from the
+#                       helper's own image and the load is bounded by the target's
+#                       cgroup. No target requirements.
+#     helper-mount-ns   Helper pod additionally enters the target's MOUNT namespace
+#                       (`nsutil -t PID -p -m`). The filesystem view becomes the
+#                       target's, so the binary must exist INSIDE the target and
+#                       its writes must land on a writable mount.
+#     helper-netns      Helper pod enters the target's network namespace only
+#                       (`nsenter --net=NS`); tc/iptables resolve from the helper
+#                       image. No target requirements.
+#     exec-in-target    `kubectl exec` of `/bin/sh -c <cmd>` inside the target.
+#                       Requires a shell AND whatever the command invokes.
+#     host-proc-write   Helper writes into the target's rootfs from the host via
+#                       /proc/<pid>/root/... Requires that path to be writable.
+#     helper-node       Helper pod runs on the NODE with host namespaces; affects
+#                       the node, not one container.
+#     node-ssh          Acts on the node over SSH / a node-level service manager.
+#
+#   scope        — blast radius: container | pod | namespace | node | cluster
+#   concurrency  — parallel-safe    effect confined to the target's own cgroup/netns
+#                  exclusive-node   safe only if no other fault shares the node
+#                  serial-only      unbounded or shared-resource effect
+#                  exclusive-cluster must run alone
+#
+#   targetRequirements — preconditions that must hold of the resolved target.
+#     writableFilesystem  the fault writes inside the target's filesystem
+#     shell               the fault needs /bin/sh in the target image
+#     binaryInTarget      binaries that must be present in the target image
+#     ephemeralStorageLimit  target must set resources.limits.ephemeral-storage
+#     workloadKinds       Kubernetes kinds the fault can act on
+#
+#   singleNodeDanger — true when running this on a SINGLE-NODE cluster takes the
+#     whole cluster down, including every unrelated workload on it. Critical on
+#     the k3s dev box, which is single-node and carries non-ACE namespaces.
+#
+#   verified — how the classification was established:
+#     code  read from the injector implementation in litmus-go
+#     doc   taken from agents/FAULT_APPLICATION_COMPATIBILITY.md
+#
+# CONSUMERS
+#   scripts/validate-fault-capabilities.py  — CI conformance check
+#   (planned) a server-side validator on the Save/Run path, and the Chaos Studio
+#   fault picker, so an incompatible fault/target pair is refused at build time.
+
+apiVersion: agentcert.io/v1alpha1
+kind: FaultCapabilityCatalog
+metadata:
+  name: ace-fault-capabilities
+  # 31 kubernetes + 29 itbench (23 generic + 6 application-specific)
+  faultCount: 60
+
+spec:
+  # Vocabularies the validator enforces. A fault using a value not listed here is
+  # a hard error — that is what stops a typo from silently disabling a check.
+  vocabularies:
+    mechanism: [k8s-api, helper-cgroup, helper-mount-ns, helper-netns, exec-in-target,
+                host-proc-write, helper-node, node-ssh]
+    scope: [container, pod, namespace, node, cluster]
+    concurrency: [parallel-safe, exclusive-node, serial-only, exclusive-cluster]
+    category: [kubernetes, itbench]
+    classification: [generic, application-specific]
+
+  faults:
+
+    # ========================================================================
+    # KUBERNETES — pure API mutations. No target requirements at all.
+    # ========================================================================
+
+    pod-delete:
+      category: kubernetes
+      classification: generic
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [deployment, statefulset, daemonset, deploymentconfig, rollout]
+      verified: code
+
+    pod-autoscaler:
+      category: kubernetes
+      classification: generic
+      mechanism: k8s-api
+      scope: namespace
+      # Scales replicas up; competes for node capacity with anything else running.
+      concurrency: exclusive-node
+      targetRequirements:
+        workloadKinds: [deployment, statefulset]
+      requiredEnv:
+        - name: REPLICA_COUNT
+          default: "5"
+          mustBePositiveInteger: true
+          # REPLICA_COUNT=0 scaled the target to zero — a full outage rather than
+          # the intended scale-up — and the readiness check then passed at 0 == 0,
+          # reporting success. Guarded in PreparePodAutoscaler.
+      verified: code
+
+    pod-network-partition:
+      category: kubernetes
+      classification: generic
+      mechanism: k8s-api          # creates a NetworkPolicy; no container access
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [deployment, statefulset]
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — helper-cgroup. Stressor runs from the helper image, bounded by
+    # the target's cgroup. Works against ANY image, including scratch/distroless.
+    # ========================================================================
+
+    pod-cpu-hog:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-cgroup
+      scope: container
+      concurrency: parallel-safe
+      targetRequirements: {}
+      requiredEnv:
+        - name: CPU_CORES
+          default: "1"
+          unsetSentinel: "0"
+        - name: CPU_LOAD
+          default: "100"
+      verified: code
+
+    pod-memory-hog:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-cgroup
+      scope: container
+      concurrency: parallel-safe
+      targetRequirements: {}
+      requiredEnv:
+        - name: MEMORY_CONSUMPTION
+          default: "500"
+        - name: NUMBER_OF_WORKERS
+          default: "4"
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — helper-mount-ns. THE precondition-bearing mechanism.
+    # ========================================================================
+
+    pod-io-stress:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-mount-ns
+      scope: container
+      # Writes a percentage of node free space; can cross the kubelet's eviction
+      # floor and evict unrelated pods, so it must not share a node.
+      concurrency: exclusive-node
+      targetRequirements:
+        writableFilesystem: true
+        writablePathEnv: VOLUME_MOUNT_PATH
+        binaryInTarget: [stress-ng]
+      incompatibleWith:
+        - reason: >-
+            Enters the target's mount namespace, so stress-ng must exist inside the
+            target image and its --hdd workers must be able to create files there.
+            Fails on readOnlyRootFilesystem targets and on scratch/distroless images.
+          knownFailingTargets:
+            - sock-shop/payment
+            - sock-shop/carts
+            - sock-shop/catalogue
+            - sock-shop/orders
+            - sock-shop/shipping
+            - sock-shop/user
+            - sock-shop/front-end
+            - sock-shop/rabbitmq
+            - sock-shop/carts-db
+            - sock-shop/orders-db
+            - sock-shop/user-db
+          knownWorkingTargets:
+            - sock-shop/catalogue-db
+            - sock-shop/queue-master
+      requiredEnv:
+        # The helper normalizes "" and "0" alike to unset, so the chart's documented
+        # "leave empty to deselect" instruction reaches the intended default branch.
+        - name: FILESYSTEM_UTILIZATION_PERCENTAGE
+          default: "10"
+          unsetSentinel: ""
+          exclusiveWith: [FILESYSTEM_UTILIZATION_BYTES]
+        - name: FILESYSTEM_UTILIZATION_BYTES
+          default: "0"
+          unsetSentinel: ""
+          exclusiveWith: [FILESYSTEM_UTILIZATION_PERCENTAGE]
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — exec-in-target. Needs a shell and coreutils in the target.
+    # ========================================================================
+
+    pod-cpu-hog-exec:
+      category: kubernetes
+      classification: generic
+      mechanism: exec-in-target
+      scope: container
+      concurrency: parallel-safe
+      targetRequirements:
+        shell: true
+        binaryInTarget: [md5sum]     # default CHAOS_INJECT_COMMAND is "md5sum /dev/zero"
+      incompatibleWith:
+        - reason: >-
+            Runs `/bin/sh -c "md5sum /dev/zero"` inside the target via kubectl exec.
+            A scratch or distroless image has neither a shell nor coreutils.
+          knownFailingTargets: [sock-shop/payment]
+      verified: code
+
+    pod-memory-hog-exec:
+      category: kubernetes
+      classification: generic
+      mechanism: exec-in-target
+      scope: container
+      concurrency: parallel-safe
+      targetRequirements:
+        shell: true
+        binaryInTarget: [dd]
+      incompatibleWith:
+        - reason: Same shell dependency as pod-cpu-hog-exec.
+          knownFailingTargets: [sock-shop/payment]
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — host-proc-write.
+    # ========================================================================
+
+    disk-fill:
+      category: kubernetes
+      classification: generic
+      mechanism: host-proc-write
+      scope: node
+      # innovation.md §3.21: when the target sets no ephemeral-storage limit the
+      # fill size falls through unbounded onto the node's real shared disk.
+      concurrency: serial-only
+      targetRequirements:
+        writableFilesystem: true
+        writablePath: /home        # dd writes /proc/<pid>/root/home/diskfill
+        ephemeralStorageLimit: recommended
+      requiredEnv:
+        # Empty is a valid value here -- it means "use FILL_PERCENTAGE against the
+        # container's ephemeral-storage limit". The helper only demands a positive
+        # integer when the target declares no such limit, and errors out if it is absent.
+        - name: EPHEMERAL_STORAGE_MEBIBYTES
+          default: "0"
+          unsetSentinel: ""
+          requiredWhen: target sets no resources.limits.ephemeral-storage
+        - name: FILL_PERCENTAGE
+          mustBeIntegerInRange: [1, 100]
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — helper-netns. tc/iptables from the helper image; pod-scoped.
+    # ========================================================================
+    # All five netem faults share one mechanism and one requirement set (none).
+
+    pod-network-loss:        &netem
+      category: kubernetes
+      classification: generic
+      mechanism: helper-netns
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements: {}
+      verified: code
+    pod-network-latency:      *netem
+    pod-network-corruption:   *netem
+    pod-network-duplication:  *netem
+    pod-network-rate-limit:   *netem
+
+    # ========================================================================
+    # KUBERNETES — DNS. dns_interceptor from the helper image, in the target netns.
+    # ========================================================================
+
+    pod-dns-error:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-netns
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements: {}
+      verified: code
+
+    pod-dns-spoof:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-netns
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements: {}
+      requiredEnv:
+        - name: SPOOF_MAP
+          required: true
+          # Unset, dns_interceptor exits 1 with a parse error the operator never
+          # saw before the helper's output buffer was threaded into the error.
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — L7 HTTP via a proxy in the target's netns.
+    # ========================================================================
+
+    pod-http-latency:         &httpchaos
+      category: kubernetes
+      classification: generic
+      mechanism: helper-netns
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        servesHTTP: true
+      verified: code
+    pod-http-status-code:     *httpchaos
+    pod-http-modify-body:     *httpchaos
+    pod-http-modify-header:   *httpchaos
+    pod-http-reset-peer:      *httpchaos
+
+    container-kill:
+      category: kubernetes
+      classification: generic
+      mechanism: helper-cgroup     # uses the runtime socket to kill the container
+      scope: container
+      concurrency: parallel-safe
+      targetRequirements: {}
+      verified: code
+
+    # ========================================================================
+    # KUBERNETES — node-level. Every one of these is single-node-fatal.
+    # ========================================================================
+
+    node-cpu-hog:            &nodestress
+      category: kubernetes
+      classification: generic
+      mechanism: helper-node
+      scope: node
+      concurrency: exclusive-node
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: code
+    node-memory-hog:          *nodestress
+    node-io-stress:           *nodestress
+
+    node-drain:              &nodedisrupt
+      category: kubernetes
+      classification: generic
+      mechanism: k8s-api
+      scope: node
+      concurrency: exclusive-cluster
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: code
+    node-taint:               *nodedisrupt
+
+    node-restart:            &nodehard
+      category: kubernetes
+      classification: generic
+      mechanism: node-ssh
+      scope: cluster
+      concurrency: exclusive-cluster
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: code
+    node-poweroff:            *nodehard
+    kubelet-service-kill:     *nodehard
+    docker-service-kill:      *nodehard
+
+    # ========================================================================
+    # ITBENCH / ITOps — 29 faults, all pure Kubernetes-API mutations.
+    # 23 generic (any of the three target apps) + 6 application-specific.
+    # ========================================================================
+
+    # --- 23 GENERIC -------------------------------------------------------
+
+    modified-kubernetes-workload-container-environment-variable: &itb_workload
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [deployment, statefulset]
+      verified: doc
+    nonexistent-kubernetes-workload-container-image:              *itb_workload
+    invalid-kubernetes-workload-container-command:                *itb_workload
+    unsupported-architecture-kubernetes-workload-container-image: *itb_workload
+    misconfigured-kubernetes-workload-container-readiness-probe:  *itb_workload
+    insufficient-kubernetes-workload-container-resources:         *itb_workload
+    unassigned-kubernetes-workload-container-resource-limits:     *itb_workload
+    crashing-kubernetes-workload-init-container:                  *itb_workload
+    hanging-kubernetes-workload-init-container:                   *itb_workload
+    failing-name-resolution-kubernetes-workload-dns-policy:       *itb_workload
+    scaled-to-zero-kubernetes-workload:                           *itb_workload
+    nonexistent-kubernetes-workload-node:                         *itb_workload
+    unschedulable-kubernetes-workload-pod-anti-affinity-rule:     *itb_workload
+    nonexistent-kubernetes-workload-persistent-volume-claim:      *itb_workload
+    misconfigured-kubernetes-horizontal-pod-autoscaler:           *itb_workload
+
+    modified-target-port-kubernetes-service: &itb_service
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: namespace
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [service]
+      verified: doc
+    invalid-kubernetes-service-selector: *itb_service
+    deleted-kubernetes-service:          *itb_service
+
+    ingress-port-blocking-network-policy:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: namespace
+      concurrency: parallel-safe
+      targetRequirements: {}
+      verified: doc
+
+    insufficient-kubernetes-resource-quota:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: namespace
+      # A namespace-wide ResourceQuota blocks every other workload's scheduling in
+      # that namespace, including any concurrent fault's target.
+      concurrency: serial-only
+      targetRequirements: {}
+      verified: doc
+
+    cordoned-kubernetes-worker-node:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: node
+      concurrency: exclusive-node
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: doc
+
+    priority-kubernetes-workload-priority-preemption:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: node
+      # Schedules a resource-heavy decoy sized to consume most of the node in order
+      # to force preemption — it will evict unrelated pods too.
+      concurrency: exclusive-node
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: doc
+
+    kubernetes-api-server-request-surge:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: cluster
+      # Degrades apiserver latency cluster-wide; not confined to the namespace.
+      concurrency: exclusive-cluster
+      targetRequirements: {}
+      singleNodeDanger: true
+      verified: doc
+
+    # --- 6 APPLICATION-SPECIFIC (otel-demo only) --------------------------
+    # These name a specific otel-demo microservice or feature in their engine.yaml
+    # defaults and/or ground_truth.yaml, and cannot be retargeted at Sock Shop or
+    # Bookinfo without rewriting the fault itself.
+
+    chaos-mesh-http-abort-replacement:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+      verified: doc
+
+    chaos-mesh-http-body-tamper-replacement:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+        requiredServices: [email]
+      verified: doc
+
+    chaos-mesh-pod-failure-replacement:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+      # Uses an ephemeral debug container because the target image is distroless
+      # with no shell — a mechanism note recorded in the compatibility doc.
+      verified: doc
+
+    opentelemetry-demo-feature-flag:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: namespace
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+        requiredServices: [flagd]
+      verified: doc
+
+    valkey-workload-changed-password:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+        requiredServices: [valkey-cart]
+      verified: doc
+
+    valkey-workload-out-of-memory:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        requiredApp: otel-demo
+        requiredServices: [valkey-cart]
+      verified: doc
