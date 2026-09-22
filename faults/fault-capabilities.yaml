@@ -64,8 +64,11 @@
 #
 # CONSUMERS
 #   scripts/validate-fault-capabilities.py  — CI conformance check
-#   (planned) a server-side validator on the Save/Run path, and the Chaos Studio
-#   fault picker, so an incompatible fault/target pair is refused at build time.
+#   graphql/server/pkg/faultcatalog          — serves spec.applications and the
+#     derived per-fault compatible-app set over GraphQL (listFaultCompatibility),
+#     and backs the server-side validator on the experiment Save/Run path.
+#   chaoscenter/web Chaos Studio             — gates the builder so a fault can
+#     only be added against an application it is actually compatible with.
 
 apiVersion: agentcert.io/v1alpha1
 kind: FaultCapabilityCatalog
@@ -75,6 +78,18 @@ metadata:
   faultCount: 60
 
 spec:
+  # NOTE: the target-application registry is NOT here. Applications are onboarded
+  # in app-charts/charts/applications.chartserviceversion.yaml and read from the
+  # AppsHub at runtime, so adding an application never requires touching this
+  # file. A fault's compatible-app set is DERIVED against that registry:
+  #
+  #   classification: generic              => every application in the AppsHub
+  #   classification: application-specific => only targetRequirements.requiredApp
+  #
+  # so a newly onboarded application is immediately usable with every generic
+  # fault, and a fault absent from this catalog altogether is treated as generic
+  # rather than as unusable.
+
   # Vocabularies the validator enforces. A fault using a value not listed here is
   # a hard error — that is what stops a typo from silently disabling a check.
   vocabularies:
