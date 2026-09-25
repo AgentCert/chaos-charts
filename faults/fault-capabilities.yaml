@@ -422,7 +422,39 @@ spec:
     unsupported-architecture-kubernetes-workload-container-image: *itb_workload
     misconfigured-kubernetes-workload-container-readiness-probe:  *itb_workload
     insufficient-kubernetes-workload-container-resources:         *itb_workload
-    unassigned-kubernetes-workload-container-resource-limits:     *itb_workload
+
+    # Not an *itb_workload: its injection IS the removal of
+    # spec.template.spec.containers[i].resources.limits, and RemoveContainerField
+    # errors when the field is already absent (removing nothing would otherwise
+    # report a Pass for a run that never mutated anything). So it only applies to
+    # containers that actually declare limits -- verified live, not from charts.
+    unassigned-kubernetes-workload-container-resource-limits:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [deployment, statefulset]
+      incompatibleWith:
+        - reason: >-
+            Container declares no resources.limits, so there is nothing to remove.
+          knownFailingTargets:
+            - sock-shop/catalogue
+            - sock-shop/catalogue-db
+            - sock-shop/front-end
+            - sock-shop/orders-db
+            - sock-shop/payment
+            - sock-shop/rabbitmq
+            - sock-shop/user
+            - sock-shop/user-db
+            - bookinfo/details
+            - bookinfo/ratings
+            - bookinfo/reviews-v1
+            - bookinfo/reviews-v2
+            - bookinfo/reviews-v3
+            - bookinfo/productpage
+      verified: code
     crashing-kubernetes-workload-init-container:                  *itb_workload
     hanging-kubernetes-workload-init-container:                   *itb_workload
     failing-name-resolution-kubernetes-workload-dns-policy:       *itb_workload
@@ -430,7 +462,21 @@ spec:
     nonexistent-kubernetes-workload-node:                         *itb_workload
     unschedulable-kubernetes-workload-pod-anti-affinity-rule:     *itb_workload
     nonexistent-kubernetes-workload-persistent-volume-claim:      *itb_workload
-    misconfigured-kubernetes-horizontal-pod-autoscaler:           *itb_workload
+
+    # Not an *itb_workload: this one patches the utilization targets of an
+    # EXISTING HorizontalPodAutoscaler rather than mutating a workload's pod
+    # spec, so declaring deployment/statefulset made the builder offer it
+    # against targets it can never act on. No application chart currently ships
+    # an HPA, so it is correctly unselectable until one does.
+    misconfigured-kubernetes-horizontal-pod-autoscaler:
+      category: itbench
+      classification: generic
+      mechanism: k8s-api
+      scope: namespace
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [horizontalpodautoscaler]
+      verified: doc
 
     modified-target-port-kubernetes-service: &itb_service
       category: itbench
