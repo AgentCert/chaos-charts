@@ -57,7 +57,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-memory-hog

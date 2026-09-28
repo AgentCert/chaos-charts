@@ -39,7 +39,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -228,7 +228,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -431,7 +431,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -572,7 +572,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -676,7 +676,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -798,7 +798,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -913,7 +913,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1025,7 +1025,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1145,7 +1145,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1268,7 +1268,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1411,7 +1411,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1524,7 +1524,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1625,7 +1625,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -1817,7 +1817,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2040,7 +2040,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2151,7 +2151,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2265,7 +2265,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2394,7 +2394,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2490,7 +2490,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2588,7 +2588,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2693,7 +2693,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -2807,7 +2807,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3002,7 +3002,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3144,7 +3144,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3236,7 +3236,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3344,7 +3344,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3467,7 +3467,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3600,7 +3600,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:
@@ -3787,7 +3787,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos/k8s:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /bin/sh
     args:

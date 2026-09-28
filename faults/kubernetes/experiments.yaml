@@ -70,7 +70,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name container-kill
@@ -205,7 +205,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name disk-fill
@@ -331,7 +331,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name docker-service-kill
@@ -448,7 +448,7 @@ spec:
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-agent:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /usr/local/bin/install-agent
     args:
@@ -578,7 +578,7 @@ spec:
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-app:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /usr/local/bin/install-app
     args:
@@ -663,7 +663,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name kubelet-service-kill
@@ -758,7 +758,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-cpu-hog
@@ -875,7 +875,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list", "patch"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-drain
@@ -964,7 +964,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-io-stress
@@ -1089,7 +1089,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-memory-hog
@@ -1205,7 +1205,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-restart
@@ -1309,7 +1309,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-restart
@@ -1419,7 +1419,7 @@ spec:
         resources: ["nodes"]
         verbs: ["get", "list", "patch", "update"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name node-taint
@@ -1513,7 +1513,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-autoscaler
@@ -1612,7 +1612,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-cpu-hog
@@ -1752,7 +1752,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-cpu-hog-exec
@@ -1870,7 +1870,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-delete
@@ -2246,7 +2246,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-http-latency
@@ -2396,7 +2396,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-http-modify-body
@@ -2557,7 +2557,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-http-modify-header
@@ -2713,7 +2713,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-http-reset-peer
@@ -2863,7 +2863,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-http-status-code
@@ -3034,7 +3034,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-io-stress
@@ -3180,7 +3180,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-memory-hog
@@ -3319,7 +3319,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-memory-hog-exec
@@ -3437,7 +3437,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-corruption
@@ -3585,7 +3585,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-duplication
@@ -3731,7 +3731,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-latency
@@ -3882,7 +3882,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-loss
@@ -4018,7 +4018,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-partition
@@ -4140,7 +4140,7 @@ spec:
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     args:
       - -c
       - ./experiments -name pod-network-rate-limit

@@ -79,7 +79,7 @@ spec:
         resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["create", "get", "list", "delete"]
     image: "docker.io/agentcert/agentcert-install-app:latest"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command:
       - /usr/local/bin/install-app
     args:

@@ -73,7 +73,7 @@ spec:
     - name: install-application
       container:
         image: agentcert/agentcert-install-app:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         args:
           - "-folder=otel-demo"
           - "-namespace=otel-demo"
@@ -84,7 +84,7 @@ spec:
     - name: install-agent
       container:
         image: agentcert/agentcert-install-agent:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         args:
           - "-folder={{workflow.parameters.agentFolder}}"
           - "-namespace={{workflow.parameters.appNamespace}}"
@@ -139,7 +139,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos/k8s:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     command:
                       - /bin/sh
                     args:
@@ -206,7 +206,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos/k8s:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     command:
                       - /bin/sh
                     args:
@@ -281,7 +281,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos/k8s:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     command:
                       - /bin/sh
                     args:
@@ -331,7 +331,7 @@ spec:
                       app.kubernetes.io/version: ci
       container:
         image: litmuschaos/k8s:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command: [sh, -c]
         args:
           - |

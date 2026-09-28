@@ -78,7 +78,7 @@ spec:
       - -wait
       - -timeout={{workflow.parameters.installTimeout}}
       resources: {}
-      imagePullPolicy: Always
+      imagePullPolicy: IfNotPresent
   - name: normalize-install-application-readiness
     inputs: {}
     outputs: {}
@@ -179,9 +179,9 @@ spec:
       - --set
       - sidecar.image.tag=latest
       - --set
-      - sidecar.image.pullPolicy=Always
+      - sidecar.image.pullPolicy=IfNotPresent
       resources: {}
-      imagePullPolicy: Always
+      imagePullPolicy: IfNotPresent
   - name: install-chaos-experiments
     inputs:
       artifacts:
@@ -203,7 +203,7 @@ spec:
             ]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"networking.k8s.io\"]\n        resources: [\"networkpolicies\"\
             ]\n        verbs: [\"create\", \"get\", \"list\", \"delete\"]\n      - apiGroups: [\"litmuschaos.io\"]\n     \
             \   resources: [\"chaosengines\", \"chaosexperiments\", \"chaosresults\"]\n        verbs: [\"create\", \"list\"\
-            , \"get\", \"patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n\
+            , \"get\", \"patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: IfNotPresent\n\
             \    command:\n      - /bin/sh\n    args:\n      - -c\n      - |\n        set -eu\n        # The chaos-operator\
             \ on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND\n        # as env var names but never populates their\
             \ values from\n        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine\n        # submission\
@@ -286,7 +286,7 @@ spec:
             \ [\"services\"]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"apps\"]\n        resources: [\"deployments\"\
             , \"statefulsets\"]\n        verbs: [\"get\", \"list\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources:\
             \ [\"chaosengines\", \"chaosexperiments\", \"chaosresults\"]\n        verbs: [\"create\", \"list\", \"get\", \"\
-            patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n    command:\n\
+            patch\", \"update\", \"delete\"]\n    image: \"litmuschaos/k8s:latest\"\n    imagePullPolicy: IfNotPresent\n    command:\n\
             \      - /bin/sh\n    args:\n      - -c\n      - |\n        set -eu\n        # The chaos-operator on this cluster\
             \ declares APP_NAMESPACE/APP_LABEL/APP_KIND\n        # as env var names but never populates their values from\n\
             \        # ChaosEngine.spec.appinfo -- verified empirically (a real ChaosEngine\n        # submission mistargeted\
@@ -383,7 +383,7 @@ spec:
             \      - apiGroups: [\"\"]\n        resources: [\"events\"]\n        verbs: [\"create\", \"get\", \"list\", \"\
             patch\", \"update\"]\n      - apiGroups: [\"litmuschaos.io\"]\n        resources: [\"chaosengines\", \"chaosexperiments\"\
             , \"chaosresults\"]\n        verbs: [\"create\", \"list\", \"get\", \"patch\", \"update\", \"delete\"]\n    image:\
-            \ \"litmuschaos/k8s:latest\"\n    imagePullPolicy: Always\n    command:\n      - /bin/sh\n    args:\n      - -c\n\
+            \ \"litmuschaos/k8s:latest\"\n    imagePullPolicy: IfNotPresent\n    command:\n      - /bin/sh\n    args:\n      - -c\n\
             \      - |\n        set -eu\n        # The chaos-operator on this cluster declares APP_NAMESPACE/APP_LABEL/APP_KIND\n\
             \        # as env var names but never populates their values from\n        # ChaosEngine.spec.appinfo -- verified\
             \ empirically (a real ChaosEngine\n        # submission mistargeted an unrelated deployment because both vars\
@@ -605,9 +605,9 @@ spec:
       - --set
       - sidecar.image.tag=latest
       - --set
-      - sidecar.image.pullPolicy=Always
+      - sidecar.image.pullPolicy=IfNotPresent
       resources: {}
-      imagePullPolicy: Always
+      imagePullPolicy: IfNotPresent
   - name: dynamic-pre-cleanup-wait
     inputs: {}
     outputs: {}

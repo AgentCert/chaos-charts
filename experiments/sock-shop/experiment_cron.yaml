@@ -129,7 +129,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     args:
                       - -c
                       - ./experiments -name pod-cpu-hog
@@ -270,7 +270,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     args:
                       - -c
                       - ./experiments -name pod-delete
@@ -391,7 +391,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     args:
                       - -c
                       - ./experiments -name pod-network-loss
@@ -540,7 +540,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     args:
                       - -c
                       - ./experiments -name pod-memory-hog
@@ -680,7 +680,7 @@ spec:
                         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
                         verbs: ["create", "list", "get", "patch", "update", "delete"]
                     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:latest"
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     args:
                       - -c
                       - ./experiments -name disk-fill
@@ -920,7 +920,7 @@ spec:
                   jobCleanUpPolicy: 'retain'
                   components:
                     runner:
-                      imagePullPolicy: Always
+                      imagePullPolicy: IfNotPresent
                   experiments:
                     - name: pod-delete
                       spec:
@@ -994,7 +994,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   components:
                     runner:
-                      imagePullPolicy: Always
+                      imagePullPolicy: IfNotPresent
                   experiments:
                     - name: pod-network-loss
                       spec:
@@ -1070,7 +1070,7 @@ spec:
                   jobCleanUpPolicy: 'retain'
                   components:
                     runner:
-                      imagePullPolicy: Always
+                      imagePullPolicy: IfNotPresent
                   experiments:
                     - name: disk-fill
                       spec:

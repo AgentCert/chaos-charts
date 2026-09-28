@@ -98,7 +98,7 @@ spec:
                         - name: BENCHMARK_DURATION
                           value: "300"
                       image: devth/alpine-bench
-                      imagePullPolicy: Always
+                      imagePullPolicy: IfNotPresent
                       name: nginx-bench
       container:
         image: alpine/k8s:1.18.2
