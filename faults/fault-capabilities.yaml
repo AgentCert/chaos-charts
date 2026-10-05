@@ -244,7 +244,7 @@ spec:
         - reason: >-
             Runs `/bin/sh -c "md5sum /dev/zero"` inside the target via kubectl exec.
             A scratch or distroless image has neither a shell nor coreutils.
-          knownFailingTargets: [sock-shop/payment]
+          knownFailingTargets: [sock-shop/payment, otel-demo/checkout, otel-demo/product-catalog, otel-demo/shipping, otel-demo/payment, otel-demo/frontend, otel-demo/fraud-detection, otel-demo/flagd]
       verified: code
 
     pod-memory-hog-exec:
@@ -258,7 +258,7 @@ spec:
         binaryInTarget: [dd]
       incompatibleWith:
         - reason: Same shell dependency as pod-cpu-hog-exec.
-          knownFailingTargets: [sock-shop/payment]
+          knownFailingTargets: [sock-shop/payment, otel-demo/checkout, otel-demo/product-catalog, otel-demo/shipping, otel-demo/payment, otel-demo/frontend, otel-demo/fraud-detection, otel-demo/flagd]
       verified: code
 
     # ========================================================================
@@ -408,7 +408,22 @@ spec:
 
     # --- 23 GENERIC -------------------------------------------------------
 
-    modified-kubernetes-workload-container-environment-variable: &itb_workload
+    # Its defaults (ENV_VAR_NAME=QUOTE_ADDR, BAD_ENV_VALUE=quote:0000) name a
+    # variable only otel-demo's shipping service reads. On any other target the
+    # variable is appended unused and the fault reduces to a pod restart.
+    modified-kubernetes-workload-container-environment-variable:
+      category: itbench
+      classification: application-specific
+      mechanism: k8s-api
+      scope: pod
+      concurrency: parallel-safe
+      targetRequirements:
+        workloadKinds: [deployment, statefulset]
+        requiredApp: otel-demo
+        requiredServices: [shipping]
+      verified: code
+
+    nonexistent-kubernetes-workload-container-image: &itb_workload
       category: itbench
       classification: generic
       mechanism: k8s-api
@@ -417,7 +432,6 @@ spec:
       targetRequirements:
         workloadKinds: [deployment, statefulset]
       verified: doc
-    nonexistent-kubernetes-workload-container-image:              *itb_workload
     invalid-kubernetes-workload-container-command:                *itb_workload
     unsupported-architecture-kubernetes-workload-container-image: *itb_workload
     misconfigured-kubernetes-workload-container-readiness-probe:  *itb_workload
@@ -556,7 +570,13 @@ spec:
       concurrency: parallel-safe
       targetRequirements:
         requiredApp: otel-demo
-      verified: doc
+      incompatibleWith:
+        - reason: >-
+            Blocks TARGET_PORT (default 8080) with a NetworkPolicy without checking
+            the pod listens on it; these services serve on other ports, so the
+            fault blocks nothing.
+          knownFailingTargets: [otel-demo/flagd, otel-demo/kafka, otel-demo/valkey-cart, otel-demo/image-provider, otel-demo/load-generator]
+      verified: code
 
     chaos-mesh-http-body-tamper-replacement:
       category: itbench
@@ -577,6 +597,9 @@ spec:
       concurrency: parallel-safe
       targetRequirements:
         requiredApp: otel-demo
+        # engine.yaml pins TARGET_CONTAINER=checkout; the ephemeral container
+        # is rejected on any pod without a container of that name.
+        requiredServices: [checkout]
       # Uses an ephemeral debug container because the target image is distroless
       # with no shell — a mechanism note recorded in the compatibility doc.
       verified: doc
