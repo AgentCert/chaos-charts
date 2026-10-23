@@ -13,10 +13,6 @@ metadata:
       "cordoned-kubernetes-worker-node".
 spec:
   configurations:
-  - key: APP_KIND
-    label: App kind
-    type: string
-    group: Injection
   - key: TOTAL_CHAOS_DURATION
     label: Duration (seconds)
     type: integer

@@ -437,8 +437,6 @@ spec:
                               value: '600'
                             - name: RAMP_TIME
                               value: '30'
-                            - name: CHAOS_KILL_COMMAND
-                              value: "kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')"
       container:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
@@ -558,8 +556,6 @@ spec:
                               value: '600'
                             - name: RAMP_TIME
                               value: '30'
-                            - name: CHAOS_KILL_COMMAND
-                              value: "kill -9 $(ps afx | grep \"[dd] if /dev/zero\" | awk '{print $1}' | tr '\n' ' ')"
       container:
         image: litmuschaos/litmus-checker:latest
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]

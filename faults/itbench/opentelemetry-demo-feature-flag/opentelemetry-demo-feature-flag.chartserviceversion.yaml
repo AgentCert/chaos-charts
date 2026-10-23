@@ -19,18 +19,21 @@ spec:
     group: Injection
   - key: FLAG_STATE
     label: Flag state
-    type: select
-    options:
-    - 'on'
-    - 'off'
+    type: string
+    pattern: '^[A-Za-z0-9%._-]+$'
+    required: true
     group: Injection
+    description: >-
+      Variant written to the flag's defaultVariant; it must be one of that
+      flag's variants in demo.flagd.json (e.g. on, or 50% for paymentFailure).
   - key: FLAG_REVERT_STATE
     label: Flag revert state
-    type: select
-    options:
-    - 'on'
-    - 'off'
+    type: string
+    pattern: '^[A-Za-z0-9%._-]*$'
     group: Injection
+    description: >-
+      Used only if the flag had no defaultVariant before injection; otherwise
+      the captured original variant is restored.
   - key: TOTAL_CHAOS_DURATION
     label: Duration (seconds)
     type: integer

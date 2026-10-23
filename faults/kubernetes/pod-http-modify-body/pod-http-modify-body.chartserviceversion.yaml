@@ -71,11 +71,13 @@ spec:
     advanced: true
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: TARGET_PODS
     label: Target pods
     type: string
@@ -100,7 +102,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Pod HTTP Modify Body
   categoryDescription: >
     Pod-http-modify-body fault disrupts HTTP requests of kubernetes pods. This fault can modify the body of the response from the service targetted.

@@ -15,7 +15,7 @@ spec:
   - key: STATUS_CODE
     label: Status code
     type: string
-    pattern: ^((200|201|202|204|300|301|302|304|307|400|401|403|404|500|501|502|503|504)(,(200|201|202|204|300|301|302|304|307|400|401|403|404|500|501|502|503|504))*)?$
+    pattern: '^((200|201|202|204|300|301|302|304|307|400|401|403|404|500|501|502|503|504)( *, *(200|201|202|204|300|301|302|304|307|400|401|403|404|500|501|502|503|504))*)?$'
     required: false
     group: Injection
     description: >-
@@ -85,11 +85,13 @@ spec:
     advanced: true
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: TARGET_PODS
     label: Target pods
     type: string
@@ -114,7 +116,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Pod HTTP Status Code
   categoryDescription: >
     pod-http-status-code fault disrupts HTTP requests of kubernetes pods. This fault can modify the status code of the response on the service targetted.

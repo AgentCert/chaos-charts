@@ -8,12 +8,13 @@ metadata:
     categories: Kubernetes
 spec:
   configurations:
-  # SSH_USER and REBOOT_COMMAND are deliberately NOT offered here. The runner
-  # interpolates both, unquoted, into `sh -c "... ssh -i <key> $SSH_USER@$IP
-  # $REBOOT_COMMAND"` (chaoslib/litmus/node-restart/lib/node-restart.go), which
-  # would turn an experiment edit into arbitrary root command execution on a
-  # cluster node. Omitting them pins both to their fault.yaml defaults, which
-  # ValidateEnvironment then enforces byte-for-byte.
+  # The runner interpolates SSH_USER, TARGET_NODE_IP and REBOOT_COMMAND,
+  # unquoted, into `sh -c "... ssh -i <key> $SSH_USER@$IP $REBOOT_COMMAND"`
+  # (chaoslib/litmus/node-restart/lib/node-restart.go). SSH_USER and
+  # TARGET_NODE_IP are offered only behind patterns that admit no whitespace or
+  # shell metacharacters. REBOOT_COMMAND is deliberately NOT offered: editing it
+  # would be arbitrary command execution on a cluster node, so it stays pinned
+  # to its fault.yaml default.
   - key: TOTAL_CHAOS_DURATION
     label: Duration (seconds)
     type: integer
@@ -39,7 +40,20 @@ spec:
   - key: TARGET_NODE_IP
     label: Target node ip
     type: string
+    pattern: '^[A-Za-z0-9.:-]*$'
     group: Target
+    description: >-
+      An IP address or hostname. Empty uses the target node's InternalIP.
+  - key: SSH_USER
+    label: SSH user
+    type: string
+    pattern: '^[a-z_][a-z0-9_-]{0,31}$'
+    required: true
+    group: Injection
+    description: >-
+      Login user for SSH to the node, e.g. azureuser on AKS or ec2-user on
+      EKS. The fixed reboot command runs through sudo, so a non-root user
+      needs passwordless sudo on the node.
   - key: DEFAULT_HEALTH_CHECK
     label: Default health check
     type: boolean

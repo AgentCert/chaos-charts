@@ -54,11 +54,13 @@ spec:
     description: Seconds.
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: NODE_LABEL
     label: Node label
     type: string
@@ -74,7 +76,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Container Kill
   categoryDescription: |
     Container kill fault disrupts state of kubernetes resources. This fault injects random container delete failures against specified application.

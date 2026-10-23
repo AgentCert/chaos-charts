@@ -18,23 +18,31 @@ spec:
     description: Seconds.
   - key: MEMORY_CONSUMPTION_PERCENTAGE
     label: Memory consumption percentage
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: MEMORY_CONSUMPTION_MEBIBYTES
     label: Memory consumption mebibytes
-    type: integer
-    min: 0
+    type: string
+    pattern: '^([0-9]+(-[0-9]+)?)?$'
     required: false
     group: Injection
+    description: >-
+      A whole number, or a range such as 256-512 (a random value in it is
+      used; lower bound first). Empty uses the runner default.
   - key: NUMBER_OF_WORKERS
     label: Number of workers
-    type: integer
-    min: 1
+    type: string
+    pattern: '^[1-9][0-9]*(-[1-9][0-9]*)?$'
     required: true
     group: Injection
+    description: >-
+      A whole number, or a range such as 1-4 (a random value in it is used;
+      lower bound first).
   - key: TARGET_NODES
     label: Target nodes
     type: string
@@ -57,18 +65,22 @@ spec:
     advanced: true
   - key: NODES_AFFECTED_PERC
     label: Nodes affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: SEQUENCE
     label: Sequence
     type: select
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Node Memory Hog
   categoryDescription: |
     Kubernetes Node memory hog fault disrupts the state of Kubernetes resources. This fault injects a memory spike on a node where the application pod is scheduled.

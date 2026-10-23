@@ -25,17 +25,22 @@ spec:
     description: Seconds. Empty uses the runner default.
   - key: NODE_CPU_CORE
     label: Node cpu core
-    type: integer
-    min: 0
+    type: string
+    pattern: '^([0-9]+(-[0-9]+)?)?$'
     required: false
     group: Injection
+    description: >-
+      A whole number, or a range such as 1-4 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: CPU_LOAD
     label: CPU load (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^(100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?$'
     required: true
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first).
   - key: TARGET_NODES
     label: Target nodes
     type: string
@@ -46,11 +51,13 @@ spec:
     group: Target
   - key: NODES_AFFECTED_PERC
     label: Nodes affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: DEFAULT_HEALTH_CHECK
     label: Default health check
     type: boolean
@@ -62,7 +69,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Node CPU Hog
   categoryDescription: |
     Node CPU hog fault disrupts the state of Kubernetes resources. This fault injects a CPU spike on a node where the application pod is scheduled.

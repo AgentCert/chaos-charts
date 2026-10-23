@@ -18,30 +18,40 @@ spec:
     description: Seconds.
   - key: FILESYSTEM_UTILIZATION_PERCENTAGE
     label: Filesystem utilization percentage
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^(100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?$'
     required: true
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first).
   - key: FILESYSTEM_UTILIZATION_BYTES
     label: Filesystem utilization bytes
-    type: integer
-    min: 0
+    type: string
+    pattern: '^([0-9]+(-[0-9]+)?)?$'
     required: false
     group: Injection
+    description: >-
+      A whole number, or a range such as 1-4 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: NUMBER_OF_WORKERS
     label: Number of workers
-    type: integer
-    min: 1
+    type: string
+    pattern: '^[1-9][0-9]*(-[1-9][0-9]*)?$'
     required: true
     group: Injection
+    description: >-
+      A whole number, or a range such as 1-4 (a random value in it is used;
+      lower bound first).
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: VOLUME_MOUNT_PATH
     label: Volume mount path
     type: string
@@ -86,7 +96,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Pod IO Stress
   categoryDescription: |
     This fault causes disk IO stress on the application pod. It aims to verify the resiliency of applications that share this disk resource for ephemeral or persistent storage purposes.

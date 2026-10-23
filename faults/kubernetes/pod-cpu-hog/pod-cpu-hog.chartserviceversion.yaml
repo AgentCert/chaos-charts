@@ -18,24 +18,31 @@ spec:
     description: Seconds.
   - key: CPU_CORES
     label: CPU cores
-    type: integer
-    min: 0
+    type: string
+    pattern: '^[0-9]+(-[0-9]+)?$'
     required: true
     group: Injection
+    description: >-
+      A whole number, or a range such as 1-4 (a random value in it is used;
+      lower bound first).
   - key: CPU_LOAD
     label: CPU load (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^(100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?$'
     required: true
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first).
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: RAMP_TIME
     label: Ramp time (seconds)
     type: integer
@@ -43,11 +50,6 @@ spec:
     required: false
     group: Timing
     description: Seconds. Empty uses the runner default.
-  - key: STRESS_IMAGE
-    label: Stress image
-    type: string
-    group: Injection
-    advanced: true
   - key: CONTAINER_RUNTIME
     label: Container runtime
     type: string
@@ -81,7 +83,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Pod CPU Hog
   categoryDescription: |
     Pod-CPU-Hog fault consumes the CPU resources of specified containers in Kubernetes pods.

@@ -20,18 +20,16 @@ spec:
     type: string
     group: Injection
     advanced: true
-  - key: TC_IMAGE
-    label: Tc image
-    type: string
-    group: Injection
-    advanced: true
   - key: NETWORK_PACKET_CORRUPTION_PERCENTAGE
     label: Network packet corruption percentage
-    type: integer
+    type: number
     min: 0
     max: 100
     required: true
     group: Injection
+    description: >-
+      Decimals such as 0.5 are allowed. Ranges are not supported by this
+      fault.
   - key: TOTAL_CHAOS_DURATION
     label: Duration (seconds)
     type: integer
@@ -48,11 +46,13 @@ spec:
     description: Seconds. Empty uses the runner default.
   - key: PODS_AFFECTED_PERC
     label: Pods affected (%)
-    type: integer
-    min: 0
-    max: 100
+    type: string
+    pattern: '^((100|[1-9]?[0-9])(-(100|[1-9]?[0-9]))?)?$'
     required: false
     group: Injection
+    description: >-
+      A percentage, or a range such as 50-100 (a random value in it is used;
+      lower bound first). Empty uses the runner default.
   - key: TARGET_PODS
     label: Target pods
     type: string
@@ -90,7 +90,9 @@ spec:
     options:
     - serial
     - parallel
+    - random
     group: Injection
+    description: Choosing random picks serial or parallel at run time.
   displayName: Pod Network Corruption
   categoryDescription: |
     Pod-network-corruption fault disrupts network connectivity to kubernetes pods. This fault injects percentage packet corruption on the app replica pods.
