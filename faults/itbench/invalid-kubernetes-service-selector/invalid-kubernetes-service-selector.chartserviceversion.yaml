@@ -12,6 +12,18 @@ metadata:
       matches no pods, then restores the original selector. Mirrors ITBench SRE
       scenario "invalid-kubernetes-service-selector".
 spec:
+  configurations:
+  - key: RANDOM_SUFFIX
+    label: Random suffix
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Invalid Service Selector
   categoryDescription: |
     Invalid service selector fault disrupts traffic to a Kubernetes workload by

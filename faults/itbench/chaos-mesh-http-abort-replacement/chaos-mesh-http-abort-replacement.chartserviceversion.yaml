@@ -14,6 +14,33 @@ metadata:
       (aborted POST requests to OpenTelemetry Demo's `quote` service, port
       8080).
 spec:
+  configurations:
+  - key: TARGET_PORT
+    label: Target port
+    type: integer
+    min: 1
+    max: 65535
+    required: true
+    group: Target
+  - key: TARGET_PROTOCOL
+    label: Target protocol
+    type: select
+    options:
+    - TCP
+    - UDP
+    - SCTP
+    group: Target
+  - key: NETPOL_NAME
+    label: Netpol name
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: HTTP Traffic Abort
   categoryDescription: |
     Chaos Mesh HTTP abort replacement fault disrupts traffic to a Kubernetes

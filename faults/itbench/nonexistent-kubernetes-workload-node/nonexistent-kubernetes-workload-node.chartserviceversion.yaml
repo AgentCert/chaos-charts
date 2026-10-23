@@ -13,6 +13,18 @@ metadata:
       restores the original nodeSelector. Mirrors ITBench SRE fault
       "nonexistent-kubernetes-workload-node".
 spec:
+  configurations:
+  - key: NONEXISTENT_NODE_NAME
+    label: Nonexistent node name
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Missing Target Node
   categoryDescription: |
     Nonexistent node fault disrupts scheduling of a Kubernetes workload by

@@ -8,6 +8,87 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: NETWORK_INTERFACE
+    label: Network interface
+    type: string
+    group: Injection
+    advanced: true
+  - key: TC_IMAGE
+    label: Tc image
+    type: string
+    group: Injection
+    advanced: true
+  - key: NETWORK_PACKET_LOSS_PERCENTAGE
+    label: Network packet loss percentage
+    type: integer
+    min: 0
+    max: 100
+    required: true
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: PODS_AFFECTED_PERC
+    label: Pods affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: TARGET_PODS
+    label: Target pods
+    type: string
+    group: Target
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: CONTAINER_RUNTIME
+    label: Container runtime
+    type: string
+    group: Injection
+    advanced: true
+  - key: DESTINATION_IPS
+    label: Destination ips
+    type: string
+    group: Injection
+  - key: DESTINATION_HOSTS
+    label: Destination hosts
+    type: string
+    group: Injection
+  - key: SOCKET_PATH
+    label: Socket path
+    type: string
+    group: Injection
+    advanced: true
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
   displayName: Pod Network Loss
   categoryDescription: |
     Pod-network-loss fault disrupts network connectivity to kubernetes pods. This fault injects percentage packet loss on the app replica pods.

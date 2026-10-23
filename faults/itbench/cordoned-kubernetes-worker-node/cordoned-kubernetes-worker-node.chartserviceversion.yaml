@@ -12,6 +12,18 @@ metadata:
       uncordons it. Mirrors ITBench SRE scenario
       "cordoned-kubernetes-worker-node".
 spec:
+  configurations:
+  - key: APP_KIND
+    label: App kind
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Cordoned Worker Node
   categoryDescription: |
     Cordoned worker node fault disrupts scheduling for a Kubernetes workload

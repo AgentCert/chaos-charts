@@ -13,6 +13,22 @@ metadata:
       then restores the original limit/request. Mirrors ITBench SRE scenario
       "valkey-workload-out-of-memory".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: MEMORY_LIMIT
+    label: Memory limit
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Valkey Memory Exhaustion
   categoryDescription: |
     Valkey workload out-of-memory fault disrupts the otel-demo valkey-cart

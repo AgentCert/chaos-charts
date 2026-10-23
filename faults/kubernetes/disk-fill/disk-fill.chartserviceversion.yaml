@@ -9,6 +9,84 @@ metadata:
     vendor: LitmusChaos
     support: https://slack.kubernetes.io/
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: FILL_PERCENTAGE
+    label: Fill percentage
+    type: integer
+    min: 1
+    max: 100
+    required: true
+    group: Injection
+    description: >-
+      Percentage of the ephemeral storage limit to fill. The runner rejects
+      anything outside 1..100.
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: DATA_BLOCK_SIZE
+    label: Data block size
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: TARGET_PODS
+    label: Target pods
+    type: string
+    group: Target
+  - key: EPHEMERAL_STORAGE_MEBIBYTES
+    label: Ephemeral storage mebibytes
+    type: integer
+    min: 0
+    required: false
+    group: Injection
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: PODS_AFFECTED_PERC
+    label: Pods affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: SOCKET_PATH
+    label: Socket path
+    type: string
+    group: Injection
+    advanced: true
+  - key: CONTAINER_RUNTIME
+    label: Container runtime
+    type: string
+    group: Injection
+    advanced: true
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
   displayName: Disk Fill
   categoryDescription: |
     Disk fill fault disrupts state of kubernetes resources.

@@ -12,6 +12,32 @@ metadata:
       flagd-config ConfigMap, then restores its original value. Mirrors
       ITBench SRE scenario "opentelemetry-demo-feature-flag".
 spec:
+  configurations:
+  - key: FLAG_NAME
+    label: Flag name
+    type: string
+    group: Injection
+  - key: FLAG_STATE
+    label: Flag state
+    type: select
+    options:
+    - 'on'
+    - 'off'
+    group: Injection
+  - key: FLAG_REVERT_STATE
+    label: Flag revert state
+    type: select
+    options:
+    - 'on'
+    - 'off'
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Feature Flag Toggle
   categoryDescription: |
     OpenTelemetry Demo feature flag fault activates one of the Demo's built-in

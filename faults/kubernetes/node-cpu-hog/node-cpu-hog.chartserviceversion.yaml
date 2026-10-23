@@ -8,6 +8,61 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: NODE_CPU_CORE
+    label: Node cpu core
+    type: integer
+    min: 0
+    required: false
+    group: Injection
+  - key: CPU_LOAD
+    label: CPU load (%)
+    type: integer
+    min: 0
+    max: 100
+    required: true
+    group: Injection
+  - key: TARGET_NODES
+    label: Target nodes
+    type: string
+    group: Target
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: NODES_AFFECTED_PERC
+    label: Nodes affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
   displayName: Node CPU Hog
   categoryDescription: |
     Node CPU hog fault disrupts the state of Kubernetes resources. This fault injects a CPU spike on a node where the application pod is scheduled.

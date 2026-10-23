@@ -13,6 +13,18 @@ metadata:
       restores the original DNS configuration. Mirrors ITBench SRE scenario
       "failing-name-resolution-kubernetes-workload-dns-policy".
 spec:
+  configurations:
+  - key: BAD_DNS_SERVER
+    label: Bad dns server
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Broken DNS Resolution
   categoryDescription: |
     Failing name resolution DNS policy fault disrupts a Kubernetes workload

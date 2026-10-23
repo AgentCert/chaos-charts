@@ -13,6 +13,26 @@ metadata:
       undo. Mirrors ITBench SRE scenario
       "nonexistent-kubernetes-workload-persistent-volume-claim".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: INVALID_STORAGE_CLASS
+    label: Invalid storage class
+    type: string
+    group: Injection
+  - key: PVC_MOUNT_PATH
+    label: Pvc mount path
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Invalid Storage Claim
   categoryDescription: |
     Nonexistent PVC fault disrupts a Kubernetes workload by creating a

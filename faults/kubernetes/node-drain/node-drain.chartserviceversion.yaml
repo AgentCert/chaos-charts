@@ -8,6 +8,34 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  - key: TARGET_NODE
+    label: Target node
+    type: string
+    group: Target
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
   displayName: Node Drain
   categoryDescription: >
     Drain the node where application pod is scheduled.

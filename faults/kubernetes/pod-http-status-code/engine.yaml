@@ -20,10 +20,6 @@ spec:
             - name: TOTAL_CHAOS_DURATION
               value: '30'
 
-            # set chaos interval (in sec) as desired
-            - name: CHAOS_INTERVAL
-              value: '10'
-
             # modified status code for the HTTP response
             # if no value is provided, a random status code from the supported code list will selected
             # if an invalid status code is provided, the experiment will fail

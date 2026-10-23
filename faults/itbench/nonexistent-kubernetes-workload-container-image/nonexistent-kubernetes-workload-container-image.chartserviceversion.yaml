@@ -12,6 +12,22 @@ metadata:
       Mirrors ITBench SRE scenario
       "nonexistent-kubernetes-workload-container-image".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: INVALID_IMAGE
+    label: Invalid image
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Missing Container Image
   categoryDescription: |
     Points a workload's container at an image tag that does not exist.

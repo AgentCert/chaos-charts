@@ -12,6 +12,18 @@ metadata:
       pods, then deletes it. Mirrors ITBench SRE fault library index 6
       "ingress-port-blocking-network-policy".
 spec:
+  configurations:
+  - key: NETPOL_NAME
+    label: Netpol name
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Blocked Ingress Traffic
   categoryDescription: |
     Ingress port blocking fault disrupts traffic to a Kubernetes workload by

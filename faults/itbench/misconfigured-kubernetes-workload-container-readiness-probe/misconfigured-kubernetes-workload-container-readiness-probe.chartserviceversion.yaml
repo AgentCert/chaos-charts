@@ -13,6 +13,29 @@ metadata:
       Mirrors ITBench SRE scenario
       "misconfigured-kubernetes-workload-container-readiness-probe".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: PROBE_PATH
+    label: Probe path
+    type: string
+    group: Injection
+  - key: PROBE_PORT
+    label: Probe port
+    type: integer
+    min: 1
+    max: 65535
+    required: true
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Broken Readiness Probe
   categoryDescription: |
     Misconfigured readiness probe fault disrupts traffic to a Kubernetes workload

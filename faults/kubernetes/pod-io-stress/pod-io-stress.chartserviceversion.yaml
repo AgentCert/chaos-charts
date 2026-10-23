@@ -8,6 +8,85 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: FILESYSTEM_UTILIZATION_PERCENTAGE
+    label: Filesystem utilization percentage
+    type: integer
+    min: 0
+    max: 100
+    required: true
+    group: Injection
+  - key: FILESYSTEM_UTILIZATION_BYTES
+    label: Filesystem utilization bytes
+    type: integer
+    min: 0
+    required: false
+    group: Injection
+  - key: NUMBER_OF_WORKERS
+    label: Number of workers
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: PODS_AFFECTED_PERC
+    label: Pods affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: VOLUME_MOUNT_PATH
+    label: Volume mount path
+    type: string
+    group: Injection
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: TARGET_PODS
+    label: Target pods
+    type: string
+    group: Target
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: CONTAINER_RUNTIME
+    label: Container runtime
+    type: string
+    group: Injection
+    advanced: true
+  - key: SOCKET_PATH
+    label: Socket path
+    type: string
+    group: Injection
+    advanced: true
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
   displayName: Pod IO Stress
   categoryDescription: |
     This fault causes disk IO stress on the application pod. It aims to verify the resiliency of applications that share this disk resource for ephemeral or persistent storage purposes.

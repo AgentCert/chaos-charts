@@ -13,6 +13,34 @@ metadata:
       original quota (or deletes it if none existed). Mirrors ITBench SRE
       scenario "insufficient-kubernetes-resource-quota".
 spec:
+  configurations:
+  - key: QUOTA_NAME
+    label: Quota name
+    type: string
+    group: Injection
+  - key: QUOTA_HARD_REQUESTS_CPU
+    label: Quota hard requests cpu
+    type: string
+    group: Injection
+  - key: QUOTA_HARD_REQUESTS_MEMORY
+    label: Quota hard requests memory
+    type: string
+    group: Injection
+  - key: QUOTA_HARD_LIMITS_CPU
+    label: Quota hard limits cpu
+    type: string
+    group: Injection
+  - key: QUOTA_HARD_LIMITS_MEMORY
+    label: Quota hard limits memory
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Tight Resource Quota
   categoryDescription: |
     Insufficient resource quota fault disrupts a Kubernetes namespace by

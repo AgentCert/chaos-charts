@@ -12,6 +12,26 @@ metadata:
       unrealistically low values, then restores them. Mirrors ITBench SRE/
       FinOps scenario "misconfigured-kubernetes-horizontal-pod-autoscaler".
 spec:
+  configurations:
+  - key: CPU_UTILIZATION_PERCENT
+    label: Cpu utilization percent
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: MEMORY_UTILIZATION_PERCENT
+    label: Memory utilization percent
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Bad HPA Thresholds
   categoryDescription: |
     Misconfigured HPA fault disrupts a workload's autoscaling behavior by

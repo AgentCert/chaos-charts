@@ -8,6 +8,39 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  # SSH_USER and REBOOT_COMMAND are deliberately NOT offered here. The runner
+  # interpolates both, unquoted, into `sh -c "... ssh -i <key> $SSH_USER@$IP
+  # $REBOOT_COMMAND"` (chaoslib/litmus/node-restart/lib/node-restart.go), which
+  # would turn an experiment edit into arbitrary root command execution on a
+  # cluster node. Omitting them pins both to their fault.yaml defaults, which
+  # ValidateEnvironment then enforces byte-for-byte.
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: TARGET_NODE
+    label: Target node
+    type: string
+    group: Target
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: TARGET_NODE_IP
+    label: Target node ip
+    type: string
+    group: Target
   displayName: Node Poweroff
   categoryDescription: |
     Node poweroff contains chaos experiment to poweroff a node via SSH.

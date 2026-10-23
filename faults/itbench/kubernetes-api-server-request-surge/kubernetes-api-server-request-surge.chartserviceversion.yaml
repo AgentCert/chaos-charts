@@ -13,6 +13,34 @@ metadata:
       removes it. Mirrors ITBench SRE scenario
       "kubernetes-api-server-request-surge".
 spec:
+  configurations:
+  - key: REQUESTS_PER_SECOND
+    label: Requests per second
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: SURGE_REPLICAS
+    label: Surge replicas
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: SURGE_WORKLOAD_NAME
+    label: Surge workload name
+    type: string
+    group: Injection
+  - key: SURGE_IMAGE
+    label: Surge image
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: API Server Surge
   categoryDescription: |
     Kubernetes API server request surge fault deploys a short-lived

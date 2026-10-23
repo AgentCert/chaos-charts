@@ -12,6 +12,21 @@ metadata:
       a closed port, then restores the original. Mirrors ITBench SRE scenario
       "modified-target-port-kubernetes-service".
 spec:
+  configurations:
+  - key: BROKEN_TARGET_PORT
+    label: Broken target port
+    type: integer
+    min: 1
+    max: 65535
+    required: true
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Wrong Service Port
   categoryDescription: |
     Modified target port fault disrupts traffic to a Kubernetes workload by

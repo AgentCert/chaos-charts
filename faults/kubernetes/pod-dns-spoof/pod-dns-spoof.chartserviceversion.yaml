@@ -7,6 +7,62 @@ metadata:
   annotations:
     categories: kubernetes
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: PODS_AFFECTED_PERC
+    label: Pods affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: TARGET_PODS
+    label: Target pods
+    type: string
+    group: Target
+  - key: CONTAINER_RUNTIME
+    label: Container runtime
+    type: string
+    group: Injection
+    advanced: true
+  - key: SOCKET_PATH
+    label: Socket path
+    type: string
+    group: Injection
+    advanced: true
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
+  - key: SPOOF_MAP
+    label: Spoof map
+    type: text
+    group: Injection
   displayName: Pod DNS Spoof
   categoryDescription: >
     Pod DNS Spoof fault spoofs particular DNS requests in a target pod container to desired target hostnames.

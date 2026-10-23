@@ -13,6 +13,34 @@ metadata:
       restores the original resources block. Mirrors ITBench SRE scenario
       "insufficient-kubernetes-workload-container-resources".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: FAULT_MEMORY_REQUEST
+    label: Fault memory request
+    type: string
+    group: Injection
+  - key: FAULT_MEMORY_LIMIT
+    label: Fault memory limit
+    type: string
+    group: Injection
+  - key: FAULT_CPU_REQUEST
+    label: Fault cpu request
+    type: string
+    group: Injection
+  - key: FAULT_CPU_LIMIT
+    label: Fault cpu limit
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Starved Container Resources
   categoryDescription: |
     Insufficient resources fault disrupts a Kubernetes workload by patching

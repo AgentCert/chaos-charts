@@ -12,6 +12,26 @@ metadata:
       causing CrashLoopBackOff, then restores the original command/args.
       Mirrors ITBench SRE scenario "invalid-kubernetes-workload-container-command".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: INVALID_COMMAND
+    label: Invalid command
+    type: text
+    group: Injection
+  - key: INVALID_ARGS
+    label: Invalid args
+    type: text
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Invalid Container Command
   categoryDescription: |
     Invalid command fault disrupts a Kubernetes workload by overwriting a

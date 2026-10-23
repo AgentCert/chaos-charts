@@ -12,6 +12,27 @@ metadata:
       in Init:0/1/Pending forever, then removes it. Mirrors ITBench SRE
       scenario "hanging-kubernetes-workload-init-container".
 spec:
+  configurations:
+  - key: HANG_CONTAINER_NAME
+    label: Hang container name
+    type: string
+    group: Injection
+  - key: HANG_CONTAINER_IMAGE
+    label: Hang container image
+    type: string
+    group: Injection
+    advanced: true
+  - key: HANG_COMMAND
+    label: Hang command
+    type: text
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Hanging Init Container
   categoryDescription: |
     Hanging init container fault disrupts a Kubernetes workload's startup by

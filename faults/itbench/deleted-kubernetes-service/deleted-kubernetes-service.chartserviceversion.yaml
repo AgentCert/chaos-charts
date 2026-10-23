@@ -12,6 +12,14 @@ metadata:
       captured manifest. Mirrors ITBench SRE scenario
       "deleted-kubernetes-service".
 spec:
+  configurations:
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Deleted Service Object
   categoryDescription: |
     Deleted Kubernetes Service fault disrupts a Kubernetes workload's

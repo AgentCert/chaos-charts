@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/usr/bin/env bash
 
 # Retrive the last pushed commit from the repo
 second_last_commit_hash=`git log -n 2 --pretty=format:"%H" | tail -1`
@@ -9,7 +9,7 @@ function yaml_parser() {
     local prefix=$2
     local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
     sed -ne "s|^\($s\):|\1|" \
-            -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+            -e "s|^\($s\)\($w\)$s:${s}[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
             -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
     awk -F$fs '{
         indent = length($1)/2;
@@ -35,15 +35,23 @@ versionInc(){
         echo "Existing version: $existing_version"
 
         # stores the last pushed committed file as temp.yaml in the root directory 
-        # and will be deleted after the job
-        temp_file=`git show $second_last_commit_hash:$1 >> temp.yaml`
+        # and will be deleted after the job.
+        # The redirection truncates/creates temp.yaml BEFORE git show runs, so a
+        # failure here (the normal case for a newly added chart absent from the
+        # previous commit) would otherwise leave an empty temp.yaml behind --
+        # untracked, not gitignored, and swept up by scripts/version/push.sh's
+        # `git add .`. Clean it up on the failure path too.
+        if ! git show "${second_last_commit_hash}:$1" > temp.yaml; then
+            rm -f './temp.yaml'
+            return 1
+        fi
 
         eval $(yaml_parser './temp.yaml')
         if [[ $? == 0 ]]
         then
             oldversion=$metadata_version
             echo "Oldversion : $oldversion"
-            sudo python3 scripts/version/version_validator.py $existing_version $oldversion
+            python3 scripts/version/version_validator.py "$existing_version" "$oldversion"
             ret_code=$?
 
             if [[ $ret_code == 0 ]]; then
@@ -54,12 +62,12 @@ versionInc(){
                     ((versions[2]++)) # Increment the patch version by one unit
                     newversion="${versions[0]}.${versions[1]}.${versions[2]}"
 
-                    `sed -i "s/$existing_version/$newversion/" $file`
+                    sed -i "s/$existing_version/$newversion/" "$file"
                     echo "$file's version updated from $oldversion to $existing_version"
             fi
         fi
         # deleting the temporary file 
-        rm './temp.yaml'
+        rm -f './temp.yaml'
     fi
 }
 

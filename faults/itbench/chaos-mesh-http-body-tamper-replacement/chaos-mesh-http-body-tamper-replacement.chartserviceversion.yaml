@@ -15,6 +15,48 @@ metadata:
       fault.yaml/ground_truth.yaml for the documented approximation and its
       limitations. Mirrors ITBench SRE scenario 26.
 spec:
+  configurations:
+  - key: SERVICE_NAME
+    label: Service name
+    type: string
+    group: Injection
+  - key: SERVICE_PORT
+    label: Service port
+    type: integer
+    min: 1
+    max: 65535
+    required: true
+    group: Injection
+  - key: REQUEST_PATH
+    label: Request path
+    type: string
+    group: Injection
+  - key: REQUEST_METHOD
+    label: Request method
+    type: string
+    group: Injection
+  - key: TAMPERED_BODY
+    label: Tampered body
+    type: text
+    group: Injection
+  - key: REQUEST_INTERVAL_SECONDS
+    label: Request interval seconds
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: GENERATOR_IMAGE
+    label: Generator image
+    type: string
+    group: Injection
+    advanced: true
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: HTTP Body Tamper
   categoryDescription: |
     ITBench SRE scenario 26 uses Chaos Mesh's HTTPChaos to transparently

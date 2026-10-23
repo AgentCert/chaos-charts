@@ -8,6 +8,63 @@ metadata:
     categories: Kubernetes
     vendor: LitmusChaos
 spec:
+  configurations:
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: RAMP_TIME
+    label: Ramp time (seconds)
+    type: integer
+    min: 0
+    required: false
+    group: Timing
+    description: Seconds. Empty uses the runner default.
+  - key: FORCE
+    label: Force
+    type: boolean
+    group: Injection
+  - key: CHAOS_INTERVAL
+    label: Chaos interval
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
+  - key: PODS_AFFECTED_PERC
+    label: Pods affected (%)
+    type: integer
+    min: 0
+    max: 100
+    required: false
+    group: Injection
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: TARGET_PODS
+    label: Target pods
+    type: string
+    group: Target
+  - key: DEFAULT_HEALTH_CHECK
+    label: Default health check
+    type: boolean
+    group: Injection
+    advanced: true
+  - key: NODE_LABEL
+    label: Node label
+    type: string
+    group: Target
+  - key: SEQUENCE
+    label: Sequence
+    type: select
+    options:
+    - serial
+    - parallel
+    group: Injection
   displayName: Pod Delete
   categoryDescription: |
     Pod delete fault disrupts the state of Kubernetes resources. This fault injects random pod delete failures against specified application.

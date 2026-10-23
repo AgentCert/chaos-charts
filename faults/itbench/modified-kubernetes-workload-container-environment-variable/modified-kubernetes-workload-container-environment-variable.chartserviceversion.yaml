@@ -12,6 +12,26 @@ metadata:
       value, then restores the original value. Mirrors ITBench SRE scenario
       "modified-kubernetes-workload-container-environment-variable".
 spec:
+  configurations:
+  - key: TARGET_CONTAINER
+    label: Target container
+    type: string
+    group: Target
+  - key: ENV_VAR_NAME
+    label: Env var name
+    type: string
+    group: Injection
+  - key: BAD_ENV_VALUE
+    label: Bad env value
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Bad Environment Variable
   categoryDescription: |
     Modified environment variable fault disrupts a Kubernetes workload by

@@ -13,6 +13,49 @@ metadata:
       pod via resource pressure, then removes both. Mirrors ITBench SRE
       scenario "priority-kubernetes-workload-priority-preemption".
 spec:
+  configurations:
+  - key: PRIORITY_CLASS_NAME
+    label: Priority class name
+    type: string
+    group: Injection
+  - key: PRIORITY_VALUE
+    label: Priority value
+    type: integer
+    min: 1
+    required: true
+    group: Injection
+  - key: DECOY_NAME
+    label: Decoy name
+    type: string
+    group: Injection
+  - key: DECOY_NAMESPACE
+    label: Decoy namespace
+    type: string
+    group: Injection
+    advanced: true
+  - key: DECOY_IMAGE
+    label: Decoy image
+    type: string
+    group: Injection
+    advanced: true
+  - key: DECOY_MEMORY_PERCENT
+    label: Decoy memory percent
+    type: integer
+    min: 1
+    max: 100
+    required: true
+    group: Injection
+  - key: DECOY_CPU_REQUEST
+    label: Decoy cpu request
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Priority Pod Preemption
   categoryDescription: |
     Priority preemption fault disrupts a Kubernetes workload not by deleting

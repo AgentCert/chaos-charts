@@ -14,6 +14,22 @@ metadata:
       ITBench SRE scenario
       "unschedulable-kubernetes-workload-pod-anti-affinity-rule".
 spec:
+  configurations:
+  - key: ANTI_AFFINITY_LABEL
+    label: Anti affinity label
+    type: string
+    group: Injection
+  - key: TOPOLOGY_KEY
+    label: Topology key
+    type: string
+    group: Injection
+  - key: TOTAL_CHAOS_DURATION
+    label: Duration (seconds)
+    type: integer
+    min: 1
+    required: true
+    group: Timing
+    description: Seconds.
   displayName: Impossible Pod Affinity
   categoryDescription: |
     Unschedulable pod anti-affinity fault disrupts scheduling of a Kubernetes
