@@ -1,4 +1,4 @@
-fault: unassigned-kubernetes-workload-container-resource-limits
+fault: unassigned-k8s-workload-container-resource-limits
 version: 0.1.0
 description: >-
   Removes a container's resources.limits (cpu/memory), leaving any requests

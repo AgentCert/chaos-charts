@@ -10,9 +10,9 @@ description:
     (modified-kubernetes-workload-container-environment-variable).
 kind: ChaosExperiment
 metadata:
-  name: modified-container-environment-variable
+  name: modified-k8s-workload-container-environment-variable
   labels:
-    name: modified-container-environment-variable
+    name: modified-k8s-workload-container-environment-variable
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -35,7 +35,7 @@ spec:
       - /itbench-experiment
     args:
       - -name
-      - modified-kubernetes-workload-container-environment-variable
+      - modified-k8s-workload-container-environment-variable
     env:
       # container whose environment variable is modified; defaults to the
       # workload name if unset
@@ -55,7 +55,7 @@ spec:
         value: "300"
 
     labels:
-      name: modified-container-environment-variable
+      name: modified-k8s-workload-container-environment-variable
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

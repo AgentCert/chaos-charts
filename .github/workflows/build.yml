@@ -29,6 +29,12 @@ jobs:
         with:
           path: go/src/github.com/${{github.repository}}    
           
+      # Fault names must stay within the chaos-runner's Job-name budget
+      - name: Validate fault names
+        run: |
+          cd ${GOPATH}/src/github.com/${{github.repository}}
+          make validateFaultNames
+
       # Combine the experiment CRs
       - name: Combine experiment CR
         run: |

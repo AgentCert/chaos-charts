@@ -63,7 +63,7 @@ spec:
             template: scenario-20-nonexistent-image
 
         # ── Scenario #49 ── frontend misconfigured readiness probe ─────────
-        # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
+        # ITBench: misconfigured-k8s-workload-container-readiness-probe
         # Symptom: KubePodNotReady on frontend
         - - name: scenario-49-readiness-probe
             template: scenario-49-readiness-probe
@@ -250,8 +250,8 @@ spec:
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
-          - name: misconfigured-kubernetes-workload-container-readiness-probe
-            path: /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml
+          - name: misconfigured-k8s-workload-container-readiness-probe
+            path: /tmp/misconfigured-k8s-workload-container-readiness-probe.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -261,9 +261,9 @@ spec:
                     causing the pod to stay NotReady, then restores the original probe.
                 kind: ChaosExperiment
                 metadata:
-                  name: misconfigured-kubernetes-workload-container-readiness-probe
+                  name: misconfigured-k8s-workload-container-readiness-probe
                   labels:
-                    name: misconfigured-kubernetes-workload-container-readiness-probe
+                    name: misconfigured-k8s-workload-container-readiness-probe
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -325,7 +325,7 @@ spec:
                       - name: TOTAL_CHAOS_DURATION
                         value: "300"
                     labels:
-                      name: misconfigured-kubernetes-workload-container-readiness-probe
+                      name: misconfigured-k8s-workload-container-readiness-probe
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -337,7 +337,7 @@ spec:
           - |
             kubectl apply -f /tmp/scaled-to-zero-kubernetes-workload.yaml -n "{{workflow.parameters.adminModeNamespace}}"
             kubectl apply -f /tmp/nonexistent-kubernetes-workload-container-image.yaml -n "{{workflow.parameters.adminModeNamespace}}"
-            kubectl apply -f /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml -n "{{workflow.parameters.adminModeNamespace}}"
+            kubectl apply -f /tmp/misconfigured-k8s-workload-container-readiness-probe.yaml -n "{{workflow.parameters.adminModeNamespace}}"
 
     # ── Scenario templates ─────────────────────────────────────────────────────
 
@@ -456,7 +456,7 @@ spec:
         args: ["-file=/tmp/chaosengine.yaml","-saveName=/tmp/engine-name"]
 
     # ── Scenario #49: frontend misconfigured readiness probe ────────────────
-    # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
+    # ITBench: misconfigured-k8s-workload-container-readiness-probe
     # Symptom: KubePodNotReady on frontend
 
     - name: scenario-49-readiness-probe
@@ -482,7 +482,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: misconfigured-kubernetes-workload-container-readiness-probe
+                    - name: misconfigured-k8s-workload-container-readiness-probe
                       spec:
                         probe:
                           - name: "workload-ready"

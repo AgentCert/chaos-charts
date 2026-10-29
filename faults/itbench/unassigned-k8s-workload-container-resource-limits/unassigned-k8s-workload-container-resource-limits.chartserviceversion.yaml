@@ -2,7 +2,7 @@
 apiVersion: litmuschaos.io/v1alpha1
 kind: ChartServiceVersion
 metadata:
-  name: unassigned-kubernetes-workload-container-resource-limits
+  name: unassigned-k8s-workload-container-resource-limits
   version: 0.1.0
   annotations:
     categories: Kubernetes

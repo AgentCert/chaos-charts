@@ -11,9 +11,9 @@ description:
     Deployment (there paired with a separate memory-stress injection).
 kind: ChaosExperiment
 metadata:
-  name: unassigned-container-resource-limits
+  name: unassigned-k8s-workload-container-resource-limits
   labels:
-    name: unassigned-container-resource-limits
+    name: unassigned-k8s-workload-container-resource-limits
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -36,7 +36,7 @@ spec:
       - /itbench-experiment
     args:
       - -name
-      - unassigned-kubernetes-workload-container-resource-limits
+      - unassigned-k8s-workload-container-resource-limits
     env:
       # container whose resources.limits are removed; defaults to the workload name if unset
       - name: TARGET_CONTAINER
@@ -46,7 +46,7 @@ spec:
         value: "300"
 
     labels:
-      name: unassigned-container-resource-limits
+      name: unassigned-k8s-workload-container-resource-limits
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

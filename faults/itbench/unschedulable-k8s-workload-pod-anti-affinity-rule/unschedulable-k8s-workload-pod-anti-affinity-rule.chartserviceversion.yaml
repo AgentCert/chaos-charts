@@ -2,7 +2,7 @@
 apiVersion: litmuschaos.io/v1alpha1
 kind: ChartServiceVersion
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+  name: unschedulable-k8s-workload-pod-anti-affinity-rule
   version: 0.1.0
   annotations:
     categories: Kubernetes

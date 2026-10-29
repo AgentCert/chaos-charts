@@ -8,9 +8,9 @@ description:
     "misconfigured-kubernetes-workload-container-readiness-probe" (index 49).
 kind: ChaosExperiment
 metadata:
-  name: misconfigured-kubernetes-workload-container-readiness-probe
+  name: misconfigured-k8s-workload-container-readiness-probe
   labels:
-    name: misconfigured-kubernetes-workload-container-readiness-probe
+    name: misconfigured-k8s-workload-container-readiness-probe
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -33,7 +33,7 @@ spec:
       - /itbench-experiment
     args:
       - -name
-      - misconfigured-kubernetes-workload-container-readiness-probe
+      - misconfigured-k8s-workload-container-readiness-probe
     env:
       # container name to patch; defaults to the workload name if unset
       - name: TARGET_CONTAINER
@@ -49,7 +49,7 @@ spec:
         value: "300"
 
     labels:
-      name: misconfigured-kubernetes-workload-container-readiness-probe
+      name: misconfigured-k8s-workload-container-readiness-probe
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

@@ -2,20 +2,20 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+  name: unassigned-k8s-workload-container-resource-limits-sa
   namespace: "#{INFRA_NAMESPACE}"
   labels:
-    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+    name: unassigned-k8s-workload-container-resource-limits-sa
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: itbench-fault-rbac
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+  name: unassigned-k8s-workload-container-resource-limits-sa
   namespace: "#{INFRA_NAMESPACE}"
   labels:
-    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+    name: unassigned-k8s-workload-container-resource-limits-sa
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -42,23 +42,23 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+  name: unassigned-k8s-workload-container-resource-limits-sa
   namespace: "#{INFRA_NAMESPACE}"
   labels:
-    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+    name: unassigned-k8s-workload-container-resource-limits-sa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+  name: unassigned-k8s-workload-container-resource-limits-sa
 subjects:
   - kind: ServiceAccount
-    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+    name: unassigned-k8s-workload-container-resource-limits-sa
     namespace: "#{INFRA_NAMESPACE}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa-target
+  name: unassigned-k8s-workload-container-resource-limits-sa-target
 rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
@@ -67,12 +67,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa-target
+  name: unassigned-k8s-workload-container-resource-limits-sa-target
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa-target
+  name: unassigned-k8s-workload-container-resource-limits-sa-target
 subjects:
   - kind: ServiceAccount
-    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule-sa
+    name: unassigned-k8s-workload-container-resource-limits-sa
     namespace: "#{INFRA_NAMESPACE}"

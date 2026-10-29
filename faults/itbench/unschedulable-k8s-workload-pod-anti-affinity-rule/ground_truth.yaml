@@ -1,4 +1,4 @@
-fault: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+fault: unschedulable-k8s-workload-pod-anti-affinity-rule
 version: 0.1.0
 description: >-
   Patches a Deployment/StatefulSet's pod template with a

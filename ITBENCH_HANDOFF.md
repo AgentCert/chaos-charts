@@ -15,6 +15,16 @@
 > just also applies identically to the `faults/itbench/` category directory. Non-ITBench
 > faults mentioned here (`pod-delete`, `install-application`, etc.) were not moved and
 > remain under `faults/kubernetes/`.
+>
+> **Fault renames:** five bundles were renamed to keep the chaos-runner's generated Job
+> name (`<ChaosExperiment-name>-<6-char-suffix>`) within Kubernetes' 63-character limit for
+> container names and label values — `kubernetes` was abbreviated to `k8s` in
+> `misconfigured-k8s-workload-container-readiness-probe`,
+> `modified-k8s-workload-container-environment-variable`,
+> `unsupported-architecture-k8s-workload-container-image`,
+> `unschedulable-k8s-workload-pod-anti-affinity-rule` and
+> `unassigned-k8s-workload-container-resource-limits`. The long names below are the
+> upstream ITBench scenario ids, which are unchanged.
 
 **Status as of this handoff: 2 of 6 fault bundles complete. Work paused mid-task at the user's request, to hand off to a fresh session (different account, after a GitHub ownership transfer).**
 

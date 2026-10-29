@@ -411,7 +411,7 @@ spec:
     # Its defaults (ENV_VAR_NAME=QUOTE_ADDR, BAD_ENV_VALUE=quote:0000) name a
     # variable only otel-demo's shipping service reads. On any other target the
     # variable is appended unused and the fault reduces to a pod restart.
-    modified-kubernetes-workload-container-environment-variable:
+    modified-k8s-workload-container-environment-variable:
       category: itbench
       classification: application-specific
       mechanism: k8s-api
@@ -433,8 +433,8 @@ spec:
         workloadKinds: [deployment, statefulset]
       verified: doc
     invalid-kubernetes-workload-container-command:                *itb_workload
-    unsupported-architecture-kubernetes-workload-container-image: *itb_workload
-    misconfigured-kubernetes-workload-container-readiness-probe:  *itb_workload
+    unsupported-architecture-k8s-workload-container-image: *itb_workload
+    misconfigured-k8s-workload-container-readiness-probe:  *itb_workload
     insufficient-kubernetes-workload-container-resources:         *itb_workload
 
     # Not an *itb_workload: its injection IS the removal of
@@ -442,7 +442,7 @@ spec:
     # errors when the field is already absent (removing nothing would otherwise
     # report a Pass for a run that never mutated anything). So it only applies to
     # containers that actually declare limits -- verified live, not from charts.
-    unassigned-kubernetes-workload-container-resource-limits:
+    unassigned-k8s-workload-container-resource-limits:
       category: itbench
       classification: generic
       mechanism: k8s-api
@@ -474,7 +474,7 @@ spec:
     failing-name-resolution-kubernetes-workload-dns-policy:       *itb_workload
     scaled-to-zero-kubernetes-workload:                           *itb_workload
     nonexistent-kubernetes-workload-node:                         *itb_workload
-    unschedulable-kubernetes-workload-pod-anti-affinity-rule:     *itb_workload
+    unschedulable-k8s-workload-pod-anti-affinity-rule:     *itb_workload
     nonexistent-kubernetes-workload-persistent-volume-claim:      *itb_workload
 
     # Not an *itb_workload: this one patches the utilization targets of an

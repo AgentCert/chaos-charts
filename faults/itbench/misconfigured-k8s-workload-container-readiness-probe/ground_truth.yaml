@@ -1,4 +1,4 @@
-fault: misconfigured-kubernetes-workload-container-readiness-probe
+fault: misconfigured-k8s-workload-container-readiness-probe
 version: 0.1.0
 description: >-
   Patches a container's readinessProbe to probe an unreachable port (default

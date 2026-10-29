@@ -17,7 +17,7 @@ description:
     `pods/exec` access into the target container. This keeps the fault
     consistent with this chaos-chart's other simple kubectl-only experiments
     (see scaled-to-zero-kubernetes-workload,
-    misconfigured-kubernetes-workload-container-readiness-probe).
+    misconfigured-k8s-workload-container-readiness-probe).
 
     Tradeoffs of this approach vs. ITBench's code-injection method:
       - The exact memory ceiling needed to reliably trigger an OOM kill
@@ -36,7 +36,7 @@ description:
         before), so the workload's resource footprint is fully restored;
         it does not, however, remove any extra ReplicaSet/revision history
         left behind by the pod-template patch (the same tradeoff accepted by
-        misconfigured-kubernetes-workload-container-readiness-probe in this
+        misconfigured-k8s-workload-container-readiness-probe in this
         chart).
 
     Mirrors ITBench SRE scenario 40 (`valkey-cart` OOM in the

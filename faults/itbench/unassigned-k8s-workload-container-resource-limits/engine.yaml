@@ -10,10 +10,10 @@ spec:
     appns: ''
     applabel: ''
     appkind: 'deployment'
-  chaosServiceAccount: unassigned-kubernetes-workload-container-resource-limits-sa
+  chaosServiceAccount: unassigned-k8s-workload-container-resource-limits-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: unassigned-container-resource-limits
+    - name: unassigned-k8s-workload-container-resource-limits
       spec:
         components:
           env:

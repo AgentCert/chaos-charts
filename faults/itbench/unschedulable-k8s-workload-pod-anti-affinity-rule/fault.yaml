@@ -11,9 +11,9 @@ description:
     (fault library index 25).
 kind: ChaosExperiment
 metadata:
-  name: unschedulable-pod-anti-affinity-rule
+  name: unschedulable-k8s-workload-pod-anti-affinity-rule
   labels:
-    name: unschedulable-pod-anti-affinity-rule
+    name: unschedulable-k8s-workload-pod-anti-affinity-rule
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -36,7 +36,7 @@ spec:
       - /itbench-experiment
     args:
       - -name
-      - unschedulable-kubernetes-workload-pod-anti-affinity-rule
+      - unschedulable-k8s-workload-pod-anti-affinity-rule
     env:
       # label (key=value) the injected anti-affinity rule must never co-locate
       # with; defaults to the workload's own resolution label (APP_LABEL) so
@@ -54,7 +54,7 @@ spec:
         value: "300"
 
     labels:
-      name: unschedulable-pod-anti-affinity-rule
+      name: unschedulable-k8s-workload-pod-anti-affinity-rule
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

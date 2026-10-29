@@ -1,4 +1,4 @@
-fault: unsupported-architecture-kubernetes-workload-container-image
+fault: unsupported-architecture-k8s-workload-container-image
 version: 0.1.0
 description: >-
   Sets a container's image to a tag built only for an unsupported CPU

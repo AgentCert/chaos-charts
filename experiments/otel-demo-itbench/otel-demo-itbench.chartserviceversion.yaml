@@ -22,7 +22,7 @@ spec:
     Scenarios covered:
       #58  scaled-to-zero-kubernetes-workload         (accounting)
       #20  nonexistent-kubernetes-workload-container-image  (product-catalog)
-      #49  misconfigured-kubernetes-workload-container-readiness-probe (frontend)
+      #49  misconfigured-k8s-workload-container-readiness-probe (frontend)
       #30  modified-target-port-kubernetes-service    (ad)
 
     ITBench reference: https://github.com/itbench-hub/ITBench

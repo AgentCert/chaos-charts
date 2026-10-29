@@ -10,10 +10,10 @@ spec:
     appns: ''
     applabel: ''
     appkind: 'deployment'
-  chaosServiceAccount: misconfigured-kubernetes-workload-container-readiness-probe-sa
+  chaosServiceAccount: misconfigured-k8s-workload-container-readiness-probe-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: misconfigured-kubernetes-workload-container-readiness-probe
+    - name: misconfigured-k8s-workload-container-readiness-probe
       spec:
         components:
           env:

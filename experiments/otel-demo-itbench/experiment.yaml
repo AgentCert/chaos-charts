@@ -66,7 +66,7 @@ spec:
             template: scenario-20-nonexistent-image
 
         # ── Scenario #49 ── frontend misconfigured readiness probe ─────────
-        # ITBench: misconfigured-kubernetes-workload-container-readiness-probe
+        # ITBench: misconfigured-k8s-workload-container-readiness-probe
         # Symptom: KubePodNotReady on frontend
         - - name: scenario-49-readiness-probe
             template: scenario-49-readiness-probe
@@ -323,8 +323,8 @@ spec:
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
-          - name: misconfigured-kubernetes-workload-container-readiness-probe
-            path: /tmp/misconfigured-kubernetes-workload-container-readiness-probe.yaml
+          - name: misconfigured-k8s-workload-container-readiness-probe
+            path: /tmp/misconfigured-k8s-workload-container-readiness-probe.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -334,9 +334,9 @@ spec:
                     causing the pod to stay NotReady, then restores the original probe.
                 kind: ChaosExperiment
                 metadata:
-                  name: misconfigured-kubernetes-workload-container-readiness-probe
+                  name: misconfigured-k8s-workload-container-readiness-probe
                   labels:
-                    name: misconfigured-kubernetes-workload-container-readiness-probe
+                    name: misconfigured-k8s-workload-container-readiness-probe
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -398,7 +398,7 @@ spec:
                       - name: TOTAL_CHAOS_DURATION
                         value: "300"
                     labels:
-                      name: misconfigured-kubernetes-workload-container-readiness-probe
+                      name: misconfigured-k8s-workload-container-readiness-probe
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -627,8 +627,8 @@ spec:
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
 
-          - name: unsupported-architecture-kubernetes-workload-container-image
-            path: /tmp/unsupported-architecture-kubernetes-workload-container-image.yaml
+          - name: unsupported-architecture-k8s-workload-container-image
+            path: /tmp/unsupported-architecture-k8s-workload-container-image.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -643,9 +643,9 @@ spec:
                     all target the otel-demo `checkout` Deployment.
                 kind: ChaosExperiment
                 metadata:
-                  name: unsupported-architecture-kubernetes-workload-container-image
+                  name: unsupported-architecture-k8s-workload-container-image
                   labels:
-                    name: unsupported-architecture-kubernetes-workload-container-image
+                    name: unsupported-architecture-k8s-workload-container-image
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -720,7 +720,7 @@ spec:
                         value: "300"
 
                     labels:
-                      name: unsupported-architecture-kubernetes-workload-container-image
+                      name: unsupported-architecture-k8s-workload-container-image
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -970,8 +970,8 @@ spec:
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
 
-          - name: modified-kubernetes-workload-container-environment-variable
-            path: /tmp/modified-kubernetes-workload-container-environment-variable.yaml
+          - name: modified-k8s-workload-container-environment-variable
+            path: /tmp/modified-k8s-workload-container-environment-variable.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -985,9 +985,9 @@ spec:
                     (modified-kubernetes-workload-container-environment-variable).
                 kind: ChaosExperiment
                 metadata:
-                  name: modified-kubernetes-workload-container-environment-variable
+                  name: modified-k8s-workload-container-environment-variable
                   labels:
-                    name: modified-kubernetes-workload-container-environment-variable
+                    name: modified-k8s-workload-container-environment-variable
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -1086,7 +1086,7 @@ spec:
                         value: "300"
 
                     labels:
-                      name: modified-kubernetes-workload-container-environment-variable
+                      name: modified-k8s-workload-container-environment-variable
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -1691,7 +1691,7 @@ spec:
                     `pods/exec` access into the target container. This keeps the fault
                     consistent with this chaos-chart's other simple kubectl-only experiments
                     (see scaled-to-zero-kubernetes-workload,
-                    misconfigured-kubernetes-workload-container-readiness-probe).
+                    misconfigured-k8s-workload-container-readiness-probe).
 
                     Tradeoffs of this approach vs. ITBench's code-injection method:
                       - The exact memory ceiling needed to reliably trigger an OOM kill
@@ -1710,7 +1710,7 @@ spec:
                         before), so the workload's resource footprint is fully restored;
                         it does not, however, remove any extra ReplicaSet/revision history
                         left behind by the pod-template patch (the same tradeoff accepted by
-                        misconfigured-kubernetes-workload-container-readiness-probe in this
+                        misconfigured-k8s-workload-container-readiness-probe in this
                         chart).
 
                     Mirrors ITBench SRE scenario 40 (`valkey-cart` OOM in the
@@ -1811,8 +1811,8 @@ spec:
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
 
-          - name: unassigned-kubernetes-workload-container-resource-limits
-            path: /tmp/unassigned-kubernetes-workload-container-resource-limits.yaml
+          - name: unassigned-k8s-workload-container-resource-limits
+            path: /tmp/unassigned-k8s-workload-container-resource-limits.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -1827,9 +1827,9 @@ spec:
                     Deployment (there paired with a separate memory-stress injection).
                 kind: ChaosExperiment
                 metadata:
-                  name: unassigned-kubernetes-workload-container-resource-limits
+                  name: unassigned-k8s-workload-container-resource-limits
                   labels:
-                    name: unassigned-kubernetes-workload-container-resource-limits
+                    name: unassigned-k8s-workload-container-resource-limits
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -1901,7 +1901,7 @@ spec:
                         value: "300"
 
                     labels:
-                      name: unassigned-kubernetes-workload-container-resource-limits
+                      name: unassigned-k8s-workload-container-resource-limits
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -2158,8 +2158,8 @@ spec:
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
 
-          - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
-            path: /tmp/unschedulable-kubernetes-workload-pod-anti-affinity-rule.yaml
+          - name: unschedulable-k8s-workload-pod-anti-affinity-rule
+            path: /tmp/unschedulable-k8s-workload-pod-anti-affinity-rule.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
@@ -2174,9 +2174,9 @@ spec:
                     (fault library index 25).
                 kind: ChaosExperiment
                 metadata:
-                  name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+                  name: unschedulable-k8s-workload-pod-anti-affinity-rule
                   labels:
-                    name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+                    name: unschedulable-k8s-workload-pod-anti-affinity-rule
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: ci
@@ -2263,7 +2263,7 @@ spec:
                         value: "300"
 
                     labels:
-                      name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+                      name: unschedulable-k8s-workload-pod-anti-affinity-rule
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: ci
@@ -3588,7 +3588,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: misconfigured-kubernetes-workload-container-readiness-probe
+                    - name: misconfigured-k8s-workload-container-readiness-probe
                       spec:
                         probe:
                           - name: "workload-ready"
@@ -3811,7 +3811,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: modified-kubernetes-workload-container-environment-variable
+                    - name: modified-k8s-workload-container-environment-variable
                       spec:
                         probe:
                           - name: "workload-ready"
@@ -3921,7 +3921,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: unsupported-architecture-kubernetes-workload-container-image
+                    - name: unsupported-architecture-k8s-workload-container-image
                       spec:
                         probe:
                           - name: "workload-ready"
@@ -4545,7 +4545,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: unassigned-kubernetes-workload-container-resource-limits
+                    - name: unassigned-k8s-workload-container-resource-limits
                       spec:
                         probe:
                           - name: "workload-ready"
@@ -4757,7 +4757,7 @@ spec:
                   chaosServiceAccount: litmus-admin
                   jobCleanUpPolicy: 'retain'
                   experiments:
-                    - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+                    - name: unschedulable-k8s-workload-pod-anti-affinity-rule
                       spec:
                         probe:
                           - name: "workload-ready"

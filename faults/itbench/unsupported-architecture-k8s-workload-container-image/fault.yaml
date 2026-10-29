@@ -11,9 +11,9 @@ description:
     all target the otel-demo `checkout` Deployment.
 kind: ChaosExperiment
 metadata:
-  name: unsupported-architecture-kubernetes-workload-container-image
+  name: unsupported-architecture-k8s-workload-container-image
   labels:
-    name: unsupported-architecture-kubernetes-workload-container-image
+    name: unsupported-architecture-k8s-workload-container-image
     app.kubernetes.io/part-of: litmus
     app.kubernetes.io/component: chaosexperiment
     app.kubernetes.io/version: ci
@@ -36,7 +36,7 @@ spec:
       - /itbench-experiment
     args:
       - -name
-      - unsupported-architecture-kubernetes-workload-container-image
+      - unsupported-architecture-k8s-workload-container-image
     env:
       # container name to mutate; defaults to the workload name if unset
       - name: TARGET_CONTAINER
@@ -57,7 +57,7 @@ spec:
         value: "300"
 
     labels:
-      name: unsupported-architecture-kubernetes-workload-container-image
+      name: unsupported-architecture-k8s-workload-container-image
       app.kubernetes.io/part-of: litmus
       app.kubernetes.io/component: experiment-job
       app.kubernetes.io/version: ci

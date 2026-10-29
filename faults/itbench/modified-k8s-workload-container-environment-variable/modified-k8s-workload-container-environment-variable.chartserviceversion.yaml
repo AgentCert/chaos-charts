@@ -2,7 +2,7 @@
 apiVersion: litmuschaos.io/v1alpha1
 kind: ChartServiceVersion
 metadata:
-  name: modified-kubernetes-workload-container-environment-variable
+  name: modified-k8s-workload-container-environment-variable
   version: 0.1.0
   annotations:
     categories: Kubernetes

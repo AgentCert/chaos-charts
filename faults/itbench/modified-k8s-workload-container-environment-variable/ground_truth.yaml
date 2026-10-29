@@ -1,4 +1,4 @@
-fault: modified-kubernetes-workload-container-environment-variable
+fault: modified-k8s-workload-container-environment-variable
 version: 0.1.0
 description: >-
   Overwrites a named environment variable on a container with a bad value,

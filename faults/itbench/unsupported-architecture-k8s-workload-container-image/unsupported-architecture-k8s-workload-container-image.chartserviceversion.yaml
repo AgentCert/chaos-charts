@@ -2,7 +2,7 @@
 apiVersion: litmuschaos.io/v1alpha1
 kind: ChartServiceVersion
 metadata:
-  name: unsupported-architecture-kubernetes-workload-container-image
+  name: unsupported-architecture-k8s-workload-container-image
   version: 0.1.0
   annotations:
     categories: Kubernetes

@@ -10,10 +10,10 @@ spec:
     appns: ''
     applabel: ''
     appkind: 'deployment'
-  chaosServiceAccount: modified-kubernetes-workload-container-environment-variable-sa
+  chaosServiceAccount: modified-k8s-workload-container-environment-variable-sa
   jobCleanUpPolicy: 'retain'
   experiments:
-    - name: modified-container-environment-variable
+    - name: modified-k8s-workload-container-environment-variable
       spec:
         components:
           env:

@@ -28,7 +28,7 @@ spec:
     # Original: Sets a container image to a nonexistent tag causing ImagePullBackOff, then restores the original. Mirrors ITBench SRE scenario "nonexistent-kubernetes-workload-container-image".
     description: Invalid container image tag.
     displayName: Nonexistent Kubernetes Workload Container Image
-  - name: misconfigured-kubernetes-workload-container-readiness-probe
+  - name: misconfigured-k8s-workload-container-readiness-probe
     # Original: Patches a container readinessProbe to an unreachable port causing NotReady, then restores. Mirrors ITBench SRE scenario "misconfigured-kubernetes-workload-container-readiness-probe".
     description: Bad readiness probe port.
     displayName: Misconfigured Kubernetes Workload Container Readiness Probe
@@ -48,7 +48,7 @@ spec:
     # Original: Toggles a named OpenTelemetry Demo feature flag by patching the flagd-config ConfigMap, then restores it. Mirrors ITBench SRE scenarios 1/3/52.
     description: Toggle OTel feature flag.
     displayName: OpenTelemetry Demo Feature Flag
-  - name: unsupported-architecture-kubernetes-workload-container-image
+  - name: unsupported-architecture-k8s-workload-container-image
     # Original: Sets a container's image to a tag built only for an unsupported CPU architecture, causing ImagePullBackOff, then restores. Mirrors ITBench SRE scenarios 23/57/60.
     description: Wrong CPU arch image.
     displayName: Unsupported Architecture Kubernetes Workload Container Image
@@ -60,7 +60,7 @@ spec:
     # Original: Injects an initContainer that crashes due to a bad script, forcing a Deployment's pod into Init:CrashLoopBackOff, then reverts. Mirrors ITBench SRE scenarios 59/60.
     description: Crashing init container script.
     displayName: Crashing Kubernetes Workload Init Container
-  - name: modified-kubernetes-workload-container-environment-variable
+  - name: modified-k8s-workload-container-environment-variable
     # Original: Overwrites one named environment variable on a container with a bad value, then restores the original. Mirrors ITBench SRE scenario "modified-kubernetes-workload-container-environment-variable".
     description: Bad container env variable.
     displayName: Modified Kubernetes Workload Container Environment Variable
@@ -88,7 +88,7 @@ spec:
     # Original: Clamps the valkey-cart container's memory limit/request to an unrealistically low value to force OOMKilled, then reverts. Mirrors ITBench SRE scenario "valkey-workload-out-of-memory".
     description: Valkey memory limit low.
     displayName: Valkey Workload Out Of Memory
-  - name: unassigned-kubernetes-workload-container-resource-limits
+  - name: unassigned-k8s-workload-container-resource-limits
     # Original: Removes a container's resources.limits (cpu/memory), leaving it with no consumption ceiling, then restores. Mirrors ITBench SRE scenario "unassigned-kubernetes-workload-container-resource-limits".
     description: Remove container resource limits.
     displayName: Unassigned Kubernetes Workload Container Resource Limits
@@ -100,7 +100,7 @@ spec:
     # Original: Patches a workload's pod template dnsPolicy/dnsConfig to point at an unreachable DNS server, then reverts. Mirrors ITBench SRE scenario "failing-name-resolution-kubernetes-workload-dns-policy".
     description: Broken DNS server config.
     displayName: Failing Name Resolution Kubernetes Workload DNS Policy
-  - name: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+  - name: unschedulable-k8s-workload-pod-anti-affinity-rule
     # Original: Patches a workload's pod template with an unsatisfiable required inter-pod anti-affinity rule, then reverts. Mirrors ITBench SRE scenario "unschedulable-kubernetes-workload-pod-anti-affinity-rule".
     description: Unsatisfiable anti-affinity rule.
     displayName: Unschedulable Kubernetes Workload Pod Anti Affinity Rule

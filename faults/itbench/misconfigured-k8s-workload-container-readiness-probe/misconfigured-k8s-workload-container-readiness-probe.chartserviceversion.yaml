@@ -2,7 +2,7 @@
 apiVersion: litmuschaos.io/v1alpha1
 kind: ChartServiceVersion
 metadata:
-  name: misconfigured-kubernetes-workload-container-readiness-probe
+  name: misconfigured-k8s-workload-container-readiness-probe
   version: 0.1.0
   annotations:
     categories: Kubernetes

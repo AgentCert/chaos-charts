@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help
 help:
-	@echo "Targets: deps (explicit dependency install), versionmaker, combineExpCR, push"
+	@echo "Targets: deps (explicit dependency install), versionmaker, validateFaultNames, combineExpCR, push"
 
 # Makefile for building Chaos charts
 # Reference Guide - https://www.gnu.org/software/make/manual/make.html
@@ -18,6 +18,11 @@ deps:
 versionmaker:
 	@echo "-----version maker-----"
 	bash ./scripts/version/version_maker.sh
+
+.PHONY: validateFaultNames
+validateFaultNames:
+	@echo "--------Validating fault names-------"
+	bash ./scripts/validate-fault-names.sh
 
 .PHONY: combineExpCR
 combineExpCR:
