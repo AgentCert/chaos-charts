@@ -64,7 +64,7 @@ spec:
         resources:
           ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
         verbs: ["get", "list", "delete"]
-    image: "agentcert/itbench-experiment:dev"
+    image: "agentcert/itbench-experiment:latest"
     imagePullPolicy: IfNotPresent
     command:
       - /itbench-experiment

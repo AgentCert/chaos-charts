@@ -6,10 +6,19 @@ metadata:
   namespace: default
 spec:
   engineState: 'active'
+  # ChaosEngine.spec.appinfo.appkind is CRD-restricted to workload kinds, so this
+  # fault addresses its service target through the SDK's own TARGETS variable below.
+  # Chaos Studio fills TARGETS in from the target you pick; set it by hand only when
+  # applying this engine directly.
   appinfo:
     appns: ''
     applabel: ''
-    appkind: 'service'
+    appkind: ''
+  # Stopping a run must leave the target restored, so the experiment pod needs
+  # longer than Kubernetes' 30s default: it still has to revert (RevertTimeout,
+  # 90s) and then verify the target actually recovered (STATUS_CHECK_TIMEOUT,
+  # 180s by default) before it may be killed.
+  terminationGracePeriodSeconds: 300
   chaosServiceAccount: modified-target-port-kubernetes-service-sa
   jobCleanUpPolicy: 'retain'
   experiments:
@@ -17,6 +26,9 @@ spec:
       spec:
         components:
           env:
+            # "service:<namespace>:[<label-selector>]"
+            - name: TARGETS
+              value: ''
             # broken targetPort value to inject (must not be in use)
             - name: BROKEN_TARGET_PORT
               value: '9999'

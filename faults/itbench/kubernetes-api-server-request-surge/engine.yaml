@@ -10,6 +10,11 @@ spec:
     appns: ''
     applabel: ''
     appkind: ''
+  # Stopping a run must leave the target restored, so the experiment pod needs
+  # longer than Kubernetes' 30s default: it still has to revert (RevertTimeout,
+  # 90s) and then verify the target actually recovered (STATUS_CHECK_TIMEOUT,
+  # 180s by default) before it may be killed.
+  terminationGracePeriodSeconds: 300
   chaosServiceAccount: kubernetes-api-server-request-surge-sa
   jobCleanUpPolicy: 'retain'
   experiments:
@@ -27,9 +32,12 @@ spec:
             # name of the injected Deployment/ServiceAccount/Role/RoleBinding
             - name: SURGE_WORKLOAD_NAME
               value: 'workload-scanner'
-            # image used for the load-generator pods
+            # Image for the load-generator pods. They run this fault's own
+            # binary (/itbench-experiment -api-load), so leaving this empty makes
+            # the helpers reuse the experiment's own image and stay on the same
+            # build. Only override it with an image containing that binary.
             - name: SURGE_IMAGE
-              value: 'litmuschaos/k8s:latest'
+              value: ''
             # seconds to hold the fault before reverting
             - name: TOTAL_CHAOS_DURATION
               value: '300'

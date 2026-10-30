@@ -30,8 +30,14 @@ spec:
       - apiGroups: ["litmuschaos.io"]
         resources: ["chaosengines", "chaosexperiments", "chaosresults"]
         verbs: ["create", "list", "get", "patch", "update", "delete"]
-    image: "agentcert/itbench-experiment:dev"
-    imagePullPolicy: IfNotPresent
+    image: "agentcert/itbench-experiment:latest"
+    # Never, because this image is built from the checkout and side-loaded into
+    # the cluster; it is not published to Docker Hub, so a missing side-load must
+    # fail loudly instead of trying to pull something that does not exist. The
+    # server rewrites this to Always when ITBENCH_EXPERIMENT_IMAGE_SOURCE=registry,
+    # where the moving :dev tag has to be re-pulled. Override with
+    # ITBENCH_EXPERIMENT_IMAGE_PULL_POLICY.
+    imagePullPolicy: Never
     command:
       - /itbench-experiment
     args:

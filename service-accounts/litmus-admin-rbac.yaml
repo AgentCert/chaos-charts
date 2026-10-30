@@ -43,6 +43,11 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create","get","list","patch","update"]
+# Service-targeting faults confirm a Service really routes again after they
+# restore it, which is read from EndpointSlices on current clusters.
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get","list"]
 - apiGroups: [""]
   resources: ["serviceaccounts","secrets"]
   verbs: ["create","get","list","delete","patch"]
@@ -71,8 +76,11 @@ rules:
   resources: ["poddisruptionbudgets"]
   verbs: ["get","list","delete"]
 - apiGroups: ["scheduling.k8s.io"]
+  # get/list are required to confirm the temporary PriorityClass is really gone:
+  # it is cluster-scoped, so one left behind survives a namespace teardown and
+  # makes every later run fail with AlreadyExists.
   resources: ["priorityclasses"]
-  verbs: ["create","delete"]
+  verbs: ["create","get","list","delete"]
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["roles","rolebindings","clusterroles","clusterrolebindings"]
   verbs: ["create","get","list","delete"]

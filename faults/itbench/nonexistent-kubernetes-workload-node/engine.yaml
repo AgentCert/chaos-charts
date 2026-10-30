@@ -10,6 +10,11 @@ spec:
     appns: ''
     applabel: ''
     appkind: 'deployment'
+  # Stopping a run must leave the target restored, so the experiment pod needs
+  # longer than Kubernetes' 30s default: it still has to revert (RevertTimeout,
+  # 90s) and then verify the target actually recovered (STATUS_CHECK_TIMEOUT,
+  # 180s by default) before it may be killed.
+  terminationGracePeriodSeconds: 300
   chaosServiceAccount: nonexistent-kubernetes-workload-node-sa
   jobCleanUpPolicy: 'retain'
   experiments:
